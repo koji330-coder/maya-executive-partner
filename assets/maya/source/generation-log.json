@@ -109,7 +109,16 @@
           "why_it_matters": "Masked compositing hides drift for blink and mouth. Expressions swap the whole cut-out, so this drift would make MAYA shift down and grow each time the emotion changes.",
           "next": "Rewrite the prompt at the granularity the proven pipeline uses: name head size, position, framing, hairline, bangs over the brow, collar, earrings, lighting and background as fixed, then change only brow angle and mouth shape. Re-measure scale and offset before judging the expression."
         }
-      ]
+      ],
+      "fallback_test": {
+        "question": "Can alignment plus a face mask absorb expression drift the way the ellipse masks absorb blink and mouth drift?",
+        "result": "no",
+        "method": "Best similarity fit of challenge-01 onto the master, then the face composited through a heavily feathered ellipse.",
+        "why": "The face's proportions changed. The eye band fits at scale 0.91 with no vertical offset; the mouth band wants scale 0.93 and 15px lower. No single similarity transform registers both, so the composite doubles the nose and mouth.",
+        "consequence": "There is no compositing safety net for expressions. The prompt has to hold the geometry.",
+        "evidence": "assets/reference/candidates/challenge-01-mask-fallback.png",
+        "gate": "tools/measure_drift.py, validated: master/blink passes, master/mouth_open passes, master/challenge-01 fails all three checks."
+      }
     }
   ]
 }
