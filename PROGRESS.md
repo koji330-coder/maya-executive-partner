@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 1 — Character Runtime: complete, now running on generated artwork for two expressions. Phase 2 is next.
+Phase 2 — Local conversation prototype: complete. Phase 3 is next.
 
 ## Completed
 
@@ -26,9 +26,25 @@ Phase 1 — Character Runtime: complete, now running on generated artwork for tw
 - `DevExpressionControls` — Phase 1 control surface for expression, pose, scene, activity and clip playback. Gated behind `__DEV__`.
 - Audio abstraction — `AudioEngine` interface, fixed-clip manifest for the six OmniVoice lines, and `EnvelopeAudioEngine`, which plays a clip's amplitude envelope so lip sync is exercisable before any audio file exists.
 
+### Phase 2 — Local conversation prototype
+
+- `mayaResponse.ts` — the contract from `docs/AI_RESPONSE_CONTRACT.md` as types plus a validator. Only a missing `message` is fatal; everything else has a defensible default, so a model that gets one enum wrong still produces a usable turn. Repairs come back as warnings rather than errors, and Phase 3 decides what to do with them.
+- `mockResponder.ts` — scripted replies written as untrusted payloads and pushed through that same validator, so the path the app runs now is the path it keeps. The set covers what is awkward to provoke from a live model: a flat refusal, a detected decision, an off-contract reply the validator has to repair, and a failure.
+- `useConversation.ts` — the send path. Thinking starts before anything async, a duplicate send while waiting is refused, and a failure returns the typed text so a retry costs nothing.
+- `MayaAnswer.tsx` — the reply laid out as `docs/UX_SPEC.md` §3 asks: statement, reasoning, options with one recommended, next action, decision card. Not a stack of bubbles.
+- Decisions screen renders mocked records shaped like the `decisions` table.
+
+The contract gained an `options` field. `docs/UX_SPEC.md` asks the Talk screen to
+show options and `docs/PRODUCT_REQUIREMENTS.md` §6 makes proposing two or three
+and recommending one part of the advisor protocol, but the contract had nowhere
+to put them, so they would have had to hide inside the prose.
+
+Mock script order is intent before topic: 「値下げはやめると決めた」 is a decision,
+not another pricing question. Caught by a test, not by reading.
+
 ## Verification
 
-- 32 unit tests pass (state machine, blink timing, lip sync thresholds, clip manifest, audio lifecycle, Today greeting).
+- 49 unit tests pass (state machine, blink timing, lip sync thresholds, clip manifest, audio lifecycle, Today greeting, response validation, mock responder).
 - Typecheck and lint are clean.
 - `npx expo export --platform ios` bundles successfully (1183 modules).
 - The app was run in a browser and checked visually: character renders, blinking runs, expression/pose/scene controls drive the character, the thinking caption appears, and the mouth opens during clip playback. The developer controls are absent from an export build, as `docs/ACCEPTANCE_CRITERIA.md` requires.
@@ -211,4 +227,4 @@ blink does not move the eyebrow, so hair across a brow never fights the
 animation; the brow only has to stay readable, because it is what carries
 `challenge`, `annoyed` and `concerned`. The eyes and mouth stay absolute. The spec
 was relaxed instead of the hairstyle.
-- Phase 2 — Local conversation prototype: chat composer, mocked `MayaResponse` payloads, visual state driven by response JSON, Decisions UI with local mocked records.
+- Phase 3 — LLM integration: backend endpoint, system prompt, company context injection, and real responses behind the validator that already exists.

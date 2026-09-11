@@ -14,23 +14,31 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharacterStage, DevExpressionControls, useCharacterRuntime } from '@/features/character';
+import { MayaAnswer } from '@/features/chat/MayaAnswer';
+import { useConversation } from '@/features/chat/useConversation';
 import { colors, radius, spacing } from '@/theme';
 
 /**
  * Talk screen — docs/UX_SPEC.md §3.
  *
- * Phase 1 ships the character stage and the composer shell. Sending is wired to
- * the mocked conversation loop in Phase 2, so the composer is present but
- * disabled rather than absent: the layout it has to live in is part of what
- * Phase 1 is proving.
+ * Phase 2 runs the whole consultation loop against scripted replies: send, the
+ * character thinks, a validated `MayaResponse` arrives, and its fields move the
+ * character and lay out the answer. Phase 3 swaps the responder for the backend.
  */
 export default function TalkScreen() {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const runtime = useCharacterRuntime({ initialState: { scene: 'work' } });
-  const [draft, setDraft] = React.useState('');
+  const conversation = useConversation({ runtime });
+  const scroller = React.useRef<ScrollView>(null);
 
   const stageHeight = Math.round(height * 0.35);
+  const canSend = conversation.draft.trim().length > 0 && !conversation.waiting;
+
+  React.useEffect(() => {
+    const id = setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 60);
+    return () => clearTimeout(id);
+  }, [conversation.latest, conversation.error]);
 
   return (
     <KeyboardAvoidingView
@@ -42,35 +50,61 @@ export default function TalkScreen() {
         <CharacterStage runtime={runtime} height={stageHeight} />
       </View>
 
-      <ScrollView style={styles.transcript} contentContainerStyle={styles.transcriptContent}>
-        <View style={styles.mayaCard}>
-          <Text style={styles.mayaLabel}>MAYA</Text>
-          <Text style={styles.mayaText}>
-            会話はPhase 2で有効になります。いまは表情・まばたき・呼吸・リップシンクの動きを確認してください。
-          </Text>
-        </View>
+      <ScrollView ref={scroller} style={styles.transcript} contentContainerStyle={styles.transcriptContent}>
+        {conversation.turns.length === 0 ? (
+          <View style={styles.opening}>
+            <Text style={styles.openingText}>
+              経営で迷っていることを書いてください。値下げ、採用、投資。決めきれていない話ほど向いています。
+            </Text>
+          </View>
+        ) : null}
+
+        {conversation.turns.map((turn) =>
+          turn.role === 'user' ? (
+            <View key={turn.id} style={styles.userTurn}>
+              <Text style={styles.userText}>{turn.text}</Text>
+            </View>
+          ) : (
+            <MayaAnswer key={turn.id} turn={turn} onSaveDecision={conversation.saveDecision} />
+          ),
+        )}
+
+        {conversation.error ? (
+          <View style={styles.error}>
+            <Text style={styles.errorText}>{conversation.error}</Text>
+            <View style={styles.errorActions}>
+              <Pressable accessibilityRole="button" onPress={conversation.retry} style={styles.retry}>
+                <Text style={styles.retryText}>もう一度送る</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={conversation.dismissError}>
+                <Text style={styles.dismiss}>閉じる</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         {__DEV__ ? <DevExpressionControls runtime={runtime} /> : null}
       </ScrollView>
 
-      <View style={[styles.composer, { paddingBottom: spacing.sm }]}>
+      <View style={styles.composer}>
         <TextInput
           style={styles.input}
-          value={draft}
-          onChangeText={setDraft}
+          value={conversation.draft}
+          onChangeText={conversation.setDraft}
           placeholder="相談したいことを書いてください"
           placeholderTextColor={colors.muted}
           multiline
-          editable={false}
           onFocus={() => runtime.machine.setListening()}
           onBlur={() => runtime.machine.setIdle()}
+          onSubmitEditing={() => conversation.send()}
         />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="送信"
-          accessibilityState={{ disabled: true }}
-          disabled
-          style={[styles.send, styles.sendDisabled]}
+          accessibilityState={{ disabled: !canSend }}
+          disabled={!canSend}
+          onPress={() => conversation.send()}
+          style={[styles.send, !canSend && styles.sendDisabled]}
         >
           <Ionicons name="arrow-up" size={20} color={colors.ivory} />
         </Pressable>
@@ -89,26 +123,62 @@ const styles = StyleSheet.create({
   },
   transcriptContent: {
     padding: spacing.md,
+    gap: spacing.lg,
+  },
+  opening: {
+    paddingVertical: spacing.sm,
+  },
+  openingText: {
+    fontSize: 14,
+    lineHeight: 23,
+    color: colors.muted,
+  },
+  userTurn: {
+    alignSelf: 'flex-end',
+    maxWidth: '86%',
+    backgroundColor: colors.sand,
+    borderRadius: radius.lg,
+    borderBottomRightRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  userText: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.charcoal,
+  },
+  error: {
+    backgroundColor: colors.ivory,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  errorText: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.charcoal,
+  },
+  errorActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
   },
-  mayaCard: {
-    backgroundColor: colors.ivory,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: spacing.md,
-    gap: spacing.xs,
+  retry: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm - 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.charcoal,
   },
-  mayaLabel: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    color: colors.gold,
+  retryText: {
+    fontSize: 13,
     fontWeight: '700',
+    color: colors.ivory,
   },
-  mayaText: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: colors.charcoal,
+  dismiss: {
+    fontSize: 13,
+    color: colors.muted,
   },
   composer: {
     flexDirection: 'row',
@@ -116,6 +186,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.ivory,

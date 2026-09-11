@@ -16,6 +16,16 @@ interface MayaResponse {
     fixedClipKey?: string;
     style?: 'warm' | 'calm_serious' | 'playful' | 'encouraging';
   };
+  /**
+   * Two or three realistic choices, when they help. The recommended one is
+   * marked. docs/UX_SPEC.md asks the Talk screen to show options under the main
+   * statement, and docs/PRODUCT_REQUIREMENTS.md §6 makes proposing 2-3 options
+   * and recommending one part of the advisor protocol.
+   */
+  options?: {
+    label: string;
+    recommended?: boolean;
+  }[];
   decision?: {
     detected: boolean;
     title?: string;
@@ -70,6 +80,11 @@ Never read long analytical answers by default.
     "fixedClipKey": "strong_disagree_01",
     "style": "calm_serious"
   },
+  "options": [
+    { "label": "追随して同額まで下げる" },
+    { "label": "価格は据え置き、特典で差をつける" },
+    { "label": "2週間だけ様子を見て数字で判断する", "recommended": true }
+  ],
   "decision": {
     "detected": false
   },
@@ -93,3 +108,6 @@ MAYA must:
 - reference previous decisions when relevant
 - avoid excessive praise
 - end with a useful next step when a decision is being discussed
+- return at most three options, and mark exactly one as recommended when options
+  are returned at all. Listing choices without picking one is the behaviour
+  docs/PRODUCT_REQUIREMENTS.md §6 rules out.
