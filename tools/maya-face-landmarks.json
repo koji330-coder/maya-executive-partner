@@ -1,8 +1,0 @@
-{
-  "master": "assets/reference/maya-face-reference.png",
-  "eyes": [
-    { "name": "left",  "x0": 362, "x1": 486, "lid_top": 384, "lash_top": 391, "lash_bottom": 434 },
-    { "name": "right", "x0": 562, "x1": 678, "lid_top": 353, "lash_top": 361, "lash_bottom": 410 }
-  ],
-  "mouth": { "left": [470, 578], "right": [612, 552], "bottom": 660 }
-}
