@@ -71,6 +71,22 @@ The page's envelope, hold window and blink timing are copies of the implementati
 Changing `clipManifest.ts`, `LipSyncController.ts` or `BlinkController.ts` means
 changing the bench too, or the preview stops predicting the app.
 
+## Blocked on the pipeline move
+
+The pipeline lives on one machine, so neither a cloud session nor another
+computer can generate. `docs/PIPELINE_PORTABILITY.md` is the move: push it to
+`character-motion-studio`, then supply an API key through the environment.
+
+The endpoint is reachable from this container — an unkeyed call returns Google's
+own PERMISSION_DENIED, not a proxy block — so only the key and the code are
+missing. Once both land, generation and measurement run in one loop here instead
+of a round trip through a person for every attempt.
+
+What that buys is attempts per unit of the user's time, not a better model. The
+separate win is dropping GPT for the proven `edit` path: the locked-parent method
+was established there, and the drift measured on `challenge` may simply be the
+cost of working off-recipe.
+
 ## Next
 
 - Reference image rebuild. The crops taken from the design sheet are too coarse to lock identity for production generation: the face is 287x412 and each expression panel is about 130px wide. The design sheet also has hands on the cheek in every panel and hair crossing the eyes, neither of which survives cut-out and eye-frame derivation. `docs/REFERENCE_IMAGE_REQUEST.md` is the request for a purpose-built replacement set, and `assets/reference/maya-safe-zone-diagram.png` is its spec attachment: the eye and mouth regions the derivation step replaces, marked on the current reference. The constraint is local to those two regions so the artwork keeps its richness everywhere else.
