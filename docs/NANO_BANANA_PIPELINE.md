@@ -2,11 +2,16 @@
 
 MAYAの画像素材は、既存の実績あるパイプラインで作る。新しく作らない。
 
-場所（このPC）:
+置き場所は `koji330-coder/character-motion-studio`。他のプロジェクトからも使える。
 
+```bash
+npm install github:koji330-coder/character-motion-studio
+export GEMINI_API_KEY=...
+npx nano-banana doctor
 ```
-C:\Users\koji3\Documents\クロノIT-動画制作リサーチ\nano-banana
-```
+
+相対パスは呼び出し元のカレントディレクトリ基準で解決される。元のローカルコピーは
+`クロノIT-動画制作リサーチ/nano-banana` にそのまま残っており、変更していない。
 
 先生役・生徒役の解説動画で実際に運用された実績がある。以下はその実装と
 運用記録から読み取った事実で、MAYAの素材制作もこれに合わせる。

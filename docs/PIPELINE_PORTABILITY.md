@@ -1,5 +1,12 @@
 # パイプラインをどこからでも使えるようにする
 
+> **完了（2026-09-11）。** `koji330-coder/character-motion-studio` に移設済み。
+> 導入は `npm install github:koji330-coder/character-motion-studio` と
+> `GEMINI_API_KEY` の設定だけ。`npx nano-banana doctor` で確認できる。
+> 相対パスは呼び出し元のカレントディレクトリ基準。
+> 元の `クロノIT-動画制作リサーチ/nano-banana` は変更していない。
+> 以下は移設時の手順の記録。
+
 Nano Banana のパイプラインは `クロノIT-動画制作リサーチ/nano-banana` にあり、
 1台のマシンにしか存在しない。素材制作がその1台に縛られ、クラウドのセッションからは
 触れない。これを解消する手順。
