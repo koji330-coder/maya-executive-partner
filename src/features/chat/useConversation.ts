@@ -4,6 +4,7 @@ import type { CharacterRuntime } from '@/features/character';
 import type { ApiTier } from '@/services/llm/apiKey';
 import { LlmError, type ChatExchange } from '@/services/llm/geminiClient';
 
+import type { Attachment } from './attachments';
 import {
   createConversation,
   listConversations,
@@ -21,6 +22,8 @@ export interface UserTurn {
   role: 'user';
   text: string;
   at: number;
+  /** Names only. The bytes are not kept after the turn is sent. */
+  attachmentNames?: string[];
 }
 
 export interface MayaTurn {
@@ -44,6 +47,8 @@ export interface ConversationState {
   error: string | null;
   /** Kept so a failed send does not lose what the user typed. */
   draft: string;
+  /** Files staged for the next message. */
+  attachments: Attachment[];
 }
 
 export interface UseConversationOptions {
@@ -90,6 +95,7 @@ export function useConversation({
     waiting: false,
     error: null,
     draft: '',
+    attachments: [],
   });
 
   const waitingRef = useRef(false);
@@ -148,11 +154,25 @@ export function useConversation({
     setState((current) => ({ ...current, draft }));
   }, []);
 
+  const addAttachment = useCallback((attachment: Attachment) => {
+    setState((current) => ({ ...current, attachments: [...current.attachments, attachment] }));
+  }, []);
+
+  const removeAttachment = useCallback((id: string) => {
+    setState((current) => ({
+      ...current,
+      attachments: current.attachments.filter((attachment) => attachment.id !== id),
+    }));
+  }, []);
+
   const send = useCallback(
     async (rawText?: string, scriptId?: string) => {
       const text = (rawText ?? state.draft).trim();
+      const attachments = state.attachments;
       // docs/ACCEPTANCE_CRITERIA.md: a duplicate send while waiting is prevented.
-      if (!text || waitingRef.current) {
+      // An attachment on its own is a valid turn; a bare screenshot asks a
+      // question by itself.
+      if ((!text && attachments.length === 0) || waitingRef.current) {
         return;
       }
 
@@ -160,7 +180,15 @@ export function useConversation({
       // Before any await, so the character reacts inside 200ms.
       runtime.beginThinking();
 
-      const userTurn: UserTurn = { id: turnId('user'), role: 'user', text, at: Date.now() };
+      const userTurn: UserTurn = {
+        id: turnId('user'),
+        role: 'user',
+        text: text || '（添付のみ）',
+        at: Date.now(),
+        ...(attachments.length
+          ? { attachmentNames: attachments.map((attachment) => attachment.name) }
+          : {}),
+      };
       if (!started.current) {
         started.current = true;
         // The opening question names the conversation; it is what it was about.
@@ -173,6 +201,7 @@ export function useConversation({
         waiting: true,
         error: null,
         draft: '',
+        attachments: [],
       }));
 
       const history: ChatExchange[] = turnsRef.current
@@ -188,7 +217,13 @@ export function useConversation({
 
       try {
         const reply = await ask({
-          message: text,
+          message: text || 'この添付について、気づくことを教えてください。',
+          attachments: attachments.map((attachment) => ({
+            kind: attachment.kind,
+            name: attachment.name,
+            mimeType: attachment.mimeType,
+            data: attachment.data,
+          })),
           history,
           company,
           companyIsReal,
@@ -233,14 +268,15 @@ export function useConversation({
           waiting: false,
           // A cancel was the user's own doing, so it is not reported as a fault.
           error: cancelled ? null : describe(error),
-          // The typed text comes back so a retry costs nothing.
+          // The typed text and the files come back so a retry costs nothing.
           draft: text,
+          attachments,
         }));
       } finally {
         abort.current = null;
       }
     },
-    [company, companyIsReal, historyDepth, runtime, state.draft],
+    [company, companyIsReal, historyDepth, runtime, state.attachments, state.draft],
   );
 
   const cancel = useCallback(() => {
@@ -273,5 +309,15 @@ export function useConversation({
     }));
   }, []);
 
-  return { ...state, setDraft, send, cancel, retry, dismissError, saveDecision };
+  return {
+    ...state,
+    setDraft,
+    addAttachment,
+    removeAttachment,
+    send,
+    cancel,
+    retry,
+    dismissError,
+    saveDecision,
+  };
 }

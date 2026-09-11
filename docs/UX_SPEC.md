@@ -65,8 +65,22 @@ Middle:
 Bottom:
 
 - text composer
+- attach controls for an image and for a text file
 - microphone button reserved for later/optional recording
 - send button
+
+### Attachments
+
+A consultation about real numbers needs the real numbers. The composer takes a
+screenshot or photo, and a text file: markdown, CSV, JSON, plain text, PDF.
+Up to three per message, and they travel with that message only.
+
+**No spreadsheet parser.** `README.md` excludes finance document ingestion from
+v0.1, and a parser is that. An `.xlsx` is refused with the two things that do
+work: export CSV, or screenshot the sheet. A screenshot of a spreadsheet read
+correctly in testing.
+
+An attachment may be sent with no text, which asks MAYA what she notices.
 
 ### Response display
 

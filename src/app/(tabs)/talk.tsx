@@ -16,6 +16,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CharacterStage, DevExpressionControls, useCharacterRuntime } from '@/features/character';
+import {
+  AttachmentError,
+  describeAttachment,
+  MAX_ATTACHMENTS,
+  pickImage,
+  pickTextFile,
+} from '@/features/chat/attachments';
 import { MayaAnswer } from '@/features/chat/MayaAnswer';
 import { useConversation } from '@/features/chat/useConversation';
 import { useCompanyProfile } from '@/features/company/useCompanyProfile';
@@ -63,7 +70,32 @@ export default function TalkScreen() {
 
   const compact = keyboardUp || collapsed;
   const stageHeight = compact ? COMPACT_STAGE : Math.round(height * 0.35);
-  const canSend = conversation.draft.trim().length > 0 && !conversation.waiting;
+  const canSend =
+    (conversation.draft.trim().length > 0 || conversation.attachments.length > 0) &&
+    !conversation.waiting;
+
+  const [attachError, setAttachError] = React.useState<string | null>(null);
+
+  const attach = React.useCallback(
+    async (pick: typeof pickImage) => {
+      setAttachError(null);
+      if (conversation.attachments.length >= MAX_ATTACHMENTS) {
+        setAttachError(`添付は${MAX_ATTACHMENTS}件までです。`);
+        return;
+      }
+      try {
+        const attachment = await pick();
+        if (attachment) {
+          conversation.addAttachment(attachment);
+        }
+      } catch (error) {
+        setAttachError(
+          error instanceof AttachmentError ? error.message : '添付を読み込めませんでした。',
+        );
+      }
+    },
+    [conversation],
+  );
 
   const toggleStage = React.useCallback(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -149,7 +181,48 @@ export default function TalkScreen() {
         {__DEV__ ? <DevExpressionControls runtime={runtime} /> : null}
       </ScrollView>
 
+      {conversation.attachments.length > 0 || attachError ? (
+        <View style={styles.attachTray}>
+          {conversation.attachments.map((attachment) => (
+            <Pressable
+              key={attachment.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${attachment.name} を外す`}
+              onPress={() => conversation.removeAttachment(attachment.id)}
+              style={styles.chip}
+            >
+              <Ionicons
+                name={attachment.kind === 'image' ? 'image-outline' : 'document-text-outline'}
+                size={14}
+                color={colors.charcoalSoft}
+              />
+              <Text style={styles.chipText} numberOfLines={1}>
+                {describeAttachment(attachment)}
+              </Text>
+              <Ionicons name="close" size={14} color={colors.muted} />
+            </Pressable>
+          ))}
+          {attachError ? <Text style={styles.attachError}>{attachError}</Text> : null}
+        </View>
+      ) : null}
+
       <View style={styles.composer}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="画像を添付"
+          onPress={() => void attach(pickImage)}
+          style={styles.attachButton}
+        >
+          <Ionicons name="image-outline" size={20} color={colors.charcoalSoft} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="ファイルを添付"
+          onPress={() => void attach(pickTextFile)}
+          style={styles.attachButton}
+        >
+          <Ionicons name="attach-outline" size={20} color={colors.charcoalSoft} />
+        </Pressable>
         <TextInput
           style={styles.input}
           value={conversation.draft}
@@ -274,6 +347,42 @@ const styles = StyleSheet.create({
   dismiss: {
     fontSize: 13,
     color: colors.muted,
+  },
+  attachTray: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    maxWidth: '100%',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.ivory,
+  },
+  chipText: {
+    flexShrink: 1,
+    fontSize: 12,
+    color: colors.charcoalSoft,
+  },
+  attachError: {
+    width: '100%',
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.danger,
+  },
+  attachButton: {
+    width: 36,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   composer: {
     flexDirection: 'row',

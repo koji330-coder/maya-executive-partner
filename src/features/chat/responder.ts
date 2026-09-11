@@ -4,9 +4,10 @@ import {
   generateMayaResponse,
   LlmError,
   type ChatExchange,
+  type RequestAttachment,
 } from '@/services/llm/geminiClient';
 import { freeTierAllowed, loadLlmSettings } from '@/services/llm/settings';
-import { paidLimitReached, recordUsage } from '@/services/llm/usage';
+import { ASSUMED_TOKENS_PER_TURN, paidLimitReached, recordUsage } from '@/services/llm/usage';
 
 import { validateMayaResponse, type MayaResponse } from './mayaResponse';
 import { respondTo as scriptedReply } from './mockResponder';
@@ -29,6 +30,7 @@ export interface AskOptions {
    * user to remember. docs/LLM_INTEGRATION.md.
    */
   companyIsReal?: boolean;
+  attachments?: RequestAttachment[];
   /** Forces a specific mock script. Development only. */
   scriptId?: string;
   signal?: AbortSignal;
@@ -62,6 +64,7 @@ export async function ask(options: AskOptions): Promise<Reply> {
     systemPrompt,
     history: options.history,
     message: options.message,
+    attachments: options.attachments,
     model: settings.model,
     signal: options.signal,
   };
@@ -70,7 +73,10 @@ export async function ask(options: AskOptions): Promise<Reply> {
     if (!keys.paid) {
       throw new LlmError('no_key', '有料APIキーが登録されていません。設定から登録してください。');
     }
-    if (await paidLimitReached(settings.paidDailyLimitYen)) {
+    // An attached screenshot measured about 1,100 prompt tokens, so a turn with
+    // files is charged against the daily ceiling at its real weight.
+    const expected = ASSUMED_TOKENS_PER_TURN + estimateRequestAttachmentTokens(options.attachments);
+    if (await paidLimitReached(settings.paidDailyLimitYen, expected)) {
       throw new LlmError(
         'limit_reached',
         `有料APIの1日の上限（${settings.paidDailyLimitYen}円）に達するため、送信を止めました。設定から上限を変更できます。`,
@@ -95,6 +101,14 @@ export async function ask(options: AskOptions): Promise<Reply> {
   }
 
   return askPaid();
+}
+
+function estimateRequestAttachmentTokens(attachments?: RequestAttachment[]): number {
+  return (attachments ?? []).reduce(
+    (total, attachment) =>
+      total + (attachment.kind === 'image' ? 1300 : Math.ceil(attachment.data.length / 2)),
+    0,
+  );
 }
 
 function finish(payload: unknown, source: ApiTier): Reply {

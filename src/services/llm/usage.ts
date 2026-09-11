@@ -104,7 +104,10 @@ export async function recordUsage(tier: ApiTier, tokens: number): Promise<void> 
  * have not made yet. Blocking one turn early is better than discovering the
  * overspend afterwards.
  */
-export async function paidLimitReached(limitYen: number): Promise<boolean> {
+export async function paidLimitReached(
+  limitYen: number,
+  expectedTokens = ASSUMED_TOKENS_PER_TURN,
+): Promise<boolean> {
   const usage = await getUsage();
-  return usage.paidEstimatedYen + estimateTurnYen() > limitYen;
+  return usage.paidEstimatedYen + estimateTurnYen(expectedTokens) > limitYen;
 }

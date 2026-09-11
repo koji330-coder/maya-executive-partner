@@ -73,11 +73,20 @@ export interface ChatExchange {
   text: string;
 }
 
+/** An image or text file sent with the question. */
+export interface RequestAttachment {
+  kind: 'image' | 'text';
+  name: string;
+  mimeType: string;
+  data: string;
+}
+
 export interface GenerateOptions {
   apiKey: string;
   systemPrompt: string;
   history: ChatExchange[];
   message: string;
+  attachments?: RequestAttachment[];
   model?: string;
   signal?: AbortSignal;
 }
@@ -142,12 +151,27 @@ function describeHttpError(status: number, body: unknown): LlmError {
  */
 export async function generateMayaResponse(options: GenerateOptions): Promise<GenerateResult> {
   const model = options.model ?? DEFAULT_MODEL;
+  // Attachments ride with the current question only. Re-sending them on every
+  // later turn would multiply the cost for no gain; what MAYA concluded from
+  // them is already in her replies.
+  const parts: Record<string, unknown>[] = [{ text: options.message }];
+  for (const attachment of options.attachments ?? []) {
+    if (attachment.kind === 'image') {
+      parts.push({ inlineData: { mimeType: attachment.mimeType, data: attachment.data } });
+    } else {
+      parts.push({ text: `
+
+--- 添付: ${attachment.name} ---
+${attachment.data}` });
+    }
+  }
+
   const contents = [
     ...options.history.map((turn) => ({
       role: turn.role === 'user' ? 'user' : 'model',
       parts: [{ text: turn.text }],
     })),
-    { role: 'user', parts: [{ text: options.message }] },
+    { role: 'user', parts },
   ];
 
   // The caller's signal and a deadline both have to be able to end the request.
