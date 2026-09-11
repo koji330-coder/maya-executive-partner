@@ -41,6 +41,11 @@
 - pose
 - scene
 - voice_key nullable
+- response_json nullable — the whole validated `MayaResponse` for a maya message.
+  The contract's structured half (options, nextAction, decision,
+  followUpQuestion) has no columns of its own: the contract changes as the
+  product learns, and a blob avoids a migration for each field. The columns
+  above stay because they are queried.
 - created_at
 
 ### decisions

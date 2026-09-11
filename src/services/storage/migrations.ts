@@ -69,6 +69,17 @@ export const MIGRATIONS: readonly Migration[] = [
         ON cached_decisions (status, updated_at);`,
     ],
   },
+  {
+    version: 2,
+    statements: [
+      // The contract's structured half — options, the next action, a detected
+      // decision, the follow-up question — had nowhere to live, so a reloaded or
+      // exported conversation showed only the prose. The validated response is
+      // kept whole rather than given a column each, because the contract will
+      // keep changing and a JSON blob does not need a migration every time.
+      `ALTER TABLE cached_messages ADD COLUMN response_json TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(

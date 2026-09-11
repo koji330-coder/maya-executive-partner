@@ -130,12 +130,17 @@ export function useConversation({
               id: message.id,
               role: 'maya',
               at: Date.parse(message.createdAt),
-              // Only what was stored. The reply is shown again, not replayed.
+              // The stored reply, whole, so options and the decision card come
+              // back. Rows written before the response column fall back to the
+              // columns, which is all they ever held. Either way the voice is
+              // silenced: the reply is shown again, not replayed.
               response: {
-                message: message.text,
-                emotion: (message.emotion ?? 'neutral') as MayaResponse['emotion'],
-                pose: (message.pose ?? 'default') as MayaResponse['pose'],
-                scene: (message.scene ?? 'work') as MayaResponse['scene'],
+                ...(message.response ?? {
+                  message: message.text,
+                  emotion: (message.emotion ?? 'neutral') as MayaResponse['emotion'],
+                  pose: (message.pose ?? 'default') as MayaResponse['pose'],
+                  scene: (message.scene ?? 'work') as MayaResponse['scene'],
+                }),
                 voice: { shouldPlay: false },
               },
               warnings: [],
