@@ -75,10 +75,18 @@ through a small elliptical mask over the eyes or the mouth, so drift outside the
 ellipse never reaches the screen. Masks are measured from the closed/open pixel
 diff, held per state, and sized larger than the measured extent.
 
-Two things need a decision before generation starts: whether to drop to two mouth
-and two eye states to match the proven pipeline, and whether to switch the
-generation background from mid grey to the pure white that `rembg/isnet-anime`
-expects.
+**The method is proven on MAYA's own style.** A blink and an open mouth were
+generated from the accepted master and composited through measured ellipse masks.
+Both read cleanly with no seam. The composition did not drift: the best aligning
+translation between master and variant was zero, and the pixel difference was
+confined to the eyes. Results and the measured masks are in
+`assets/reference/pipeline-test/`. The API 403 recorded on 2026-09-05 is gone.
+
+One decision remains before the full run: whether to switch the generation
+background from mid grey to the pure white that `rembg/isnet-anime` expects. Two
+mouth and two eye states are settled, matching the proven pipeline; the three
+valued types stay and the asset resolver maps `small` and `half` to the nearest
+available frame.
 
 ### Reference rebuild — done
 

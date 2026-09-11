@@ -1,0 +1,31 @@
+{
+  "note": "Measured from the closed/open pixel diff. Radii carry a 1.5x margin over the measured spread.",
+  "canvas": [
+    1086,
+    1448
+  ],
+  "masks": {
+    "eyes": [
+      {
+        "cx": 38.9,
+        "cy": 29.1,
+        "rx": 7.0,
+        "ry": 3.6
+      },
+      {
+        "cx": 58.2,
+        "cy": 27.1,
+        "rx": 7.6,
+        "ry": 3.9
+      }
+    ],
+    "mouth": [
+      {
+        "cx": 51.6,
+        "cy": 39.8,
+        "rx": 14.5,
+        "ry": 3.5
+      }
+    ]
+  }
+}
