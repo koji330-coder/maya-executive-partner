@@ -8,7 +8,10 @@
           "asset": "neutral-a-01.png",
           "target": "A — front neutral master",
           "status": "revision_requested",
-          "size": [1086, 1448],
+          "size": [
+            1086,
+            1448
+          ],
           "scores": {
             "face_identity": 9,
             "hair_consistency": 9,
@@ -41,6 +44,42 @@
             "Rendering reads slightly more photoreal and glossier than the 2.5D design sheet."
           ],
           "next": "Localised fix of the left bang only. Full regeneration is a fallback, not the preference."
+        },
+        {
+          "asset": "neutral-a-02.png",
+          "target": "A — front neutral master",
+          "status": "accepted",
+          "size": [
+            1086,
+            1448
+          ],
+          "promoted_to": "assets/reference/maya-face-reference.png",
+          "scores": {
+            "face_identity": 9,
+            "hair_consistency": 9,
+            "age_consistency": 9,
+            "eye_consistency": 9,
+            "visual_style": 8,
+            "brand_fit": 8,
+            "anatomy_quality": 9,
+            "ios_usability": 9
+          },
+          "passed": [
+            "Tier 1 eye zones: both eyes measured clear of hair, including the lid travel space between brow and lash line.",
+            "Tier 1 mouth zone: closed, no hair, no hand, no hard shadow.",
+            "Background uniform at 138-140 across every sampled patch.",
+            "Both eyes fully open, hands out of frame, no text.",
+            "Matte test passes over a warm plate with no grey halo.",
+            "Detail outside the zones matches the design sheet."
+          ],
+          "tolerated": [
+            "A bang crosses the viewer-left eyebrow. Accepted under the Tier 2 rule: a blink does not move the eyebrow, and the brow stays readable."
+          ],
+          "decision": "Accepted as the identity reference. The spec was revised rather than the hairstyle: the eyebrow moved from the absolute tier to a legibility-only tier. Asking for a brow fully clear of hair would have forced a change to MAYA's bangs, which are part of her identity, for no animation benefit.",
+          "open_questions": [
+            "Neckline is more open than the buttoned blouse in the wardrobe reference. Decide before the expression round.",
+            "Rendering reads slightly more photoreal than the 2.5D design sheet. Consistency across the set matters more than the absolute level."
+          ]
         }
       ]
     }

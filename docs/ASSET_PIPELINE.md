@@ -126,22 +126,30 @@ size, same character position, only the eye or mouth region differs.
 
 ### Safe zones
 
-Each generated cut-out carries two regions that the derivation step replaces
-wholesale: an eye zone covering both eyes and both eyebrows, and a mouth zone
-from below the nose to above the chin.
+Derivation replaces two regions of a generated cut-out, and they are not equally
+strict. Treating them the same over-constrains the artwork for no gain.
 
-Inside a safe zone, nothing may appear that must not move with the eyelid or the
-lip: no hair crossing it, no hand or prop, no hard shadow edge, no depth-of-field
-blur. Eyebrows must not be occluded by hair.
+**Tier 1, absolute: the eyes and the mouth.**
 
-The constraint is local. Outside the zones the artwork keeps its full richness:
-bangs that end above the brow, hair volume and flow, blush and skin texture,
-earrings and necklace, wardrobe detail, and a hand resting below the jaw. A
-cut-out that satisfies the zones by flattening the whole face has missed the
-point and is rejected.
+The eye zone is each eye on its own: upper lid, eyeball, lashes, lower lid, plus
+the space the lid travels through when it closes. The mouth zone runs from below
+the nose to above the chin. These are the regions the blink and lip sync frames
+replace wholesale. Nothing may cross them: no hair, no hand or prop, no hard
+shadow edge, no depth-of-field blur.
 
-`assets/reference/maya-safe-zone-diagram.png` marks both zones on the current
-reference and flags the two places the approved design sheet violates them.
+**Tier 2, legibility only: the eyebrows.**
+
+A blink does not move the eyebrow, so hair lying across a brow never fights the
+animation. The brow matters for a different reason: it carries the expression.
+`challenge` raises one, `annoyed` draws them down, `concerned` softens them. So
+the requirement is that the brow stays readable, meaning its shape, inner end and
+arch can be made out. Strands crossing it are acceptable.
+
+This split is what lets MAYA keep her bangs. The hairstyle is part of her
+identity and is not negotiable; the pipeline only needs the eye apertures clear.
+
+`assets/reference/maya-safe-zone-diagram.png` marks all three zones on the
+current reference.
 
 | Set | Count |
 | --- | --- |
