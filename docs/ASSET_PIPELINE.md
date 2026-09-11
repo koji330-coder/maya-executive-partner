@@ -124,32 +124,52 @@ frames cut from `emotion_neutral` will not register against `emotion_smile`.
 Every derived frame must be pixel-aligned with its source cut-out: same canvas
 size, same character position, only the eye or mouth region differs.
 
+### How frames are actually produced
+
+The method is settled by an existing, proven pipeline, not by this document.
+`docs/NANO_BANANA_PIPELINE.md` records its interface and its operating lessons.
+
+Frames are **generated, not derived geometrically**. Each variant is produced by
+feeding the accepted expression image back to the image model as a locked parent
+with an instruction to change one thing and nothing else: "change ONLY both eyes
+into a natural blink", or "change ONLY the mouth to open".
+
+Registration does not come from pixel alignment of the whole frame. It comes from
+compositing: the closed image stays on screen as the base, and the variant is
+painted in through a small elliptical mask over the eyes or the mouth. Anything
+the model drifted on outside that ellipse never reaches the screen.
+
+- Lip sync: `closed_base_with_masked_open_mouth_overlay`
+- Blink: `closed_base_with_two_masked_eye_overlays`
+
 ### Safe zones
 
-Derivation replaces two regions of a generated cut-out, and they are not equally
-strict. Treating them the same over-constrains the artwork for no gain.
+The zones are the mask ellipses, and they are per state, in percent of canvas:
+`centerX`, `centerY`, `radiusX`, `radiusY`.
 
-**Tier 1, absolute: the eyes and the mouth.**
+**Masks must be measured, never assumed.** Compute the centroid and extent of the
+pixel difference between the closed and open images and derive the ellipse from
+that. The teacher/student project shipped an assumed value and it was wrong by
+several percent, which read as "the mouth never opens".
 
-The eye zone is each eye on its own: upper lid, eyeball, lashes, lower lid, plus
-the space the lid travels through when it closes. The mouth zone runs from below
-the nose to above the chin. These are the regions the blink and lip sync frames
-replace wholesale. Nothing may cross them: no hair, no hand or prop, no hard
-shadow edge, no depth-of-field blur.
+**The radius must exceed the measured extent.** If the ellipse is the same size as
+the mouth, the closed mouth's outline shows outside it and the overlay looks
+pasted on.
 
-**Tier 2, legibility only: the eyebrows.**
+Within a mask, nothing may appear that must not move with the lid or the lip: no
+hair crossing it, no hand, no hard shadow edge, no depth-of-field blur.
 
-A blink does not move the eyebrow, so hair lying across a brow never fights the
-animation. The brow matters for a different reason: it carries the expression.
-`challenge` raises one, `annoyed` draws them down, `concerned` softens them. So
-the requirement is that the brow stays readable, meaning its shape, inner end and
-arch can be made out. Strands crossing it are acceptable.
+Outside the masks the artwork keeps its full richness: bangs that end above the
+brow, hair volume and flow, blush and skin texture, earrings, wardrobe detail, a
+hand below the jaw. Eyebrows sit outside the eye masks, so hair across a brow
+never fights the animation; the brow only has to stay readable, because it is
+what carries `challenge`, `annoyed` and `concerned`.
 
-This split is what lets MAYA keep her bangs. The hairstyle is part of her
-identity and is not negotiable; the pipeline only needs the eye apertures clear.
+This is what lets MAYA keep her bangs. The hairstyle is part of her identity and
+is not negotiable.
 
-`assets/reference/maya-safe-zone-diagram.png` marks all three zones on the
-current reference.
+`assets/reference/maya-safe-zone-diagram.png` marks the zones on the current
+reference.
 
 | Set | Count |
 | --- | --- |
