@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 
 import type { ApiTier } from './apiKey';
+import { DEFAULT_MODEL, MODEL_CHOICES } from './geminiClient';
 
 const SETTINGS_KEY = 'maya.gemini.routerSettings';
 
@@ -17,12 +18,15 @@ export interface LlmSettings {
    * deliberately pessimistic and is checked before a request goes out.
    */
   paidDailyLimitYen: number;
+  /** Which Gemini model to ask. Availability differs by key. */
+  model: string;
 }
 
 export const DEFAULT_LLM_SETTINGS: LlmSettings = {
   preferFree: true,
   allowPaidFallback: false,
   paidDailyLimitYen: 50,
+  model: DEFAULT_MODEL,
 };
 
 export async function loadLlmSettings(): Promise<LlmSettings> {
@@ -43,6 +47,10 @@ export async function loadLlmSettings(): Promise<LlmSettings> {
         typeof value.paidDailyLimitYen === 'number' && value.paidDailyLimitYen >= 0
           ? value.paidDailyLimitYen
           : DEFAULT_LLM_SETTINGS.paidDailyLimitYen,
+      model:
+        typeof value.model === 'string' && MODEL_CHOICES.some((choice) => choice.id === value.model)
+          ? value.model
+          : DEFAULT_LLM_SETTINGS.model,
     };
   } catch {
     return DEFAULT_LLM_SETTINGS;

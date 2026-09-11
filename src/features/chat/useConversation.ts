@@ -168,10 +168,12 @@ export function useConversation({
         // The character must not be left mid-thought when a send fails.
         runtime.cancelThinking();
         waitingRef.current = false;
+        const cancelled = error instanceof Error && error.name === 'AbortError';
         setState((current) => ({
           ...current,
           waiting: false,
-          error: describe(error),
+          // A cancel was the user's own doing, so it is not reported as a fault.
+          error: cancelled ? null : describe(error),
           // The typed text comes back so a retry costs nothing.
           draft: text,
         }));

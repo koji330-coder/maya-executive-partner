@@ -32,7 +32,39 @@ export function eligibleForPaidRetry(error: unknown): boolean {
   return error instanceof LlmError && (error.kind === 'rate_limit' || error.kind === 'quota');
 }
 
-export const DEFAULT_MODEL = 'gemini-3.8-flash';
+/**
+ * The default model.
+ *
+ * A newer flagship is not automatically the right default: a brand-new free-tier
+ * key can be refused or throttled on one while an older model answers fine.
+ * `MODEL_CHOICES` is what the settings screen offers, and `checkApiKey` reports
+ * which of them the key can actually reach.
+ */
+export const DEFAULT_MODEL = 'gemini-3.6-flash';
+
+/**
+ * What the settings screen offers.
+ *
+ * Availability depends on the key, not just the model. `gemini-2.5-flash` is not
+ * offered at all: Google returns NOT_FOUND for it on keys created recently, with
+ * a message pointing at 3.6. A newly created free key therefore cannot use the
+ * older models that work on an older project, which is easy to miss when testing
+ * with a key you already had.
+ *
+ * Measured on 2026-09-11, three consultation turns each:
+ *   3.6-flash       about 9s a turn. Does the arithmetic, which is the point
+ *   3.5-flash-lite  about 2s a turn. Directionally right but skips the numbers
+ *   3.8-flash       newest, and the one that returned 503 on a fresh free key
+ */
+export const MODEL_CHOICES = [
+  { id: 'gemini-3.6-flash', label: '3.6 Flash', note: '既定。数字を検算する。約9秒' },
+  { id: 'gemini-3.5-flash', label: '3.5 Flash', note: '中間' },
+  { id: 'gemini-3.5-flash-lite', label: '3.5 Flash Lite', note: '約2秒。数字は弱い' },
+  { id: 'gemini-3.8-flash', label: '3.8 Flash', note: '最新。無料枠では混みやすい' },
+] as const;
+
+/** How long to wait before giving up on one turn. */
+export const REQUEST_TIMEOUT_MS = 45_000;
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -118,6 +150,13 @@ export async function generateMayaResponse(options: GenerateOptions): Promise<Ge
     { role: 'user', parts: [{ text: options.message }] },
   ];
 
+  // The caller's signal and a deadline both have to be able to end the request.
+  // Without the deadline a stalled turn sits on "考えています…" indefinitely.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const onCallerAbort = () => controller.abort();
+  options.signal?.addEventListener('abort', onCallerAbort);
+
   let response: Response;
   try {
     response = await fetch(`${ENDPOINT}/${model}:generateContent`, {
@@ -140,13 +179,22 @@ export async function generateMayaResponse(options: GenerateOptions): Promise<Ge
           maxOutputTokens: 2048,
         },
       }),
-      signal: options.signal,
+      signal: controller.signal,
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw error;
+      if (options.signal?.aborted) {
+        throw error;
+      }
+      throw new LlmError(
+        'network',
+        `応答が${Math.round(REQUEST_TIMEOUT_MS / 1000)}秒待っても返らなかったので中断しました。設定でモデルを軽いものに変えると通ることがあります。`,
+      );
     }
     throw new LlmError('network', '通信できませんでした。接続を確認してもう一度お試しください。');
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', onCallerAbort);
   }
 
   const body: unknown = await response.json().catch(() => null);
@@ -189,6 +237,8 @@ export async function generateMayaResponse(options: GenerateOptions): Promise<Ge
 export interface KeyCheckResult {
   ok: boolean;
   detail: string;
+  /** Which of `MODEL_CHOICES` this key can list. Empty when the listing failed. */
+  availableModels: string[];
 }
 
 /**
@@ -200,6 +250,7 @@ export interface KeyCheckResult {
  * word and reports what came back.
  */
 export async function checkApiKey(apiKey: string, model = DEFAULT_MODEL): Promise<KeyCheckResult> {
+  const availableModels = await listUsableModels(apiKey);
   try {
     const response = await fetch(`${ENDPOINT}/${model}:generateContent`, {
       method: 'POST',
@@ -212,11 +263,43 @@ export async function checkApiKey(apiKey: string, model = DEFAULT_MODEL): Promis
     const body: unknown = await response.json().catch(() => null);
     if (!response.ok) {
       const error = describeHttpError(response.status, body);
-      return { ok: false, detail: error.message };
+      return { ok: false, detail: error.message, availableModels };
     }
     const usage = (body as { usageMetadata?: { totalTokenCount?: number } })?.usageMetadata;
-    return { ok: true, detail: `疎通しました（${model} / ${usage?.totalTokenCount ?? 0} トークン）。` };
+    return {
+      ok: true,
+      detail: `疎通しました（${model} / ${usage?.totalTokenCount ?? 0} トークン）。`,
+      availableModels,
+    };
   } catch {
-    return { ok: false, detail: '通信できませんでした。接続を確認してください。' };
+    return { ok: false, detail: '通信できませんでした。接続を確認してください。', availableModels };
+  }
+}
+
+/**
+ * Which of the offered models this key can see.
+ *
+ * Listing is free and answers the question a failed consultation cannot: whether
+ * the model is simply not available to this key.
+ */
+async function listUsableModels(apiKey: string): Promise<string[]> {
+  try {
+    const response = await fetch(`${ENDPOINT}?pageSize=200`, {
+      headers: { 'x-goog-api-key': apiKey },
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const body = (await response.json()) as {
+      models?: { name?: string; supportedGenerationMethods?: string[] }[];
+    };
+    const names = new Set(
+      (body.models ?? [])
+        .filter((entry) => entry.supportedGenerationMethods?.includes('generateContent'))
+        .map((entry) => (entry.name ?? '').replace('models/', '')),
+    );
+    return MODEL_CHOICES.map((choice) => choice.id).filter((id) => names.has(id));
+  } catch {
+    return [];
   }
 }

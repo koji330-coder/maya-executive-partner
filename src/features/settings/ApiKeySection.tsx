@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { deleteApiKey, getApiKey, getApiKeys, saveApiKey, type ApiTier } from '@/services/llm/apiKey';
-import { checkApiKey } from '@/services/llm/geminiClient';
+import { checkApiKey, MODEL_CHOICES } from '@/services/llm/geminiClient';
 import {
   DEFAULT_LLM_SETTINGS,
   loadLlmSettings,
@@ -26,6 +26,7 @@ export function ApiKeySection() {
   const [usage, setUsage] = React.useState<DailyUsage | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [checking, setChecking] = React.useState<ApiTier | null>(null);
+  const [usable, setUsable] = React.useState<string[] | null>(null);
 
   const refresh = React.useCallback(async () => {
     const [keys, loaded, used] = await Promise.all([getApiKeys(), loadLlmSettings(), getUsage()]);
@@ -75,7 +76,8 @@ export function ApiKeySection() {
         setMessage('キーが登録されていません。');
         return;
       }
-      const result = await checkApiKey(key);
+      const result = await checkApiKey(key, settings.model);
+      setUsable(result.availableModels);
       setMessage(`${tier === 'free' ? '無料' : '有料'}キー：${result.detail}`);
     } finally {
       setChecking(null);
@@ -143,6 +145,37 @@ export function ApiKeySection() {
         送信した内容がGoogleのサービス改善に使われる場合があります。実在する会社の数字や
         取引先の名前は、有料キーを登録してから扱ってください。
       </Text>
+
+      <Text style={styles.sectionTitle}>モデル</Text>
+
+      <View style={styles.card}>
+        {MODEL_CHOICES.map((choice) => {
+          const selected = settings.model === choice.id;
+          const known = usable !== null;
+          const available = !known || usable.includes(choice.id);
+          return (
+            <Pressable
+              key={choice.id}
+              accessibilityRole="button"
+              onPress={() => void update({ ...settings, model: choice.id })}
+              style={[styles.modelRow, selected && styles.modelRowOn]}
+            >
+              <View style={styles.ruleText}>
+                <Text style={[styles.ruleTitle, selected && styles.modelTitleOn]}>{choice.label}</Text>
+                <Text style={styles.ruleNote}>{choice.note}</Text>
+              </View>
+              <Text style={[styles.modelState, known && !available && styles.modelStateBad]}>
+                {!known ? '' : available ? '使える' : '使えない'}
+              </Text>
+            </Pressable>
+          );
+        })}
+        <Text style={styles.ruleNote}>
+          「使える／使えない」は接続を確認したときに分かります。新しく作った無料キーでは、
+          最新のモデルが混み合って応答しないことがあります。1分待って止まる場合は軽いモデルへ
+          変えてください。
+        </Text>
+      </View>
 
       <Text style={styles.sectionTitle}>費用の歯止め</Text>
 
@@ -257,5 +290,17 @@ const styles = StyleSheet.create({
   ruleTitle: { fontSize: 14, fontWeight: '600', color: colors.charcoal },
   ruleNote: { fontSize: 12, lineHeight: 18, color: colors.muted },
   usage: { fontSize: 13, color: colors.charcoalSoft },
+  modelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+  },
+  modelRowOn: { backgroundColor: colors.cream },
+  modelTitleOn: { color: colors.gold },
+  modelState: { fontSize: 12, color: colors.success, fontWeight: '700' },
+  modelStateBad: { color: colors.danger },
   message: { fontSize: 12, lineHeight: 19, color: colors.charcoalSoft },
 });

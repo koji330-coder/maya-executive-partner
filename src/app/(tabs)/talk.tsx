@@ -94,6 +94,16 @@ export default function TalkScreen() {
           </View>
         ) : null}
 
+        {conversation.waiting ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={conversation.cancel}
+            style={styles.cancel}
+          >
+            <Text style={styles.cancelText}>送信を取り消す</Text>
+          </Pressable>
+        ) : null}
+
         {__DEV__ ? <DevExpressionControls runtime={runtime} /> : null}
       </ScrollView>
 
@@ -163,6 +173,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: colors.charcoal,
+  },
+  cancel: {
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  cancelText: {
+    fontSize: 13,
+    color: colors.muted,
   },
   error: {
     backgroundColor: colors.ivory,

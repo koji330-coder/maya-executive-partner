@@ -62,6 +62,7 @@ export async function ask(options: AskOptions): Promise<Reply> {
     systemPrompt,
     history: options.history,
     message: options.message,
+    model: settings.model,
     signal: options.signal,
   };
 
