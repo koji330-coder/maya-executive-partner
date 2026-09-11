@@ -1,11 +1,12 @@
 import React from 'react';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { colors, isDarkScene, radius, sceneThemes, spacing } from '@/theme';
 
 import { hasArtwork } from './expressionAssets';
 import { MayaArtwork } from './MayaArtwork';
 import { PlaceholderMaya } from './placeholder/PlaceholderMaya';
+import { resolveScenePlate } from './sceneAssets';
 
 import type { CharacterRuntime } from './useCharacterRuntime';
 
@@ -35,6 +36,9 @@ export interface CharacterStageProps {
 const FACE_TOP = 0.06;
 const FACE_BOTTOM = 0.56;
 
+/** The plates are drawn 3:4 portrait (docs/ASSET_PIPELINE.md §7). */
+const PLATE_ASPECT = 4 / 3;
+
 /**
  * The place MAYA lives.
  *
@@ -53,6 +57,7 @@ export function CharacterStage({
   const scene = sceneThemes[visualState.scene];
   const dark = isDarkScene(visualState.scene);
   const [stageWidth, setStageWidth] = React.useState(0);
+  const plate = resolveScenePlate(visualState.scene);
 
   // Full: the figure stands in the room, anchored at the floor.
   // Compact: the face band fills the strip, so the rest is clipped away.
@@ -68,8 +73,32 @@ export function CharacterStage({
       style={[styles.root, { height, backgroundColor: scene.backgroundBottom }, style]}
       onLayout={(event) => setStageWidth(event.nativeEvent.layout.width)}
     >
-      <View style={[styles.backdropTop, { backgroundColor: scene.backgroundTop }]} />
-      <View style={[styles.floorLine, { backgroundColor: scene.accent, opacity: dark ? 0.3 : 0.18 }]} />
+      {plate ? (
+        // The plate is drawn to the stage width, so it is taller than the strip
+        // it sits in and something has to be cropped away. Which end survives
+        // differs by mode: the full stage keeps the floor, where her feet are,
+        // and the compact strip keeps the wall, which is what sits behind a
+        // face. Cropping the other way puts a floorboard behind her head.
+        <Image
+          source={plate}
+          style={[
+            styles.plate,
+            { height: stageWidth > 0 ? stageWidth * PLATE_ASPECT : '100%' },
+            compact ? styles.plateTop : styles.plateBottom,
+          ]}
+          resizeMode="cover"
+        />
+      ) : (
+        // No plate for this hour yet. The painted gradient is honest about that;
+        // borrowing another hour's room would contradict what MAYA just said
+        // about the time.
+        <>
+          <View style={[styles.backdropTop, { backgroundColor: scene.backgroundTop }]} />
+          <View
+            style={[styles.floorLine, { backgroundColor: scene.accent, opacity: dark ? 0.3 : 0.18 }]}
+          />
+        </>
+      )}
 
       {stageWidth > 0 ? (
         <View style={[styles.characterSlot, { top: characterTop, height: characterHeight }]}>
@@ -157,6 +186,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     overflow: 'hidden',
+  },
+  plate: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
+  plateTop: {
+    top: 0,
+  },
+  plateBottom: {
+    bottom: 0,
   },
   characterSlot: {
     position: 'absolute',
