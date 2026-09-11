@@ -42,6 +42,21 @@ Phase 1 — Character Runtime: complete.
 - Only the settings key-value repository is implemented. The company / conversation / message / decision tables exist but have no repositories yet.
 - Animation was verified in a browser, not on an iPhone. The 60fps target in `docs/ACCEPTANCE_CRITERIA.md` is unverified on device.
 
+## Image asset requirements — confirmed
+
+Settled before any generation, and written into `docs/ASSET_PIPELINE.md` and
+`docs/IMAGE_GENERATION_GUIDE.md`.
+
+- **Composition**: MAYA is a transparent cut-out; the five scenes are separate background plates. Baking backgrounds into expressions would turn emotion and scene into a cross product.
+- **Expressions**: nine generated cut-outs matching `MayaEmotion`. `wink` is rendered from the eye frames and needs no image.
+- **Animation**: eye frames for every expression, mouth frames for `neutral`, `smile`, `serious` and `challenge` only, since voice is used selectively.
+- **Pose**: generated artwork for `default` only in v0.1. The union and the response contract are unchanged; the asset resolver falls back.
+- **References**: the design sheet is not fed to the generator because its baked text bleeds into output. Three text-free crops were cut from it for that purpose.
+
+Generation counts: 9 cut-outs and 5 plates generated, 27 eye frames and 12 mouth
+frames derived.
+
 ## Next
 
+- Image asset production, starting with the `emotion_neutral` master. Not started.
 - Phase 2 — Local conversation prototype: chat composer, mocked `MayaResponse` payloads, visual state driven by response JSON, Decisions UI with local mocked records.

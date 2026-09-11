@@ -1,19 +1,28 @@
 # MAYA character assets
 
-Generated layers go here, following `docs/ASSET_PIPELINE.md`.
+Structure and formats: `docs/ASSET_PIPELINE.md`.
+Art direction and prompts: `docs/IMAGE_GENERATION_GUIDE.md`.
 
 ```text
 assets/maya/
-├ base/         body.webp, hair_back.webp, hair_front.webp, face.webp
-├ eyes/         open.webp, half.webp, closed.webp
-├ mouth/        closed.webp, small.webp, open.webp
-├ expressions/  emotion_<name>.webp
-├ poses/        pose_<name>.webp
-└ scenes/       scene_<name>.webp
+├ source/        generation masters (PNG, not bundled) + generation-log.json
+├ expressions/   emotion_<name>.webp — 9 cut-outs with alpha
+├ eyes/          <emotion>_open|half|closed.webp — every expression
+├ mouth/         <emotion>_closed|small|open.webp — neutral, smile, serious, challenge
+└ scenes/        scene_<name>.webp — 5 background plates, no character
 ```
 
-Until these exist, the app renders `src/features/character/placeholder/PlaceholderMaya.tsx`,
-which consumes exactly the same state (emotion, pose, eyelid frame, mouth frame,
-breath, idle drift). Swapping in the real layers is a change to that one component.
+MAYA is a transparent cut-out; scenes are separate background plates. The
+character runtime treats emotion, pose, scene, eyelid and mouth as independent
+axes, so baking a background into an expression would make emotion and scene a
+cross product.
 
-Naming must stay semantic — `emotion_challenge.webp`, never `maya_final2_new.webp`.
+Eye and mouth frames are derived from their own expression image and must be
+pixel-aligned with it. Frames cut from one expression do not register against
+another, because separate generations shift the head.
+
+`wink` needs no image. The renderer holds one eye open and one closed.
+
+Until these assets exist the app renders
+`src/features/character/placeholder/PlaceholderMaya.tsx`, which consumes exactly
+the same state. Swapping in the real layers is a change to that one component.

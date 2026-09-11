@@ -22,6 +22,11 @@ export type MayaEmotion =
 
 export type MayaActivity = 'idle' | 'listening' | 'thinking' | 'speaking';
 
+/**
+ * v0.1 ships generated artwork for `default` only; the asset resolver falls back
+ * to it for the rest (docs/ASSET_PIPELINE.md §4). The full union stays because
+ * the response contract may return any of these and the placeholder renders them.
+ */
 export type MayaPose =
   | 'default'
   | 'thinking'
@@ -33,7 +38,11 @@ export type MayaPose =
 
 export type MayaScene = 'morning' | 'work' | 'strategy' | 'casual' | 'late_night';
 
-/** Eyelid frames used by the blink sequence (open → half → closed → half → open). */
+/**
+ * Eyelid frames used by the blink sequence (open → half → closed → half → open).
+ * `wink` is rendered from these by holding one eye open and one closed, so it
+ * needs no generated image of its own.
+ */
 export type EyeState = 'open' | 'half' | 'closed';
 
 /** v0.1 lip sync is amplitude-based and has exactly three mouth states. */
