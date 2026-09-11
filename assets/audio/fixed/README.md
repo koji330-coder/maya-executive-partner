@@ -1,0 +1,25 @@
+# Fixed MAYA voice clips
+
+Rendered offline with OmniVoice Studio, per `docs/ASSET_PIPELINE.md` §4.
+
+Expected files:
+
+```text
+greeting_morning_01.m4a
+greeting_general_01.m4a
+strong_disagree_01.m4a
+wait_01.m4a
+numbers_01.m4a
+praise_01.m4a
+```
+
+`src/services/audio/clipManifest.ts` is the manifest. Each entry currently has
+`file: null` and a synthesized amplitude envelope. When a render lands:
+
+1. point `file` at its `require()`,
+2. replace `envelope` with the amplitude track measured from the render.
+
+Lip sync reads the envelope, not the audio stream, so the track must ship with
+the clip. The playback engine is swapped from `EnvelopeAudioEngine` to an
+expo-audio implementation in Phase 6; nothing outside `src/services/audio/`
+changes.

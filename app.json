@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "MAYA",
+    "slug": "maya-executive-partner",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/app/icon.png",
+    "scheme": "maya",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/app/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F6F1E9"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.maya.executivepartner"
+    },
+    "android": {
+      "package": "com.maya.executivepartner",
+      "adaptiveIcon": {
+        "backgroundColor": "#F6F1E9",
+        "foregroundImage": "./assets/app/android-icon-foreground.png",
+        "backgroundImage": "./assets/app/android-icon-background.png",
+        "monochromeImage": "./assets/app/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/app/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

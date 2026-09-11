@@ -49,6 +49,28 @@ Not in v0.1:
 - Backend API for LLM and server-side memory
 - PostgreSQL/Supabase is acceptable for the first backend
 
+## Development
+
+```bash
+npm install
+npm start          # Expo dev server; press i for the iOS simulator
+npm run ios        # iOS simulator directly
+npm run web        # browser, for fast layout iteration only
+
+npm run check      # typecheck + lint + tests
+```
+
+Copy `.env.example` to `.env` and fill in `EXPO_PUBLIC_API_BASE_URL` once the
+Phase 3 backend exists. Only `EXPO_PUBLIC_*` variables reach the client, and
+they are embedded in the bundle — never put a provider API key there.
+
+Source layout follows `docs/TECH_ARCHITECTURE.md` §2. Routes live in `src/app/`
+(expo-router). The character runtime in `src/features/character/` is isolated
+from chat and business logic and is driven only through the types in
+`mayaTypes.ts`.
+
+Current state of the build is tracked in `PROGRESS.md`.
+
 ## Repo documents
 
 Read in this order:
