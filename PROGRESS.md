@@ -175,6 +175,29 @@ The page's envelope, hold window and blink timing are copies of the implementati
 Changing `clipManifest.ts`, `LipSyncController.ts` or `BlinkController.ts` means
 changing the bench too, or the preview stops predicting the app.
 
+## Cloud session catch-up (2026-09-11)
+
+The 23 commits from the Windows session are merged here. `npm run check` passes:
+9 suites, 58 tests, typecheck and lint clean.
+
+**`challenge-02` clears the drift gate.** `tools/measure_drift.py` reports scale
+1.00, dx +0, dy +3, and the eye and mouth bands agree to 3px. The first attempt
+failed all three checks. The locked-parent prompt now holds the geometry, which
+was the open question the other 8 expressions were waiting on.
+
+Two things the catch-up surfaced.
+
+**The published bench frames still carried the pre-knee alpha.** Background alpha
+measured 8-28 instead of 0, which is the grey plate `prepare_frames.py` was fixed
+to remove; the frames had been published before that fix. Rebuilt and republished
+at half the file size, background alpha now 0.
+
+**The two poses are not at the same resolution.** `challenge` came from a 2K
+generation and bundles at 1086x1448; `neutral` is still the `lite` 1K generation
+and bundles at 720x960. The app stretches both into the same box, so it works,
+but `neutral` renders softer. Worth settling before the remaining expressions,
+otherwise the set ships mismatched.
+
 ## Blocked on the pipeline move
 
 The pipeline lives on one machine, so neither a cloud session nor another
