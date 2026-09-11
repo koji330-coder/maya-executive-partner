@@ -120,6 +120,47 @@
         "evidence": "assets/reference/candidates/challenge-01-mask-fallback.png",
         "gate": "tools/measure_drift.py, validated: master/blink passes, master/mouth_open passes, master/challenge-01 fails all three checks."
       }
+    },
+    {
+      "round": "expressions-challenge-02",
+      "purpose": "Re-run challenge after the first attempt changed the brows and the hairstyle instead of the expression. Also the first end-to-end proof at flash/2K.",
+      "assets": [
+        {
+          "asset": "challenge-02.png",
+          "target": "challenge — signature expression",
+          "status": "accepted",
+          "model": "flash",
+          "size": [
+            1792,
+            2400
+          ],
+          "passed": [
+            "Eyebrow weight and darkness unchanged from the master. This was the first attempt's main failure.",
+            "Bangs still cross the eyebrow, as the safe zone allows.",
+            "One mouth corner lifted into a closed half-smile, no teeth.",
+            "Composition holds: measure_drift reports scale 1.00, dx 0, dy 0 against the master on face, eye band and mouth band alike."
+          ],
+          "failed": [
+            "The raised eyebrow did not happen. The prompt named her left brow, which is the one the bangs hide, so the instruction could not show even if followed."
+          ],
+          "accepted_anyway": "The user judged the half-smile enough for what the expression is for: telling the president he is wrong.",
+          "derived": {
+            "eyes_closed": "challenge-02-eyes-closed.png",
+            "mouth_open": "challenge-02-mouth-open.png",
+            "drift": "scale 1.00, dx 0, dy 0 on both",
+            "note": "Both frames redraw the hair, so a whole-canvas diff looks alarming. It is outside the mask and never reaches the screen; the mouth band measured 0 changed pixels after eye compositing."
+          },
+          "matte": {
+            "background": [
+              140,
+              138,
+              140
+            ],
+            "opaque_fraction": 0.728,
+            "note": "Sample the background from the two TOP corners only. The bottom corners are hair and blouse, and averaging them in leaves the whole frame opaque."
+          }
+        }
+      ]
     }
   ]
 }
