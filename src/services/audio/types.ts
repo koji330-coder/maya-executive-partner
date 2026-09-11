@@ -4,9 +4,9 @@ export type VoiceStyle = 'warm' | 'calm_serious' | 'playful' | 'encouraging';
 /**
  * One fixed, pre-rendered MAYA line.
  *
- * `file` stays null until the OmniVoice renders land in assets/audio/fixed/
- * (docs/ASSET_PIPELINE.md §4). `envelope` is an amplitude value per
- * `frameMs` slice, produced alongside the render, and is what drives lip sync:
+ * `file` is the bundled render in assets/audio/fixed/ (docs/ASSET_PIPELINE.md
+ * §8). `envelope` is an amplitude value per `frameMs` slice, measured from that
+ * same render by `tools/measure_envelope.py`, and is what drives lip sync:
  * React Native cannot read PCM from a playing file without a heavy native
  * dependency, so the amplitude track ships with the clip.
  */
@@ -14,7 +14,7 @@ export interface FixedClip {
   key: string;
   text: string;
   style: VoiceStyle;
-  file: number | null;
+  file: number;
   durationMs: number;
   frameMs: number;
   envelope: readonly number[];

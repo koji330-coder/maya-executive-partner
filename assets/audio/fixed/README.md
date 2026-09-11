@@ -13,13 +13,14 @@ numbers_01.m4a
 praise_01.m4a
 ```
 
-`src/services/audio/clipManifest.ts` is the manifest. Each entry currently has
-`file: null` and a synthesized amplitude envelope. When a render lands:
+All six are rendered, from the `MAYA v2` clone (profile `58d6907b`).
 
-1. point `file` at its `require()`,
-2. replace `envelope` with the amplitude track measured from the render.
-
+`src/services/audio/clipManifest.ts` is the manifest, and every duration and
+envelope in it was measured from its own render by `tools/measure_envelope.py`.
 Lip sync reads the envelope, not the audio stream, so the track must ship with
-the clip. The playback engine is swapped from `EnvelopeAudioEngine` to an
+the clip — and an estimated one closes her mouth mid-word.
+
+To re-render a line, change the text in the manifest, render it through the same
+profile, and re-measure. Do not hand-edit a duration. The playback engine is swapped from `EnvelopeAudioEngine` to an
 expo-audio implementation in Phase 6; nothing outside `src/services/audio/`
 changes.

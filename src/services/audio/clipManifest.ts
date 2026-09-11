@@ -6,22 +6,60 @@ const FRAME_MS = 50;
 /**
  * Manifest of MAYA's fixed premium lines (docs/ASSET_PIPELINE.md §4).
  *
- * The audio files do not exist yet, so `file` is null and each clip carries a
- * synthesized envelope. Adding a render is a two-line change: point `file` at
- * the require() and replace the envelope with the measured one.
+ * Rendered with the `MAYA v2` OmniVoice clone. Every duration and envelope here
+ * was measured from its own render by `tools/measure_envelope.py`, never
+ * estimated: lip sync reads the envelope rather than the audio stream, so a
+ * guessed track closes her mouth while the clip is still playing.
  */
 export const FIXED_CLIPS: Readonly<Record<string, FixedClip>> = {
-  greeting_morning_01: clip('greeting_morning_01', 'おはようございます、社長。', 'warm', 2200),
-  greeting_general_01: clip('greeting_general_01', 'お疲れさまです、社長。', 'warm', 2000),
+  greeting_morning_01: clip(
+    'greeting_morning_01',
+    'おはようございます、社長。',
+    'warm',
+    2080,
+    require('../../../assets/audio/fixed/greeting_morning_01.m4a'),
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.362, 0.217, 0.317, 0.383, 0.342, 0.359, 0.164, 0.324, 0.082, 0.3, 0.365, 0.264, 0.183, 0.351, 0.14, 0.053, 0.0, 0.0, 0.0, 0.0, 0.117, 0.397, 0.136, 0.07, 0.331, 0.385, 0.399, 0.389, 0.2, 0.0, 0.0, 0.0, 0.0],
+  ),
+  greeting_general_01: clip(
+    'greeting_general_01',
+    'お疲れさまです、社長。',
+    'warm',
+    1810,
+    require('../../../assets/audio/fixed/greeting_general_01.m4a'),
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.272, 0.145, 0.106, 0.075, 0.378, 0.282, 0.25, 0.113, 0.329, 0.242, 0.353, 0.286, 0.326, 0.159, 0.167, 0.315, 0.195, 0.086, 0.351, 0.37, 0.37, 0.199, 0.0, 0.0, 0.0, 0.0, 0.0],
+  ),
   strong_disagree_01: clip(
     'strong_disagree_01',
     '社長、それは私は反対です。',
     'calm_serious',
-    2600,
+    2120,
+    require('../../../assets/audio/fixed/strong_disagree_01.m4a'),
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.125, 0.308, 0.203, 0.092, 0.352, 0.384, 0.316, 0.122, 0.087, 0.09, 0.302, 0.272, 0.34, 0.371, 0.102, 0.279, 0.161, 0.109, 0.328, 0.377, 0.178, 0.332, 0.301, 0.23, 0.248, 0.346, 0.251, 0.277, 0.227, 0.114, 0.079, 0.0, 0.0, 0.0, 0.0],
   ),
-  wait_01: clip('wait_01', 'ちょっと待ってください。', 'calm_serious', 1800),
-  numbers_01: clip('numbers_01', '数字を見てみましょう。', 'calm_serious', 2000),
-  praise_01: clip('praise_01', 'いい判断だと思います。', 'encouraging', 2200),
+  wait_01: clip(
+    'wait_01',
+    'ちょっと待ってください。',
+    'calm_serious',
+    1680,
+    require('../../../assets/audio/fixed/wait_01.m4a'),
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.26, 0.366, 0.0, 0.0, 0.342, 0.303, 0.415, 0.439, 0.135, 0.0, 0.325, 0.04, 0.3, 0.322, 0.322, 0.12, 0.327, 0.405, 0.389, 0.309, 0.205, 0.041, 0.0, 0.0, 0.0, 0.0],
+  ),
+  numbers_01: clip(
+    'numbers_01',
+    '数字を見てみましょう。',
+    'calm_serious',
+    2000,
+    require('../../../assets/audio/fixed/numbers_01.m4a'),
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.053, 0.169, 0.181, 0.393, 0.429, 0.413, 0.434, 0.19, 0.387, 0.407, 0.414, 0.442, 0.324, 0.383, 0.272, 0.15, 0.387, 0.393, 0.399, 0.404, 0.417, 0.393, 0.182, 0.311, 0.364, 0.305, 0.157, 0.0, 0.0, 0.0, 0.0],
+  ),
+  praise_01: clip(
+    'praise_01',
+    'いい判断だと思います。',
+    'encouraging',
+    1990,
+    require('../../../assets/audio/fixed/praise_01.m4a'),
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.225, 0.355, 0.369, 0.319, 0.232, 0.435, 0.392, 0.378, 0.397, 0.419, 0.353, 0.366, 0.365, 0.176, 0.125, 0.326, 0.309, 0.364, 0.347, 0.333, 0.344, 0.36, 0.356, 0.263, 0.136, 0.094, 0.045, 0.0, 0.0, 0.0, 0.0],
+  ),
 };
 
 export function getClip(key: string): FixedClip | undefined {
@@ -32,36 +70,13 @@ export function listClipKeys(): string[] {
   return Object.keys(FIXED_CLIPS);
 }
 
-function clip(key: string, text: string, style: FixedClip['style'], durationMs: number): FixedClip {
-  return {
-    key,
-    text,
-    style,
-    file: null,
-    durationMs,
-    frameMs: FRAME_MS,
-    envelope: synthesizeEnvelope(durationMs, FRAME_MS, key),
-  };
-}
-
-/**
- * Placeholder amplitude track shaped like speech: syllable-rate pulses inside a
- * fade-in/fade-out envelope. Deterministic per clip so the placeholder mouth
- * movement is stable between runs.
- */
-function synthesizeEnvelope(durationMs: number, frameMs: number, seed: string): number[] {
-  const frames = Math.max(1, Math.round(durationMs / frameMs));
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash * 31 + seed.charCodeAt(i)) % 9973;
-  }
-  const envelope: number[] = [];
-  for (let i = 0; i < frames; i += 1) {
-    const progress = i / frames;
-    const fade = Math.min(1, Math.sin(Math.PI * progress) * 1.6);
-    const syllable = 0.5 + 0.5 * Math.sin((i / 3.1) * Math.PI + hash);
-    const jitter = 0.5 + 0.5 * Math.sin((i / 1.7) * Math.PI + hash * 0.37);
-    envelope.push(Math.max(0, fade * (0.25 + 0.55 * syllable * jitter)));
-  }
-  return envelope;
+function clip(
+  key: string,
+  text: string,
+  style: FixedClip['style'],
+  durationMs: number,
+  file: number,
+  envelope: readonly number[],
+): FixedClip {
+  return { key, text, style, file, durationMs, frameMs: FRAME_MS, envelope };
 }

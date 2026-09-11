@@ -239,7 +239,20 @@ not `late-night`.
 
 ## 8. Audio assets
 
-Offline render with OmniVoice Studio.
+Offline render with OmniVoice Studio, `MAYA v2` clone profile `58d6907b`,
+`num_step=32`. Start the backend headless rather than through the GUI:
+
+```
+cd %LOCALAPPDATA%\com.debpalash.omnivoice-studio\projectackend
+..\.venv\Scripts\python.exe main.py
+```
+
+It loads the model on startup. Calling `/v1/audio/speech` while the model is
+unloaded trips a lock bug in 0.4.2 that hangs every later request, so the GUI
+path exists only to avoid that cold start — headless avoids it outright, and
+leaves the 6GB card's VRAM to the engine.
+
+`tools/measure_envelope.py <clip.wav>` prints the manifest fields for a render.
 
 ```text
 assets/audio/fixed/
