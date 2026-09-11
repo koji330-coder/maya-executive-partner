@@ -82,6 +82,34 @@
           ]
         }
       ]
+    },
+    {
+      "round": "expressions",
+      "purpose": "Prove that an expression swap holds registration. Blink and mouth ride under a mask; an expression replaces the whole cut-out, so drift reaches the screen.",
+      "assets": [
+        {
+          "asset": "challenge-01.png",
+          "target": "challenge — signature expression, used as the probe for all nine",
+          "status": "revision_requested",
+          "size": [
+            1086,
+            1448
+          ],
+          "passed": [
+            "Same person. Identity holds.",
+            "Canvas matches the master at 1086x1448.",
+            "Background still a uniform grey."
+          ],
+          "failed": [
+            "Not a locked-parent edit. Best fit needs scale 0.90 and dy +68px: the head is about 11% larger and sits lower. Residual in the face box is 42.4 unaligned, 21.7 after translation, 13.1 after translation and scale. The blink variant was near zero with no movement at all.",
+            "Eyebrows became thicker and darker. That is a change to the features, not the expression.",
+            "The bang no longer crosses the brow. The hairstyle changed.",
+            "The expression did not land: brows stayed symmetric and the mouth kept the master's even smile. challenge needs one raised brow and a one-sided knowing smile."
+          ],
+          "why_it_matters": "Masked compositing hides drift for blink and mouth. Expressions swap the whole cut-out, so this drift would make MAYA shift down and grow each time the emotion changes.",
+          "next": "Rewrite the prompt at the granularity the proven pipeline uses: name head size, position, framing, hairline, bangs over the brow, collar, earrings, lighting and background as fixed, then change only brow angle and mouth shape. Re-measure scale and offset before judging the expression."
+        }
+      ]
     }
   ]
 }

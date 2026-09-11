@@ -74,10 +74,13 @@ changing the bench too, or the preview stops predicting the app.
 ## Next
 
 - Reference image rebuild. The crops taken from the design sheet are too coarse to lock identity for production generation: the face is 287x412 and each expression panel is about 130px wide. The design sheet also has hands on the cheek in every panel and hair crossing the eyes, neither of which survives cut-out and eye-frame derivation. `docs/REFERENCE_IMAGE_REQUEST.md` is the request for a purpose-built replacement set, and `assets/reference/maya-safe-zone-diagram.png` is its spec attachment: the eye and mouth regions the derivation step replaces, marked on the current reference. The constraint is local to those two regions so the artwork keeps its richness everywhere else.
-- One expression at production settings, to measure drift. The proven test edited
-  one small region under a mask; an expression change has no mask limiting it, so
-  drift between expression images lands on screen. `challenge` is the right probe:
-  it is the signature state and a real change. 26 generations ride on the answer.
+- Re-run `challenge`. The first attempt did not hold registration: best fit needs
+  scale 0.90 and dy +68px, so the head came out about 11% larger and lower, and the
+  brows and bangs changed with it. Masked compositing cannot rescue this the way it
+  rescues blink and mouth, because an expression replaces the whole cut-out. The
+  prompt needs the same granularity the proven pipeline uses on blinks: name what
+  stays fixed, then change one thing. Correction request and measurements are in
+  `assets/reference/candidates/`. 26 generations still ride on this answer.
 - The 3/4 view and the full-body shot from the reference request are deferred, not
   dropped. Pose collapses to `default` in v0.1, so neither is used, and the
   locked-parent method removed their identity-checking job.
