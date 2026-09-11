@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 
 import { getAudioEngine } from '@/services/audio';
 
@@ -57,23 +57,23 @@ export function useCharacterRuntime(options: UseCharacterRuntimeOptions = {}): C
     [],
   );
 
-  const [visualState, setVisualState] = useState<MayaVisualState>(() => machine.getState());
-  const [eye, setEye] = useState<EyeState>('open');
-  const [mouth, setMouth] = useState<MouthState>('closed');
+  // The controllers are external stores: they hold the value and notify on
+  // change. Subscribing through useSyncExternalStore keeps React in step with
+  // them without syncing state from inside an effect, which can tear.
+  const visualState = useSyncExternalStore(
+    useCallback((onChange) => machine.subscribe(onChange), [machine]),
+    useCallback(() => machine.getState(), [machine]),
+  );
+  const eye = useSyncExternalStore(
+    useCallback((onChange) => blink.subscribe(onChange), [blink]),
+    useCallback(() => blink.getEye(), [blink]),
+  );
+  const mouth = useSyncExternalStore(
+    useCallback((onChange) => lipSync.subscribe(onChange), [lipSync]),
+    useCallback(() => lipSync.getMouth(), [lipSync]),
+  );
 
   const speakingRef = useRef(false);
-
-  useEffect(() => {
-    const unsubscribers = [
-      machine.subscribe(setVisualState),
-      blink.subscribe(setEye),
-      lipSync.subscribe(setMouth),
-    ];
-    setVisualState(machine.getState());
-    return () => {
-      unsubscribers.forEach((unsubscribe) => unsubscribe());
-    };
-  }, [machine, blink, lipSync]);
 
   useEffect(() => {
     if (!active) {

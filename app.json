@@ -7,12 +7,6 @@
     "icon": "./assets/app/icon.png",
     "scheme": "maya",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/app/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F6F1E9"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.maya.executivepartner"
@@ -33,7 +27,15 @@
       "output": "single"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/app/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F6F1E9"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

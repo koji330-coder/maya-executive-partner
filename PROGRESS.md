@@ -150,6 +150,20 @@ size with no console errors. Three things were settled by doing it:
   a point or two of background noise into alpha 10-27 across the whole plate,
   which showed up in the app as a grey rectangle behind her.
 
+**Confirmed on an iPhone, 2026-09-11.** Loaded through Expo Go over the LAN.
+WebP decodes for bundled images on iOS, which was the one unverified risk in
+shipping the artwork as WebP. Blinking runs correctly in the device renderer.
+`expo-doctor` passes 21/21 after adding the missing `expo-font` peer, moving
+`splash` into the `expo-splash-screen` plugin, and dropping `newArchEnabled`.
+
+There is no EAS development build for this project yet, so the usual
+build-once-then-live-reload workflow is not available. Expo Go covers it while
+the app stays inside the SDK; a development build becomes necessary when Live2D
+or real-time TTS arrive.
+
+The placeholder is kept as the fallback for the eight expressions without
+artwork, deliberately. It marks at a glance which expressions are still missing.
+
 The three-valued runtime states collapse onto the two-valued artwork: `half` maps
 to the open eye, which keeps the blink around 125ms closed instead of 250ms, and
 `small` maps to the open mouth. The lip sync thresholds are set equal so the
