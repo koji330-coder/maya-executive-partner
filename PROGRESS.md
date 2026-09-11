@@ -58,5 +58,6 @@ frames derived.
 
 ## Next
 
-- Image asset production, starting with the `emotion_neutral` master. Not started.
+- Reference image rebuild. The crops taken from the design sheet are too coarse to lock identity for production generation: the face is 287x412 and each expression panel is about 130px wide. The design sheet also has hands on the cheek in every panel and hair crossing the eyes, neither of which survives cut-out and eye-frame derivation. `docs/REFERENCE_IMAGE_REQUEST.md` is the request for a purpose-built replacement set.
+- Image asset production, starting with the `emotion_neutral` master. Blocked on the reference rebuild.
 - Phase 2 — Local conversation prototype: chat composer, mocked `MayaResponse` payloads, visual state driven by response JSON, Decisions UI with local mocked records.

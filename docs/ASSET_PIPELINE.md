@@ -26,6 +26,11 @@ warning is against having no environment, not against layering.
 | `assets/reference/maya-expression-reference.png` | Expression direction | Yes, when the target expression needs it. |
 | `assets/reference/maya-wardrobe-reference.png` | Wardrobe and proportions only | Optional. Low resolution; never use it for facial identity. |
 
+The three crops are cut from the design sheet and are low resolution: the face
+is 287x412 and each expression panel is about 130px wide. They are a stopgap.
+`docs/REFERENCE_IMAGE_REQUEST.md` is the request for a purpose-built replacement
+set, and is the intended first step before production generation.
+
 Once `emotion_neutral` is accepted it becomes the second reference and takes
 priority for facial identity. The face reference remains the design baseline.
 
