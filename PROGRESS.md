@@ -56,6 +56,21 @@ Settled before any generation, and written into `docs/ASSET_PIPELINE.md` and
 Generation counts: 9 cut-outs and 5 plates generated, 27 eye frames and 12 mouth
 frames derived.
 
+## Review tooling
+
+`tools/motion-bench/` holds the frame review bench, published at
+`https://claude.ai/code/artifact/09659d87-a4af-4599-aaba-8b0c3193c7e3`. It plays
+the generated frames on the implementation's own blink schedule and lip sync
+thresholds, so a variant can be judged before it reaches the app.
+
+It is manifest-driven: adding a pose is two generated images, a measured mask set
+and one object in `POSES`. The bench keeps its URL across updates; publishing
+without that URL makes a second, orphaned page. Steps are in the tool's README.
+
+The page's envelope, hold window and blink timing are copies of the implementation's.
+Changing `clipManifest.ts`, `LipSyncController.ts` or `BlinkController.ts` means
+changing the bench too, or the preview stops predicting the app.
+
 ## Next
 
 - Reference image rebuild. The crops taken from the design sheet are too coarse to lock identity for production generation: the face is 287x412 and each expression panel is about 130px wide. The design sheet also has hands on the cheek in every panel and hair crossing the eyes, neither of which survives cut-out and eye-frame derivation. `docs/REFERENCE_IMAGE_REQUEST.md` is the request for a purpose-built replacement set, and `assets/reference/maya-safe-zone-diagram.png` is its spec attachment: the eye and mouth regions the derivation step replaces, marked on the current reference. The constraint is local to those two regions so the artwork keeps its richness everywhere else.
