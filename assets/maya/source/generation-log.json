@@ -161,6 +161,80 @@
           }
         }
       ]
+    },
+    {
+      "round": "expressions-remaining-seven",
+      "purpose": "The seven expressions with no artwork, plus their blink and mouth-open frames.",
+      "model": "flash",
+      "size": [
+        1792,
+        2400
+      ],
+      "calls": {
+        "masters": 7,
+        "blink": 7,
+        "mouth_open": 2,
+        "retries": 0
+      },
+      "prompt_changes_from_challenge_failure": [
+        "Eyebrow weight and darkness pinned; only angle and height may change. The first challenge attempt thickened and darkened them, which is anatomy, not expression.",
+        "Bangs over the eyebrow declared correct and required to stay. The first attempt changed the hairstyle.",
+        "Asymmetry asks for 'the eyebrow NOT covered by the bangs' instead of naming a side. Naming a side risks naming the hidden one, and the earlier claim about which side that is was never verified.",
+        "No mouth-open instruction in any master. happy in particular must keep the lips closed, or MouthState 'closed' would show teeth and contradict its own name."
+      ],
+      "result": "All seven passed on the first attempt. No retries.",
+      "assets": [
+        {
+          "asset": "smile-01.png",
+          "status": "accepted",
+          "drift": "scale 0.99, dx -6, dy -3"
+        },
+        {
+          "asset": "thinking-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3"
+        },
+        {
+          "asset": "serious-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3"
+        },
+        {
+          "asset": "annoyed-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3",
+          "concern": "Hard to tell apart from serious. The intended eyebrow asymmetry did not appear. Raised twice; the user chose to proceed. annoyed is a signature expression and the prompt names 'また/やっぱり/前にも' to select it, so if it reads as serious that work does not reach the screen. Revisit when the app can be watched in use."
+        },
+        {
+          "asset": "happy-01.png",
+          "status": "accepted",
+          "drift": "FAILS against the neutral master: eye band and mouth band disagree by 24px (tolerance 14px)",
+          "why_accepted": "Raising the cheeks genuinely moves the mouth relative to the eyes, so this is the expression working, not drift. What compositing needs is agreement between happy's own master and its own frames, and that measured clean."
+        },
+        {
+          "asset": "concerned-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3"
+        },
+        {
+          "asset": "relaxed-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3"
+        }
+      ],
+      "frames": {
+        "built_by": "tools/build_expression_frames.py",
+        "count": 36,
+        "bytes": "7.9MB",
+        "opaque_fraction": "0.728-0.729 across all nine, which is what a consistent matte looks like",
+        "mouth_open_only_for": [
+          "neutral",
+          "smile",
+          "serious",
+          "challenge"
+        ],
+        "note": "The other five get the master's mouth in their open frames. Those expressions never play a clip, so the frame is never shown."
+      }
     }
   ]
 }

@@ -23,6 +23,12 @@ another, because separate generations shift the head.
 
 `wink` needs no image. The renderer holds one eye open and one closed.
 
-Until these assets exist the app renders
-`src/features/character/placeholder/PlaceholderMaya.tsx`, which consumes exactly
-the same state. Swapping in the real layers is a change to that one component.
+All nine generated expressions exist. `PlaceholderMaya` stays in the tree for
+poses other than `default` and as the fallback if a frame ever fails to resolve,
+but it is no longer what the app normally shows.
+
+Frames are built by `tools/build_expression_frames.py`, not by hand. It carries
+the measured ellipse masks, the alpha knee that stops background noise becoming
+a grey rectangle, and the rule that the background is sampled from the two top
+corners only — the bottom corners are hair and blouse, and averaging them in
+leaves the whole frame opaque.

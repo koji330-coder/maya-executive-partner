@@ -19,26 +19,84 @@ type FrameTable = Record<`${AssetEye}|${AssetMouth}`, number>;
 
 const NEUTRAL: FrameTable = {
   'open|closed': require('../../../assets/maya/expressions/neutral/eyes_open__mouth_closed.webp'),
-  'closed|closed': require('../../../assets/maya/expressions/neutral/eyes_closed__mouth_closed.webp'),
   'open|open': require('../../../assets/maya/expressions/neutral/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/neutral/eyes_closed__mouth_closed.webp'),
   'closed|open': require('../../../assets/maya/expressions/neutral/eyes_closed__mouth_open.webp'),
+};
+
+const SMILE: FrameTable = {
+  'open|closed': require('../../../assets/maya/expressions/smile/eyes_open__mouth_closed.webp'),
+  'open|open': require('../../../assets/maya/expressions/smile/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/smile/eyes_closed__mouth_closed.webp'),
+  'closed|open': require('../../../assets/maya/expressions/smile/eyes_closed__mouth_open.webp'),
+};
+
+const THINKING: FrameTable = {
+  'open|closed': require('../../../assets/maya/expressions/thinking/eyes_open__mouth_closed.webp'),
+  'open|open': require('../../../assets/maya/expressions/thinking/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/thinking/eyes_closed__mouth_closed.webp'),
+  'closed|open': require('../../../assets/maya/expressions/thinking/eyes_closed__mouth_open.webp'),
+};
+
+const SERIOUS: FrameTable = {
+  'open|closed': require('../../../assets/maya/expressions/serious/eyes_open__mouth_closed.webp'),
+  'open|open': require('../../../assets/maya/expressions/serious/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/serious/eyes_closed__mouth_closed.webp'),
+  'closed|open': require('../../../assets/maya/expressions/serious/eyes_closed__mouth_open.webp'),
 };
 
 const CHALLENGE: FrameTable = {
   'open|closed': require('../../../assets/maya/expressions/challenge/eyes_open__mouth_closed.webp'),
-  'closed|closed': require('../../../assets/maya/expressions/challenge/eyes_closed__mouth_closed.webp'),
   'open|open': require('../../../assets/maya/expressions/challenge/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/challenge/eyes_closed__mouth_closed.webp'),
   'closed|open': require('../../../assets/maya/expressions/challenge/eyes_closed__mouth_open.webp'),
 };
 
+const ANNOYED: FrameTable = {
+  'open|closed': require('../../../assets/maya/expressions/annoyed/eyes_open__mouth_closed.webp'),
+  'open|open': require('../../../assets/maya/expressions/annoyed/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/annoyed/eyes_closed__mouth_closed.webp'),
+  'closed|open': require('../../../assets/maya/expressions/annoyed/eyes_closed__mouth_open.webp'),
+};
+
+const HAPPY: FrameTable = {
+  'open|closed': require('../../../assets/maya/expressions/happy/eyes_open__mouth_closed.webp'),
+  'open|open': require('../../../assets/maya/expressions/happy/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/happy/eyes_closed__mouth_closed.webp'),
+  'closed|open': require('../../../assets/maya/expressions/happy/eyes_closed__mouth_open.webp'),
+};
+
+const CONCERNED: FrameTable = {
+  'open|closed': require('../../../assets/maya/expressions/concerned/eyes_open__mouth_closed.webp'),
+  'open|open': require('../../../assets/maya/expressions/concerned/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/concerned/eyes_closed__mouth_closed.webp'),
+  'closed|open': require('../../../assets/maya/expressions/concerned/eyes_closed__mouth_open.webp'),
+};
+
+const RELAXED: FrameTable = {
+  'open|closed': require('../../../assets/maya/expressions/relaxed/eyes_open__mouth_closed.webp'),
+  'open|open': require('../../../assets/maya/expressions/relaxed/eyes_open__mouth_open.webp'),
+  'closed|closed': require('../../../assets/maya/expressions/relaxed/eyes_closed__mouth_closed.webp'),
+  'closed|open': require('../../../assets/maya/expressions/relaxed/eyes_closed__mouth_open.webp'),
+};
+
 /**
- * Only two expressions have artwork so far. Everything else falls back to
- * `neutral` rather than failing, so the backend can already return any emotion
- * from `docs/AI_RESPONSE_CONTRACT.md`.
+ * Every emotion except `wink` has artwork.
+ *
+ * `wink` needs none: the renderer holds one eye open and one closed from the
+ * frames a neighbouring emotion already ships (assets/maya/README.md), so
+ * generating it would be a tenth master for nothing.
  */
 const SETS: Partial<Record<MayaEmotion, FrameTable>> = {
   neutral: NEUTRAL,
+  smile: SMILE,
+  thinking: THINKING,
+  serious: SERIOUS,
   challenge: CHALLENGE,
+  annoyed: ANNOYED,
+  happy: HAPPY,
+  concerned: CONCERNED,
+  relaxed: RELAXED,
 };
 
 export function hasArtwork(emotion: MayaEmotion): boolean {
