@@ -124,6 +124,25 @@ frames cut from `emotion_neutral` will not register against `emotion_smile`.
 Every derived frame must be pixel-aligned with its source cut-out: same canvas
 size, same character position, only the eye or mouth region differs.
 
+### Safe zones
+
+Each generated cut-out carries two regions that the derivation step replaces
+wholesale: an eye zone covering both eyes and both eyebrows, and a mouth zone
+from below the nose to above the chin.
+
+Inside a safe zone, nothing may appear that must not move with the eyelid or the
+lip: no hair crossing it, no hand or prop, no hard shadow edge, no depth-of-field
+blur. Eyebrows must not be occluded by hair.
+
+The constraint is local. Outside the zones the artwork keeps its full richness:
+bangs that end above the brow, hair volume and flow, blush and skin texture,
+earrings and necklace, wardrobe detail, and a hand resting below the jaw. A
+cut-out that satisfies the zones by flattening the whole face has missed the
+point and is rejected.
+
+`assets/reference/maya-safe-zone-diagram.png` marks both zones on the current
+reference and flags the two places the approved design sheet violates them.
+
 | Set | Count |
 | --- | --- |
 | Generated cut-outs | 9 |
