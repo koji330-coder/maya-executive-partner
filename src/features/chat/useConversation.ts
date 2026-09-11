@@ -42,6 +42,7 @@ export interface ConversationState {
 export interface UseConversationOptions {
   runtime: CharacterRuntime;
   company?: CompanyContext;
+  companyIsReal?: boolean;
   /** How many previous turns to send as context. */
   historyDepth?: number;
 }
@@ -70,7 +71,12 @@ function describe(error: unknown): string {
  * move the character and lay out the answer. Whether the answer came from the
  * model or from a script changes nothing here.
  */
-export function useConversation({ runtime, company, historyDepth = 8 }: UseConversationOptions) {
+export function useConversation({
+  runtime,
+  company,
+  companyIsReal,
+  historyDepth = 8,
+}: UseConversationOptions) {
   const [state, setState] = useState<ConversationState>({
     turns: [],
     latest: null,
@@ -127,6 +133,7 @@ export function useConversation({ runtime, company, historyDepth = 8 }: UseConve
           message: text,
           history,
           company,
+          companyIsReal,
           scriptId,
           signal: controller.signal,
         });
@@ -172,7 +179,7 @@ export function useConversation({ runtime, company, historyDepth = 8 }: UseConve
         abort.current = null;
       }
     },
-    [company, historyDepth, runtime, state.draft],
+    [company, companyIsReal, historyDepth, runtime, state.draft],
   );
 
   const cancel = useCallback(() => {

@@ -5,7 +5,7 @@ import {
   LlmError,
   type ChatExchange,
 } from '@/services/llm/geminiClient';
-import { loadLlmSettings } from '@/services/llm/settings';
+import { freeTierAllowed, loadLlmSettings } from '@/services/llm/settings';
 import { paidLimitReached, recordUsage } from '@/services/llm/usage';
 
 import { validateMayaResponse, type MayaResponse } from './mayaResponse';
@@ -23,6 +23,12 @@ export interface AskOptions {
   message: string;
   history: ChatExchange[];
   company?: CompanyContext;
+  /**
+   * Set when the profile describes a real company. The company context goes out
+   * with every message, so the free tier is closed off rather than left to the
+   * user to remember. docs/LLM_INTEGRATION.md.
+   */
+  companyIsReal?: boolean;
   /** Forces a specific mock script. Development only. */
   scriptId?: string;
   signal?: AbortSignal;
@@ -44,6 +50,13 @@ export async function ask(options: AskOptions): Promise<Reply> {
   }
 
   const settings = await loadLlmSettings();
+  const freeAllowed = freeTierAllowed(options.companyIsReal ?? false);
+  if (!freeAllowed && !keys.paid) {
+    throw new LlmError(
+      'no_key',
+      '実在する会社の情報が登録されているため、無料APIキーは使いません。設定から有料APIキーを登録してください。',
+    );
+  }
   const systemPrompt = buildSystemPrompt(options.company);
   const request = {
     systemPrompt,
@@ -67,7 +80,7 @@ export async function ask(options: AskOptions): Promise<Reply> {
     return finish(result.payload, 'paid');
   };
 
-  if (settings.preferFree && keys.free) {
+  if (freeAllowed && settings.preferFree && keys.free) {
     try {
       const result = await generateMayaResponse({ ...request, apiKey: keys.free });
       await recordUsage('free', result.totalTokens);

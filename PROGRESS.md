@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 3 — LLM integration: complete. Phase 4 is next.
+Phase 4 — Company Brain: complete. Phase 5 is next.
 
 ## Completed
 
@@ -72,9 +72,33 @@ Three things testing against the real model changed:
   crammed the reasoning into `title`. Requiring both fixed it in one attempt.
   Given nowhere to write something, it writes it in the next field along.
 
+### Phase 4 — Company Brain
+
+- `companyRepository.ts` stores the profile in `cached_company`, the table
+  `docs/DATA_MODEL.md` already defined.
+- Company screen is fully editable. Everything MAYA knows is on it, which is what
+  `docs/UX_SPEC.md` §7 asks for: the user sees her knowledge rather than
+  inferring it from her answers.
+- The profile is injected into the system prompt on every turn. Live testing in
+  Phase 3 showed this working: MAYA divided revenue by headcount to argue the
+  problem was not staffing, and used a stated issue as the basis for the next
+  action.
+- A switch declares whether the numbers are real. Turning it on closes off the
+  free key, because the profile goes out with every message and leaving that to
+  the user to remember is not a safeguard.
+
+Two things worth keeping in mind:
+
+- The real/fictional flag has no column in the data model, so it rides in the
+  issues blob under a reserved key rather than forcing a migration for one
+  boolean. Phase 5 can give it a column while touching that table anyway.
+- Saving failed silently in the browser, where there is no SQLite. The button
+  looked like it worked. Failures now say so on screen, which matters more on a
+  device than in the web preview.
+
 ## Verification
 
-- 49 unit tests pass (state machine, blink timing, lip sync thresholds, clip manifest, audio lifecycle, Today greeting, response validation, mock responder).
+- 55 unit tests pass (state machine, blink timing, lip sync thresholds, clip manifest, audio lifecycle, Today greeting, response validation, mock responder, company context).
 - Typecheck and lint are clean.
 - `npx expo export --platform ios` bundles successfully (1183 modules).
 - The app was run in a browser and checked visually: character renders, blinking runs, expression/pose/scene controls drive the character, the thinking caption appears, and the mouth opens during clip playback. The developer controls are absent from an export build, as `docs/ACCEPTANCE_CRITERIA.md` requires.
@@ -257,4 +281,4 @@ blink does not move the eyebrow, so hair across a brow never fights the
 animation; the brow only has to stay readable, because it is what carries
 `challenge`, `annoyed` and `concerned`. The eyes and mouth stay absolute. The spec
 was relaxed instead of the hairstyle.
-- Phase 4 — Company Brain: onboarding, editable company facts, local cache. The injection path already exists and takes a `CompanyContext`.
+- Phase 5 — Decisions: detection is already in the response contract and rendered on the Talk screen. What remains is persisting a confirmed decision and reading it back on the Decisions screen.

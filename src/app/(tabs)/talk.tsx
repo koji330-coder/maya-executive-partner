@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CharacterStage, DevExpressionControls, useCharacterRuntime } from '@/features/character';
 import { MayaAnswer } from '@/features/chat/MayaAnswer';
 import { useConversation } from '@/features/chat/useConversation';
+import { useCompanyProfile } from '@/features/company/useCompanyProfile';
 import { colors, radius, spacing } from '@/theme';
 
 /**
@@ -29,7 +30,12 @@ export default function TalkScreen() {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const runtime = useCharacterRuntime({ initialState: { scene: 'work' } });
-  const conversation = useConversation({ runtime });
+  const company = useCompanyProfile();
+  const conversation = useConversation({
+    runtime,
+    company: company.context,
+    companyIsReal: company.profile.isRealCompany,
+  });
   const scroller = React.useRef<ScrollView>(null);
 
   const stageHeight = Math.round(height * 0.35);
@@ -56,6 +62,11 @@ export default function TalkScreen() {
             <Text style={styles.openingText}>
               経営で迷っていることを書いてください。値下げ、採用、投資。決めきれていない話ほど向いています。
             </Text>
+            {company.loaded && !company.filled ? (
+              <Text style={styles.openingHint}>
+                Companyタブに会社のことを書いておくと、その前提で答えます。
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -127,6 +138,12 @@ const styles = StyleSheet.create({
   },
   opening: {
     paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  openingHint: {
+    fontSize: 13,
+    lineHeight: 21,
+    color: colors.gold,
   },
   openingText: {
     fontSize: 14,
