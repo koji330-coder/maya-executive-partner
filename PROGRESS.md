@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 2 — Local conversation prototype: complete. Phase 3 is next.
+Phase 3 — LLM integration: complete. Phase 4 is next.
 
 ## Completed
 
@@ -41,6 +41,36 @@ to put them, so they would have had to hide inside the prose.
 
 Mock script order is intent before topic: 「値下げはやめると決めた」 is a decision,
 not another pricing question. Caught by a test, not by reading.
+
+### Phase 3 — LLM integration
+
+Gemini `gemini-3.8-flash`, called with the user's own key, structured output
+against the response contract, and the Phase 2 validator on everything that comes
+back. `docs/LLM_INTEGRATION.md` has the design and what testing exposed.
+
+- Two keys from two Google Cloud projects, free and paid, in the device keychain.
+- Free preferred, paid fallback off by default, and only on a rate limit. A daily
+  yen ceiling is checked before a paid request goes out, not after.
+- `systemPrompt.ts` carries MAYA's persona, the advisor protocol and the field
+  rules. Every line traces to a document.
+- Company context is injected into the system prompt, so Phase 4 only has to
+  supply the data.
+- Settings screen holds the keys, the routing switches, the daily cap and today's
+  usage.
+- Falls back to the Phase 2 scripts when no key is stored, so a first run is
+  still a working consultation.
+
+Three things testing against the real model changed:
+
+- **Do not request a field nothing renders.** `summary` was in the schema, the
+  model looped inside it, hit the output ceiling, and returned JSON cut off
+  mid-string. Dropped from the request, plus an output cap, plus a truncation
+  check, plus length limits in the validator.
+- **`maxLength` in `responseSchema` is not enforced.** A 60-character cap on
+  `decision.title` came back at over 100.
+- **`required` is what worked.** The model never returned `decision.reason` and
+  crammed the reasoning into `title`. Requiring both fixed it in one attempt.
+  Given nowhere to write something, it writes it in the next field along.
 
 ## Verification
 
@@ -227,4 +257,4 @@ blink does not move the eyebrow, so hair across a brow never fights the
 animation; the brow only has to stay readable, because it is what carries
 `challenge`, `annoyed` and `concerned`. The eyes and mouth stay absolute. The spec
 was relaxed instead of the hairstyle.
-- Phase 3 — LLM integration: backend endpoint, system prompt, company context injection, and real responses behind the validator that already exists.
+- Phase 4 — Company Brain: onboarding, editable company facts, local cache. The injection path already exists and takes a `CompanyContext`.

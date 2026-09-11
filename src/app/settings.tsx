@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { ApiKeySection } from '@/features/settings/ApiKeySection';
 import { apiBaseUrl, appEnv, isApiConfigured } from '@/services/api/config';
 import { initializeDatabase, LATEST_SCHEMA_VERSION, type DatabaseStatus } from '@/services/storage';
 import { colors, radius, spacing } from '@/theme';
@@ -28,13 +29,16 @@ export default function SettingsScreen() {
         <Row label="スキーマ" value={`v${LATEST_SCHEMA_VERSION}`} />
       </Section>
 
+      <ApiKeySection />
+
       <Section title="接続先">
         <Row label="環境" value={appEnv} />
-        <Row label="API" value={isApiConfigured() ? apiBaseUrl : '未設定（Phase 3で接続）'} />
+        <Row label="自前バックエンド" value={isApiConfigured() ? apiBaseUrl : '未使用'} />
       </Section>
 
       <Text style={styles.note}>
-        APIキーはアプリに含めません。モデル提供者への呼び出しはすべてバックエンド経由です。
+        アプリにAPIキーは同梱していません。上で登録した利用者自身のキーを端末のキーチェーンから
+        読み出し、Googleへ直接送っています。配布する場合はバックエンド経由へ変える必要があります。
       </Text>
     </ScrollView>
   );

@@ -96,14 +96,14 @@ export default function TalkScreen() {
           multiline
           onFocus={() => runtime.machine.setListening()}
           onBlur={() => runtime.machine.setIdle()}
-          onSubmitEditing={() => conversation.send()}
+          onSubmitEditing={() => void conversation.send()}
         />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="送信"
           accessibilityState={{ disabled: !canSend }}
           disabled={!canSend}
-          onPress={() => conversation.send()}
+          onPress={() => void conversation.send()}
           style={[styles.send, !canSend && styles.sendDisabled]}
         >
           <Ionicons name="arrow-up" size={20} color={colors.ivory} />

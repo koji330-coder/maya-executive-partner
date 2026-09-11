@@ -61,6 +61,33 @@ export type ValidationResult =
 
 const VOICE_STYLES: readonly VoiceStyle[] = ['warm', 'calm_serious', 'playful', 'encouraging'];
 
+/**
+ * Length caps, as defence in depth.
+ *
+ * A model can loop inside any string field. It happened during Phase 3 testing:
+ * a repeated `summary` ran to the output ceiling and came back as truncated
+ * JSON. The request schema and the token cap make that rarer; these make sure a
+ * runaway that does get through cannot reach the screen or the database.
+ */
+const LIMITS = {
+  message: 4000,
+  summary: 600,
+  title: 200,
+  /** Above this a "title" is not a title. */
+  detectedTitle: 60,
+  reason: 600,
+  optionLabel: 200,
+  followUp: 400,
+} as const;
+
+function clamp(value: string, max: number, field: string, warnings: string[]): string {
+  if (value.length <= max) {
+    return value;
+  }
+  warnings.push(`${field} was ${value.length} characters; truncated to ${max}.`);
+  return value.slice(0, max);
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -94,7 +121,10 @@ function readOptions(value: unknown, warnings: string[]): MayaOption[] | undefin
   const options: MayaOption[] = [];
   for (const entry of value) {
     if (isObject(entry) && typeof entry.label === 'string' && entry.label.trim()) {
-      options.push({ label: entry.label.trim(), recommended: entry.recommended === true });
+      options.push({
+        label: clamp(entry.label.trim(), LIMITS.optionLabel, 'An option label', warnings),
+        recommended: entry.recommended === true,
+      });
     } else {
       warnings.push('An option without a usable label was dropped.');
     }
@@ -139,16 +169,26 @@ function readDetected(
     return undefined;
   }
   const detected = value.detected === true;
-  const title = typeof value.title === 'string' && value.title.trim() ? value.title.trim() : undefined;
+  const rawTitle = typeof value.title === 'string' ? value.title.trim() : '';
+  const title = rawTitle ? clamp(rawTitle, LIMITS.title, `${field}.title`, warnings) : undefined;
   if (detected && !title) {
     warnings.push(`${field}.detected was true without a title; treating it as not detected.`);
+    return { detected: false };
+  }
+  // A title this long is the model reasoning into the field rather than naming a
+  // decision. Truncating it would leave a half sentence in the record, so the
+  // turn is treated as having detected nothing.
+  if (detected && title && title.length > LIMITS.detectedTitle) {
+    warnings.push(
+      `${field}.title was ${title.length} characters, which is prose rather than a title; treating it as not detected.`,
+    );
     return { detected: false };
   }
   return {
     detected,
     ...(title ? { title } : {}),
     ...(typeof value.reason === 'string' && value.reason.trim()
-      ? { reason: value.reason.trim() }
+      ? { reason: clamp(value.reason.trim(), LIMITS.reason, `${field}.reason`, warnings) }
       : {}),
     ...(typeof value.dueDate === 'string' || value.dueDate === null
       ? { dueDate: value.dueDate as string | null }
@@ -198,9 +238,9 @@ export function validateMayaResponse(payload: unknown): ValidationResult {
   }
 
   const value: MayaResponse = {
-    message,
+    message: clamp(message, LIMITS.message, 'message', warnings),
     ...(typeof payload.summary === 'string' && payload.summary.trim()
-      ? { summary: payload.summary.trim() }
+      ? { summary: clamp(payload.summary.trim(), LIMITS.summary, 'summary', warnings) }
       : {}),
     emotion: pickEnum<MayaEmotion>(payload.emotion, MAYA_EMOTIONS, 'neutral', 'emotion', warnings),
     pose: pickEnum<MayaPose>(payload.pose, MAYA_POSES, 'default', 'pose', warnings),
@@ -229,7 +269,12 @@ export function validateMayaResponse(payload: unknown): ValidationResult {
     };
   }
   if (typeof payload.followUpQuestion === 'string' && payload.followUpQuestion.trim()) {
-    value.followUpQuestion = payload.followUpQuestion.trim();
+    value.followUpQuestion = clamp(
+      payload.followUpQuestion.trim(),
+      LIMITS.followUp,
+      'followUpQuestion',
+      warnings,
+    );
   } else if (payload.followUpQuestion === null) {
     value.followUpQuestion = null;
   }
