@@ -1,0 +1,458 @@
+<title>MAYA 画面プレビュー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ground: #EFEBE3;
+    --ink: #2B2723;
+    --ink-dim: #6B6459;
+    --ink-faint: #948B7D;
+    --rule: #DCD4C6;
+    --gold: #A07F45;
+    --done: #4F6B4A;
+    --soon: #A04A2E;
+
+    /* The app is locked to a light interface, so the device screens keep these
+       values in both page themes. They are the tokens from src/theme/index.ts. */
+    --app-cream: #F6F1E9;
+    --app-ivory: #FDFBF7;
+    --app-charcoal: #2B2723;
+    --app-charcoal-soft: #4A443D;
+    --app-muted: #8C8175;
+    --app-gold: #B08D4F;
+    --app-line: #E2D9CC;
+    --app-sand: #E8DFD2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #17161A;
+      --ink: #EDEAE3;
+      --ink-dim: #A29A8C;
+      --ink-faint: #756E63;
+      --rule: #302E35;
+      --gold: #CFA55E;
+      --done: #8FAD86;
+      --soon: #D28C68;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #17161A;
+    --ink: #EDEAE3;
+    --ink-dim: #A29A8C;
+    --ink-faint: #756E63;
+    --rule: #302E35;
+    --gold: #CFA55E;
+    --done: #8FAD86;
+    --soon: #D28C68;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Zen Kaku Gothic New", -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 40px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 44px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  h1 {
+    margin: 8px 0 0;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 900;
+    letter-spacing: -.02em;
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+  .lede { margin: 12px 0 0; max-width: 62ch; color: var(--ink-dim); }
+  .tagline {
+    margin: 18px 0 0;
+    padding-left: 14px;
+    border-left: 2px solid var(--gold);
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .screens {
+    display: flex;
+    gap: 28px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scroll-snap-type: x mandatory;
+  }
+  .screen {
+    flex: 0 0 auto;
+    width: 300px;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .screen-name { display: flex; align-items: baseline; gap: 9px; }
+  .screen-name b { font-size: 16px; font-weight: 700; }
+  .screen-name span {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .device {
+    width: 300px;
+    height: 650px;
+    border-radius: 30px;
+    overflow: hidden;
+    background: var(--app-cream);
+    border: 1px solid var(--rule);
+    box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 22px 44px -30px rgba(0,0,0,.55);
+    display: flex;
+    flex-direction: column;
+    color: var(--app-charcoal);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .statusbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 11px 18px 5px;
+    font-size: 11px;
+    color: var(--app-muted);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  .stage { position: relative; width: 100%; overflow: hidden; background: var(--app-sand); flex: 0 0 auto; }
+  .stage.tall { height: 296px; }
+  .stage.short { height: 212px; }
+  .stage img.plate { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .stage img.maya {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 100%;
+    width: auto;
+    max-width: none;
+  }
+  .stage .fade {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 56px;
+    background: linear-gradient(to bottom, rgba(246,241,233,0), var(--app-cream));
+  }
+
+  .body { padding: 14px 18px 0; display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+
+  .greet { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .prompt { color: var(--app-charcoal-soft); }
+
+  .cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--app-charcoal);
+    color: var(--app-ivory);
+    border-radius: 999px;
+    padding: 12px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .summary {
+    border: 1px solid var(--app-line);
+    background: var(--app-ivory);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .summary-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .summary-row span { color: var(--app-charcoal-soft); }
+  .summary-row b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One statement with its support underneath, not a stack of chat bubbles. */
+  .answer { display: flex; flex-direction: column; gap: 11px; }
+  .who {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: .16em;
+    color: var(--app-gold);
+    font-weight: 500;
+  }
+  .stand { font-size: 16px; font-weight: 700; line-height: 1.55; letter-spacing: -.01em; text-wrap: balance; }
+  .because { color: var(--app-charcoal-soft); font-size: 12.5px; }
+  .options { display: flex; flex-direction: column; gap: 5px; }
+  .option { display: flex; gap: 8px; font-size: 12.5px; color: var(--app-charcoal-soft); }
+  .option i { font-family: "IBM Plex Mono", ui-monospace, monospace; font-style: normal; color: var(--app-muted); }
+  .option.pick { color: var(--app-charcoal); font-weight: 500; }
+  .option.pick i { color: var(--app-gold); }
+
+  .action { border-left: 2px solid var(--app-gold); padding: 2px 0 2px 11px; display: flex; flex-direction: column; gap: 3px; }
+  .action .k {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 9.5px;
+    letter-spacing: .14em;
+    color: var(--app-muted);
+  }
+  .action .v { font-size: 13px; font-weight: 500; }
+  .save {
+    align-self: flex-start;
+    border: 1px solid var(--app-line);
+    background: var(--app-ivory);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 11.5px;
+    color: var(--app-charcoal-soft);
+  }
+
+  .composer {
+    margin-top: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 18px 14px;
+    border-top: 1px solid var(--app-line);
+    background: var(--app-ivory);
+  }
+  .composer .field {
+    flex: 1;
+    border: 1px solid var(--app-line);
+    background: var(--app-cream);
+    border-radius: 16px;
+    padding: 9px 13px;
+    color: var(--app-muted);
+    font-size: 12.5px;
+  }
+  .composer .send {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--app-charcoal);
+    color: var(--app-ivory);
+    display: grid;
+    place-items: center;
+    font-size: 15px;
+  }
+
+  .dtitle { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .dsub { color: var(--app-charcoal-soft); font-size: 12.5px; }
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    border: 1px solid var(--app-line);
+    background: var(--app-ivory);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .date {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    color: var(--app-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .pill { font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 700; letter-spacing: .04em; }
+  .pill.active { background: #E7EDE4; color: #44603F; }
+  .pill.recon { background: #F5E3DC; color: #8E4630; }
+  .pill.done { background: var(--app-sand); color: var(--app-muted); }
+  .card b { font-size: 13.5px; font-weight: 700; line-height: 1.5; }
+  .card p { margin: 0; font-size: 12px; color: var(--app-charcoal-soft); }
+
+  .tabbar { display: flex; border-top: 1px solid var(--app-line); background: var(--app-ivory); padding: 7px 0 10px; }
+  .tab {
+    flex: 1;
+    text-align: center;
+    font-size: 9.5px;
+    color: var(--app-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+  }
+  .tab .dot { width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid currentColor; opacity: .55; }
+  .tab.on { color: var(--app-charcoal); font-weight: 700; }
+  .tab.on .dot { opacity: 1; background: currentColor; }
+
+  .status { display: flex; flex-direction: column; gap: 7px; }
+  .st { display: flex; gap: 9px; align-items: baseline; font-size: 12.5px; line-height: 1.6; }
+  .st .mark {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: .08em;
+    padding: 1px 7px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+    border: 1px solid currentColor;
+  }
+  .st.now .mark { color: var(--done); }
+  .st.next .mark { color: var(--soon); }
+  .st span:last-child { color: var(--ink-dim); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .9em; color: var(--gold); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">v0.1 / iPhone</div>
+    <h1>MAYA 画面プレビュー</h1>
+    <p class="lede">
+      完成したときの3画面です。MAYAと背景は今日生成した実素材、文字はUX仕様書と応答契約から起こしています。
+      各画面の下に、いま動いているものとこれから作るものを並べました。
+    </p>
+    <p class="tagline">見た目は、会いたくなるAI美女。頭脳は、社長に反論できる経営参謀。</p>
+  </header>
+
+  <div class="screens">
+
+    <section class="screen">
+      <div class="screen-name"><b>Today</b><span>起動直後</span></div>
+      <div class="device">
+        <div class="statusbar"><span>9:41</span><span>9月11日 金</span></div>
+        <div class="stage tall">
+          <img class="plate" src="scene_work.webp" alt="">
+          <img class="maya" src="maya_neutral.webp" alt="MAYA（通常の表情）">
+          <div class="fade"></div>
+        </div>
+        <div class="body">
+          <div class="greet">おはようございます、社長。</div>
+          <div class="prompt">今日は何を決めます？</div>
+          <div class="cta">MAYAに相談する →</div>
+          <div class="summary">
+            <div class="summary-row"><span>未決の判断</span><b>2</b></div>
+            <div class="summary-row"><span>期限が近いアクション</span><b>1</b></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><div class="dot"></div>Today</div>
+          <div class="tab"><div class="dot"></div>Talk</div>
+          <div class="tab"><div class="dot"></div>Decisions</div>
+          <div class="tab"><div class="dot"></div>Company</div>
+        </div>
+      </div>
+      <div class="status">
+        <div class="st now"><span class="mark">動く</span><span>キャラ描画、まばたき、呼吸、時刻に応じた挨拶</span></div>
+        <div class="st next"><span class="mark">これから</span><span>未決サマリの実データ（Phase 5）</span></div>
+      </div>
+    </section>
+
+    <section class="screen">
+      <div class="screen-name"><b>Talk</b><span>反論しているところ</span></div>
+      <div class="device">
+        <div class="statusbar"><span>9:41</span><span>相談中</span></div>
+        <div class="stage short">
+          <img class="plate" src="scene_work.webp" alt="">
+          <img class="maya" src="maya_challenge.webp" alt="MAYA（挑発的な表情）">
+          <div class="fade"></div>
+        </div>
+        <div class="body">
+          <div class="answer">
+            <div class="who">MAYA</div>
+            <div class="stand">社長、その値下げは私は反対です。</div>
+            <div class="because">競合に合わせる前に、粗利とCVRへの影響を分けて見ましょう。いま下げると、戻すときに理由を説明できなくなります。</div>
+            <div class="options">
+              <div class="option"><i>A</i>追随して同額まで下げる</div>
+              <div class="option"><i>B</i>価格は据え置き、特典で差をつける</div>
+              <div class="option pick"><i>C</i>2週間だけ様子を見て数字で判断する</div>
+            </div>
+            <div class="action">
+              <div class="k">NEXT ACTION</div>
+              <div class="v">値下げ前後の粗利・CVR影響を試算する</div>
+            </div>
+            <div class="save">判断として保存</div>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="field">現在の粗利率は？</div>
+          <div class="send">↑</div>
+        </div>
+      </div>
+      <div class="status">
+        <div class="st now"><span class="mark">動く</span><span>キャラ描画、まばたき、リップシンク、表情の切り替え</span></div>
+        <div class="st next"><span class="mark">これから</span><span>会話の送受信（Phase 2）、実モデルの応答（Phase 3）</span></div>
+      </div>
+    </section>
+
+    <section class="screen">
+      <div class="screen-name"><b>Decisions</b><span>判断の記録</span></div>
+      <div class="device">
+        <div class="statusbar"><span>9:41</span><span>3件</span></div>
+        <div class="body" style="padding-top:18px">
+          <div class="dtitle">判断の記録</div>
+          <div class="dsub">会話から抽出した判断が、日付・理由・状態つきで残ります。</div>
+          <div class="cards">
+            <div class="card">
+              <div class="card-top"><span class="date">2026-09-11</span><span class="pill active">検討中</span></div>
+              <b>競合の値下げには追随しない</b>
+              <p>粗利率が3.2ポイント落ちる。まず2週間、CVRの変化を見る。</p>
+            </div>
+            <div class="card">
+              <div class="card-top"><span class="date">2026-09-04</span><span class="pill recon">再検討</span></div>
+              <b>製造の中途採用を1名に絞る</b>
+              <p>先月と同じ議論。要員計画の前提が更新されていない。</p>
+            </div>
+            <div class="card">
+              <div class="card-top"><span class="date">2026-08-28</span><span class="pill done">完了</span></div>
+              <b>受注管理をスプレッドシートから移行する</b>
+              <p>二重入力が週4時間。移行費用は3か月で回収できる。</p>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><div class="dot"></div>Today</div>
+          <div class="tab"><div class="dot"></div>Talk</div>
+          <div class="tab on"><div class="dot"></div>Decisions</div>
+          <div class="tab"><div class="dot"></div>Company</div>
+        </div>
+      </div>
+      <div class="status">
+        <div class="st now"><span class="mark">動く</span><span>画面の枠と、空のときの表示</span></div>
+        <div class="st next"><span class="mark">これから</span><span>判断の抽出、確認、保存（Phase 5）</span></div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <div>MAYAと背景は Nano Banana で生成した実素材です。文字とUIは実際の描画で、画像には焼き込んでいません。</div>
+    <div>会社の事実を編集する Company 画面は Phase 4 で作ります。ここには載せていません。</div>
+  </footer>
+
+</div>

@@ -43,6 +43,20 @@ Phase 1 — Character Runtime: complete, now running on generated artwork for tw
 - Only the settings key-value repository is implemented. The company / conversation / message / decision tables exist but have no repositories yet.
 - Animation was verified in a browser, not on an iPhone. The 60fps target in `docs/ACCEPTANCE_CRITERIA.md` is unverified on device.
 
+## Finished-screen preview
+
+`docs/preview/screens.html`, published at
+`https://claude.ai/code/artifact/3784bc35-6fad-48b0-8e9b-df42a3193b33`.
+
+Today, Talk and Decisions as they look when finished, built from the real
+generated artwork and the first scene plate. The copy comes from `docs/UX_SPEC.md`
+and the worked example in `docs/AI_RESPONSE_CONTRACT.md`, so it doubles as a check
+that the response contract produces a screen worth looking at. Each screen carries
+what already runs and what is still to build, which keeps it honest as the phases
+land.
+
+The first scene plate is in `assets/maya/scenes/scene_work.webp`. Four remain.
+
 ## Image asset requirements — confirmed
 
 Settled before any generation, and written into `docs/ASSET_PIPELINE.md` and
