@@ -37,6 +37,26 @@ Top ~35%:
 
 - MAYA character stage
 
+### The stage yields to the keyboard
+
+35% is the resting size. It cannot hold while the keyboard is up.
+
+On an 844pt screen: 59pt safe area, 295pt stage, 60pt composer and a 336pt
+Japanese keyboard leave **94pt of conversation, about three lines**. Measured,
+not estimated. The screen is unusable for its own purpose in the state the user
+is in whenever they are actually talking to her.
+
+So the stage drops to **88pt while the keyboard is up**, which leaves 301pt,
+about ten lines.
+
+At that height it crops to her face rather than scaling the whole figure down.
+A thumbnail of a standing figure reads as nothing; the face is what carries the
+expression, and the expression is the point of keeping her on screen at all.
+
+The user can also collapse and expand the stage by hand, with the control on the
+stage itself. `docs/ACCEPTANCE_CRITERIA.md` requires MAYA to stay visible during
+normal use, so the compact state keeps her present rather than hiding her.
+
 Middle:
 
 - current MAYA response

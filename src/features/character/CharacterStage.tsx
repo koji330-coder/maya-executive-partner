@@ -14,8 +14,26 @@ export interface CharacterStageProps {
   height: number;
   /** Shows the "考えています…" caption while MAYA is thinking. */
   showStatus?: boolean;
+  /**
+   * Crops to the face instead of showing the whole figure.
+   *
+   * With the keyboard up, the full stage leaves about three lines of
+   * conversation on a 844pt screen, which is unusable. Shrinking the stage on
+   * its own would scale her down to a thumbnail; cropping keeps the face, and
+   * the face is what carries the expression.
+   */
+  compact?: boolean;
   style?: ViewStyle;
 }
+
+/**
+ * Where the head sits in the artwork, as a fraction of image height.
+ *
+ * Measured from the mask work: eyes land around 27-29%, the mouth at 40%. The
+ * band below leaves room for the chin and shoulders.
+ */
+const FACE_TOP = 0.06;
+const FACE_BOTTOM = 0.56;
 
 /**
  * The place MAYA lives.
@@ -24,14 +42,26 @@ export interface CharacterStageProps {
  * transparent cut-out floating in a chat app, so the stage owns the scene
  * background and the character sits inside it.
  */
-export function CharacterStage({ runtime, height, showStatus = true, style }: CharacterStageProps) {
+export function CharacterStage({
+  runtime,
+  height,
+  showStatus = true,
+  compact = false,
+  style,
+}: CharacterStageProps) {
   const { visualState, eye, mouth, breathing } = runtime;
   const scene = sceneThemes[visualState.scene];
   const dark = isDarkScene(visualState.scene);
   const [stageWidth, setStageWidth] = React.useState(0);
 
-  const characterHeight = height * 0.92;
-  const characterWidth = Math.min(stageWidth * 0.9, characterHeight * 0.78);
+  // Full: the figure stands in the room, anchored at the floor.
+  // Compact: the face band fills the strip, so the rest is clipped away.
+  const characterHeight = compact ? height / (FACE_BOTTOM - FACE_TOP) : height * 0.92;
+  const characterWidth = Math.min(
+    compact ? Number.POSITIVE_INFINITY : stageWidth * 0.9,
+    characterHeight * 0.78,
+  );
+  const characterTop = compact ? -characterHeight * FACE_TOP : height - characterHeight;
 
   return (
     <View
@@ -42,18 +72,26 @@ export function CharacterStage({ runtime, height, showStatus = true, style }: Ch
       <View style={[styles.floorLine, { backgroundColor: scene.accent, opacity: dark ? 0.3 : 0.18 }]} />
 
       {stageWidth > 0 ? (
-        <StageCharacter
-          width={characterWidth}
-          height={characterHeight}
-          runtime={runtime}
-          breathing={breathing}
-          eye={eye}
-          mouth={mouth}
-        />
+        <View style={[styles.characterSlot, { top: characterTop, height: characterHeight }]}>
+          <StageCharacter
+            width={characterWidth}
+            height={characterHeight}
+            runtime={runtime}
+            breathing={breathing}
+            eye={eye}
+            mouth={mouth}
+          />
+        </View>
       ) : null}
 
       {showStatus && visualState.activity === 'thinking' ? (
-        <View style={[styles.status, { backgroundColor: dark ? '#00000055' : '#FFFFFFCC' }]}>
+        <View
+          style={[
+            styles.status,
+            compact && styles.statusCompact,
+            { backgroundColor: dark ? '#00000055' : '#FFFFFFCC' },
+          ]}
+        >
           <ThinkingDots color={dark ? colors.ivory : colors.charcoalSoft} />
           <Text style={[styles.statusText, { color: dark ? colors.ivory : colors.charcoalSoft }]}>
             考えています…
@@ -120,6 +158,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
+  characterSlot: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
   backdropTop: {
     position: 'absolute',
     top: 0,
@@ -133,6 +177,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: '18%',
     height: 1,
+  },
+  statusCompact: {
+    bottom: spacing.xs,
+    paddingVertical: 2,
   },
   status: {
     position: 'absolute',

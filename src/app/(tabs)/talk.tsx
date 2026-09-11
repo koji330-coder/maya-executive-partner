@@ -1,6 +1,8 @@
 import React from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
@@ -38,8 +40,35 @@ export default function TalkScreen() {
   });
   const scroller = React.useRef<ScrollView>(null);
 
-  const stageHeight = Math.round(height * 0.35);
+  const [keyboardUp, setKeyboardUp] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(false);
+
+  // The keyboard is the real constraint. On an 844pt screen the full stage
+  // leaves about three lines of conversation once it is up, so the stage gives
+  // way to it rather than the reader.
+  React.useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardUp(true),
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardUp(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  const compact = keyboardUp || collapsed;
+  const stageHeight = compact ? COMPACT_STAGE : Math.round(height * 0.35);
   const canSend = conversation.draft.trim().length > 0 && !conversation.waiting;
+
+  const toggleStage = React.useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setCollapsed((current) => !current);
+  }, []);
 
   React.useEffect(() => {
     const id = setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 60);
@@ -53,7 +82,20 @@ export default function TalkScreen() {
       keyboardVerticalOffset={insets.bottom}
     >
       <View style={{ paddingTop: insets.top }}>
-        <CharacterStage runtime={runtime} height={stageHeight} />
+        <CharacterStage runtime={runtime} height={stageHeight} compact={compact} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={compact ? 'MAYAを大きく表示' : 'MAYAを小さく表示'}
+          onPress={toggleStage}
+          hitSlop={10}
+          style={styles.stageToggle}
+        >
+          <Ionicons
+            name={compact ? 'chevron-down' : 'chevron-up'}
+            size={16}
+            color={colors.charcoalSoft}
+          />
+        </Pressable>
       </View>
 
       <ScrollView ref={scroller} style={styles.transcript} contentContainerStyle={styles.transcriptContent}>
@@ -134,7 +176,21 @@ export default function TalkScreen() {
   );
 }
 
+/** Tall enough for her face, short enough to leave ten lines with the keyboard up. */
+const COMPACT_STAGE = 88;
+
 const styles = StyleSheet.create({
+  stageToggle: {
+    position: 'absolute',
+    right: spacing.sm,
+    bottom: spacing.xs,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFFB8',
+  },
   root: {
     flex: 1,
     backgroundColor: colors.cream,
