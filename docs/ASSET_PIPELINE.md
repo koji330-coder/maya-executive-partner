@@ -132,6 +132,24 @@ frames cut from `emotion_neutral` will not register against `emotion_smile`.
 Every derived frame must be pixel-aligned with its source cut-out: same canvas
 size, same character position, only the eye or mouth region differs.
 
+### One master per expression
+
+Every expression and pose is its own master image. Its blink and open-mouth
+frames are generated from that master and composited through masks measured on
+that pair. A master does not have to register against any other master, and is
+never rejected for failing to.
+
+Cross-master drift matters in exactly one place: the moment the emotion changes
+on screen. The stage scales the character to a fixed height and anchors it at the
+bottom, so a head that is 11% larger in its own canvas pops by 11% at the switch.
+That is absorbed by storing a per-master alignment transform, measured once with
+`tools/measure_drift.py`, and applied by the renderer. The prompt also asks for
+consistent framing; the stored transform takes up the slack.
+
+A master is sent back for what it looks like, not for where it sits: a face that
+reads as someone else, a changed hairstyle, altered eyebrow weight, or an
+expression that does not land.
+
 ### How frames are actually produced
 
 The method is settled by an existing, proven pipeline, not by this document.

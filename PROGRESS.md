@@ -126,6 +126,16 @@ translation between master and variant was zero, and the pixel difference was
 confined to the eyes. Results and the measured masks are in
 `assets/reference/pipeline-test/`. The API 403 recorded on 2026-09-05 is gone.
 
+**Correction, 2026-09-11.** An earlier pass treated a new expression as broken
+when it did not register against the neutral master. That was wrong. Expressions
+carry their own master; blink and mouth frames are generated from that master and
+composited through masks measured on that pair. The rejected `challenge` candidate
+was re-tested this way and passed (scale 1.00, dx 0, dy +3), compositing as
+cleanly as neutral did. Cross-master drift only affects the instant the emotion
+changes, and is absorbed by a per-master alignment transform rather than by
+discarding artwork. `challenge-01` is still going back, but only because the
+expression is not challenge, the eyebrows thickened, and the bangs moved.
+
 One decision remains before the full run: whether to switch the generation
 background from mid grey to the pure white that `rembg/isnet-anime` expects. Two
 mouth and two eye states are settled, matching the proven pipeline; the three

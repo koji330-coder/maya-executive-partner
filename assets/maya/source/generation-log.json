@@ -107,7 +107,8 @@
             "The expression did not land: brows stayed symmetric and the mouth kept the master's even smile. challenge needs one raised brow and a one-sided knowing smile."
           ],
           "why_it_matters": "Masked compositing hides drift for blink and mouth. Expressions swap the whole cut-out, so this drift would make MAYA shift down and grow each time the emotion changes.",
-          "next": "Rewrite the prompt at the granularity the proven pipeline uses: name head size, position, framing, hairline, bangs over the brow, collar, earrings, lighting and background as fixed, then change only brow angle and mouth shape. Re-measure scale and offset before judging the expression."
+          "next": "Rewrite the prompt at the granularity the proven pipeline uses: name head size, position, framing, hairline, bangs over the brow, collar, earrings, lighting and background as fixed, then change only brow angle and mouth shape. Re-measure scale and offset before judging the expression.",
+          "revised_verdict": "Position and scale were withdrawn as a rejection reason on 2026-09-11. Expressions carry their own master, so registration against the neutral master is not required. A blink generated from this image as its own parent passed the gate (scale 1.00, dx 0, dy +3) and composited cleanly; see assets/reference/pipeline-test/. It is still sent back, but only because the expression is not challenge, the eyebrows thickened, and the bangs moved off the eyebrow."
         }
       ],
       "fallback_test": {
