@@ -89,8 +89,12 @@ export default function TalkScreen() {
           conversation.addAttachment(attachment);
         }
       } catch (error) {
+        // The underlying message is shown. A generic failure cost a round trip
+        // to find out that expo-file-system had changed its API.
         setAttachError(
-          error instanceof AttachmentError ? error.message : '添付を読み込めませんでした。',
+          error instanceof AttachmentError
+            ? error.message
+            : `添付を読み込めませんでした。${error instanceof Error ? `（${error.message}）` : ''}`,
         );
       }
     },

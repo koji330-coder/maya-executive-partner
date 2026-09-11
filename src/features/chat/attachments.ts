@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 
 /**
@@ -33,12 +33,20 @@ export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 export const MAX_TEXT_CHARS = 40_000;
 export const MAX_ATTACHMENTS = 3;
 
+/**
+ * Explicit types rather than a `text/*` wildcard.
+ *
+ * iOS matches document types against UTIs, and a wildcard leaves the picker
+ * showing nothing selectable.
+ */
 const TEXT_TYPES = [
-  'text/*',
-  'application/json',
+  'text/plain',
   'text/csv',
   'text/markdown',
-  'application/pdf',
+  'text/tab-separated-values',
+  'application/json',
+  'public.plain-text',
+  'public.comma-separated-values-text',
 ];
 
 let counter = 0;
@@ -48,6 +56,12 @@ function attachmentId() {
 }
 
 export class AttachmentError extends Error {}
+
+/** Keeps the underlying reason visible instead of swallowing it. */
+function wrap(prefix: string, cause: unknown): AttachmentError {
+  const detail = cause instanceof Error && cause.message ? `（${cause.message}）` : '';
+  return new AttachmentError(`${prefix}${detail}`);
+}
 
 /** A screenshot or photo from the library. */
 export async function pickImage(): Promise<Attachment | null> {
@@ -95,7 +109,18 @@ export async function pickTextFile(): Promise<Attachment | null> {
       'Excelはそのままでは読めません。CSVで書き出すか、画面のスクリーンショットを送ってください。',
     );
   }
-  const text = await FileSystem.readAsStringAsync(asset.uri);
+  // `readAsStringAsync` is gone from expo-file-system's current API; the module's
+  // own deprecation notice points at `new File().text()`, and that throws at
+  // runtime rather than at build time, which is why this surfaced only on device.
+  let text: string;
+  let byteLength: number;
+  try {
+    const file = new File(asset.uri);
+    text = await file.text();
+    byteLength = file.size ?? text.length;
+  } catch (cause) {
+    throw wrap('ファイルを読み込めませんでした。', cause);
+  }
   if (text.length > MAX_TEXT_CHARS) {
     throw new AttachmentError(
       `ファイルが長すぎます（${text.length.toLocaleString()}文字）。${MAX_TEXT_CHARS.toLocaleString()}文字までにしてください。`,
@@ -107,7 +132,7 @@ export async function pickTextFile(): Promise<Attachment | null> {
     name: asset.name,
     data: text,
     mimeType: asset.mimeType ?? 'text/plain',
-    bytes: asset.size ?? text.length,
+    bytes: asset.size ?? byteLength,
   };
 }
 
