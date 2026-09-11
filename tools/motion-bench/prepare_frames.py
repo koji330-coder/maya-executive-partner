@@ -32,6 +32,9 @@ DEFAULT_BG = (138.5, 138.5, 138.5)
 # Too low and hair edges keep a halo; too high and fine strands disappear.
 DEFAULT_TOLERANCE = 34.0
 
+# Below this distance from the background a pixel is treated as pure background.
+KNEE = 8.0
+
 STATES = {
     "master": "eyes_open__mouth_closed",
     "blink": "eyes_closed__mouth_closed",
@@ -44,7 +47,14 @@ def cut_out(path: Path, bg: tuple[float, float, float], tol: float, width: int) 
     rgb = np.asarray(Image.open(path).convert("RGB")).astype(np.float32)
     bg_arr = np.array(bg, dtype=np.float32)
 
-    alpha = np.clip(np.abs(rgb - bg_arr).max(axis=2) / tol, 0, 1)[..., None]
+    # The generation background is not perfectly flat: compression leaves a
+    # point or two of noise. Scaling straight from zero turns that noise into
+    # alpha 10-27 across the whole plate, which shows up as a grey rectangle
+    # behind the character. Everything below the knee is forced fully
+    # transparent; real hair edges sit well above it.
+    distance = np.abs(rgb - bg_arr).max(axis=2)
+    knee = min(KNEE, tol - 1)
+    alpha = np.clip((distance - knee) / (tol - knee), 0, 1)[..., None]
     # Unpremultiply so semi-transparent strands do not carry the background's
     # colour onto a warm scene plate.
     fg = np.clip(

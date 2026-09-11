@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 1 — Character Runtime: complete.
+Phase 1 — Character Runtime: complete, now running on generated artwork for two expressions. Phase 2 is next.
 
 ## Completed
 
@@ -22,6 +22,7 @@ Phase 1 — Character Runtime: complete.
 - `LipSyncController` — amplitude buckets to `closed | small | open`, with a hold window that stops per-frame flutter. Implements `LipSyncEngine` so a viseme engine can replace it without touching the renderer.
 - `CharacterStage` — the scene MAYA inhabits, including the "考えています…" state (three fading dots, not a spinner).
 - `PlaceholderMaya` — layered shapes standing in for the generated artwork, driven by exactly the state the real layers will consume.
+- `MayaArtwork` and `expressionAssets` — the generated artwork, shipped as four pre-composited frames per expression. The stage picks the artwork when the current emotion has it and the placeholder when it does not, so the backend can already return any emotion from the response contract.
 - `DevExpressionControls` — Phase 1 control surface for expression, pose, scene, activity and clip playback. Gated behind `__DEV__`.
 - Audio abstraction — `AudioEngine` interface, fixed-clip manifest for the six OmniVoice lines, and `EnvelopeAudioEngine`, which plays a clip's amplitude envelope so lip sync is exercisable before any audio file exists.
 
@@ -135,6 +136,24 @@ cleanly as neutral did. Cross-master drift only affects the instant the emotion
 changes, and is absorbed by a per-master alignment transform rather than by
 discarding artwork. `challenge-01` is still going back, but only because the
 expression is not challenge, the eyebrows thickened, and the bangs moved.
+
+**In the app, 2026-09-11.** `neutral` and `challenge` are wired in and render on the
+Talk screen with blinking, breathing and lip sync. Verified in a browser at phone
+size with no console errors. Three things were settled by doing it:
+
+- Frames are pre-composited at build time and the app just swaps between four
+  images per expression. Compositing through the ellipse masks at runtime would
+  need canvas work in React Native for no visible gain.
+- All four frames stay mounted and toggle by opacity. Swapping a single `Image`
+  source flickers on the first change.
+- The cut-out needs a knee on the alpha ramp. Scaling straight from zero turned
+  a point or two of background noise into alpha 10-27 across the whole plate,
+  which showed up in the app as a grey rectangle behind her.
+
+The three-valued runtime states collapse onto the two-valued artwork: `half` maps
+to the open eye, which keeps the blink around 125ms closed instead of 250ms, and
+`small` maps to the open mouth. The lip sync thresholds are set equal so the
+controller emits two states.
 
 One decision remains before the full run: whether to switch the generation
 background from mid grey to the pure white that `rembg/isnet-anime` expects. Two

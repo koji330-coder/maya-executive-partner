@@ -48,7 +48,14 @@ export function useCharacterRuntime(options: UseCharacterRuntimeOptions = {}): C
   const machine = useMemo(() => new CharacterStateMachine(initialState), []);
   const blink = useMemo(() => new BlinkController(), []);
   const breathing = useMemo(() => new BreathingController(), []);
-  const lipSync = useMemo(() => new LipSyncController(), []);
+  // The generated artwork has an open mouth and a closed one, with nothing in
+  // between, so both thresholds sit at the same amplitude and the controller
+  // emits two states. docs/ASSET_PIPELINE.md §4. Restore the gap once a
+  // half-open frame exists.
+  const lipSync = useMemo(
+    () => new LipSyncController({ smallThreshold: 0.18, openThreshold: 0.18 }),
+    [],
+  );
 
   const [visualState, setVisualState] = useState<MayaVisualState>(() => machine.getState());
   const [eye, setEye] = useState<EyeState>('open');

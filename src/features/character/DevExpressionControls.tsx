@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { listClipKeys } from '@/services/audio';
 import { colors, radius, spacing } from '@/theme';
 
+import { hasArtwork } from './expressionAssets';
 import { MAYA_EMOTIONS, MAYA_POSES, MAYA_SCENES } from './mayaTypes';
 import type { CharacterRuntime } from './useCharacterRuntime';
 
@@ -28,7 +29,7 @@ export function DevExpressionControls({ runtime }: DevExpressionControlsProps) {
         {MAYA_EMOTIONS.map((emotion) => (
           <Chip
             key={emotion}
-            label={emotion}
+            label={hasArtwork(emotion) ? emotion : `${emotion}（仮）`}
             selected={visualState.emotion === emotion}
             onPress={() => machine.setEmotion(emotion)}
           />

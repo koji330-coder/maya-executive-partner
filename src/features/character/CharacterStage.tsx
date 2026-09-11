@@ -3,6 +3,8 @@ import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { colors, isDarkScene, radius, sceneThemes, spacing } from '@/theme';
 
+import { hasArtwork } from './expressionAssets';
+import { MayaArtwork } from './MayaArtwork';
 import { PlaceholderMaya } from './placeholder/PlaceholderMaya';
 
 import type { CharacterRuntime } from './useCharacterRuntime';
@@ -40,7 +42,7 @@ export function CharacterStage({ runtime, height, showStatus = true, style }: Ch
       <View style={[styles.floorLine, { backgroundColor: scene.accent, opacity: dark ? 0.3 : 0.18 }]} />
 
       {stageWidth > 0 ? (
-        <PlaceholderStageCharacter
+        <StageCharacter
           width={characterWidth}
           height={characterHeight}
           runtime={runtime}
@@ -62,7 +64,12 @@ export function CharacterStage({ runtime, height, showStatus = true, style }: Ch
   );
 }
 
-function PlaceholderStageCharacter({
+/**
+ * Picks the generated artwork when the current emotion has it, and the
+ * placeholder when it does not. Only a couple of expressions are drawn so far,
+ * so both paths stay live (docs/ASSET_PIPELINE.md §4).
+ */
+function StageCharacter({
   width,
   height,
   runtime,
@@ -77,18 +84,21 @@ function PlaceholderStageCharacter({
   eye: CharacterRuntime['eye'];
   mouth: CharacterRuntime['mouth'];
 }) {
-  return (
-    <PlaceholderMaya
-      width={width}
-      height={height}
-      emotion={runtime.visualState.emotion}
-      pose={runtime.visualState.pose}
-      eye={eye}
-      mouth={mouth}
-      isSpeaking={runtime.visualState.isSpeaking}
-      breath={breathing.breath}
-      idleSway={breathing.idleSway}
-    />
+  const { emotion, pose, isSpeaking } = runtime.visualState;
+  const shared = {
+    width,
+    height,
+    emotion,
+    pose,
+    eye,
+    mouth,
+    breath: breathing.breath,
+    idleSway: breathing.idleSway,
+  };
+  return hasArtwork(emotion) ? (
+    <MayaArtwork {...shared} />
+  ) : (
+    <PlaceholderMaya {...shared} isSpeaking={isSpeaking} />
   );
 }
 
