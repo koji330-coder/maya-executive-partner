@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
-import { deleteApiKey, getApiKeys, saveApiKey, type ApiTier } from '@/services/llm/apiKey';
+import { deleteApiKey, getApiKey, getApiKeys, saveApiKey, type ApiTier } from '@/services/llm/apiKey';
+import { checkApiKey } from '@/services/llm/geminiClient';
 import {
   DEFAULT_LLM_SETTINGS,
   loadLlmSettings,
@@ -24,6 +25,7 @@ export function ApiKeySection() {
   const [settings, setSettings] = React.useState<LlmSettings>(DEFAULT_LLM_SETTINGS);
   const [usage, setUsage] = React.useState<DailyUsage | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [checking, setChecking] = React.useState<ApiTier | null>(null);
 
   const refresh = React.useCallback(async () => {
     const [keys, loaded, used] = await Promise.all([getApiKeys(), loadLlmSettings(), getUsage()]);
@@ -64,6 +66,22 @@ export function ApiKeySection() {
     }
   };
 
+  const onCheck = async (tier: ApiTier) => {
+    setChecking(tier);
+    setMessage(null);
+    try {
+      const key = await getApiKey(tier);
+      if (!key) {
+        setMessage('キーが登録されていません。');
+        return;
+      }
+      const result = await checkApiKey(key);
+      setMessage(`${tier === 'free' ? '無料' : '有料'}キー：${result.detail}`);
+    } finally {
+      setChecking(null);
+    }
+  };
+
   const onDelete = async (tier: ApiTier) => {
     await deleteApiKey(tier);
     setMessage(`${tier === 'free' ? '無料' : '有料'}APIキーを削除しました。`);
@@ -100,9 +118,21 @@ export function ApiKeySection() {
               <Text style={styles.primaryText}>保存</Text>
             </Pressable>
             {stored[tier] ? (
-              <Pressable accessibilityRole="button" onPress={() => void onDelete(tier)}>
-                <Text style={styles.destructive}>削除</Text>
-              </Pressable>
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={checking !== null}
+                  onPress={() => void onCheck(tier)}
+                  style={[styles.secondary, checking !== null && styles.secondaryBusy]}
+                >
+                  <Text style={styles.secondaryText}>
+                    {checking === tier ? '確認中…' : '接続を確認'}
+                  </Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={() => void onDelete(tier)}>
+                  <Text style={styles.destructive}>削除</Text>
+                </Pressable>
+              </>
             ) : null}
           </View>
         </View>
@@ -211,6 +241,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.charcoal,
   },
   primaryText: { color: colors.ivory, fontWeight: '700', fontSize: 13 },
+  secondary: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  secondaryBusy: { opacity: 0.5 },
+  secondaryText: { color: colors.charcoalSoft, fontWeight: '600', fontSize: 13 },
   destructive: { color: colors.danger, fontSize: 13 },
   warning: { fontSize: 12, lineHeight: 19, color: colors.charcoalSoft },
   ruleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -218,5 +257,5 @@ const styles = StyleSheet.create({
   ruleTitle: { fontSize: 14, fontWeight: '600', color: colors.charcoal },
   ruleNote: { fontSize: 12, lineHeight: 18, color: colors.muted },
   usage: { fontSize: 13, color: colors.charcoalSoft },
-  message: { fontSize: 12, color: colors.success },
+  message: { fontSize: 12, lineHeight: 19, color: colors.charcoalSoft },
 });

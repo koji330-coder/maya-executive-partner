@@ -59,32 +59,44 @@ export interface GenerateResult {
 }
 
 function describeHttpError(status: number, body: unknown): LlmError {
-  const message =
+  const error =
     typeof body === 'object' && body !== null && 'error' in body
-      ? String((body as { error?: { message?: string } }).error?.message ?? '')
-      : '';
+      ? (body as { error?: { message?: string; status?: string } }).error
+      : undefined;
+  const message = String(error?.message ?? '');
+  // Google's own wording, trimmed. An opaque "something went wrong" hides
+  // whether the key is rejected, the quota is spent, or the service is down,
+  // and the user is the only one who can see this screen.
+  const detail = message ? `（${error?.status ?? status}: ${message.slice(0, 160)}）` : `（HTTP ${status}）`;
 
   if (status === 400 && /api key/i.test(message)) {
-    return new LlmError('auth', 'APIキーが正しくありません。設定を確認してください。', status);
+    return new LlmError('auth', `APIキーが正しくありません。設定を確認してください。${detail}`, status);
   }
   if (status === 401 || status === 403) {
     return new LlmError(
       'auth',
-      'APIキーが拒否されました。キーの状態と、プロジェクトの利用条件を確認してください。',
+      `APIキーが拒否されました。キーの状態と、プロジェクトの利用条件を確認してください。${detail}`,
       status,
     );
   }
   if (status === 429) {
     return new LlmError(
       'rate_limit',
-      '無料枠の上限に達しました。しばらく待つか、設定で有料キーへの切り替えを許可してください。',
+      `無料枠の上限に達しました。しばらく待つか、設定で有料キーへの切り替えを許可してください。${detail}`,
       status,
     );
   }
-  if (status >= 500) {
-    return new LlmError('server', 'モデル側で問題が起きています。少し待ってからもう一度お試しください。', status);
+  if (status === 503) {
+    return new LlmError('server', `モデルが混み合っています。少し待ってお試しください。${detail}`, status);
   }
-  return new LlmError('unknown', message || `応答を取得できませんでした（HTTP ${status}）。`, status);
+  if (status >= 500) {
+    return new LlmError(
+      'server',
+      `モデル側が応答を返せませんでした。${detail}`,
+      status,
+    );
+  }
+  return new LlmError('unknown', `応答を取得できませんでした。${detail}`, status);
 }
 
 /**
@@ -172,4 +184,39 @@ export async function generateMayaResponse(options: GenerateOptions): Promise<Ge
     responseTokens: usage.candidatesTokenCount ?? 0,
     totalTokens: usage.totalTokenCount ?? 0,
   };
+}
+
+export interface KeyCheckResult {
+  ok: boolean;
+  detail: string;
+}
+
+/**
+ * The smallest real call that proves a key works.
+ *
+ * A key can be present and still be refused, out of quota, or attached to a
+ * project without access. Finding that out by composing a consultation and
+ * watching it fail is a poor way to learn it, so this asks the model for one
+ * word and reports what came back.
+ */
+export async function checkApiKey(apiKey: string, model = DEFAULT_MODEL): Promise<KeyCheckResult> {
+  try {
+    const response = await fetch(`${ENDPOINT}/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'x-goog-api-key': apiKey, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: 'ok とだけ返してください。' }] }],
+        generationConfig: { maxOutputTokens: 16, temperature: 0 },
+      }),
+    });
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = describeHttpError(response.status, body);
+      return { ok: false, detail: error.message };
+    }
+    const usage = (body as { usageMetadata?: { totalTokenCount?: number } })?.usageMetadata;
+    return { ok: true, detail: `疎通しました（${model} / ${usage?.totalTokenCount ?? 0} トークン）。` };
+  } catch {
+    return { ok: false, detail: '通信できませんでした。接続を確認してください。' };
+  }
 }
