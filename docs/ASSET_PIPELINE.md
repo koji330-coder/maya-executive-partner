@@ -86,19 +86,27 @@ frames, which `PlaceholderMaya` already does.
 
 ### Eyes — every expression
 
-Three frames per expression: `open`, `half`, `closed`.
-`docs/ACCEPTANCE_CRITERIA.md` requires blinking whenever MAYA is on screen, and
-any expression can persist on screen, so none can be missing.
+One blink variant per expression. `docs/ACCEPTANCE_CRITERIA.md` requires blinking
+whenever MAYA is on screen, and any expression can persist on screen, so none can
+be missing.
+
+`EyeState` keeps `open | half | closed`, but v0.1 ships only the two states the
+proven pipeline has. The asset resolver maps `half` to the nearest available
+frame. A mid frame is one extra generation per expression if it turns out to be
+needed.
 
 ### Mouth — core expressions only
 
-Three frames (`closed`, `small`, `open`) for `neutral`, `smile`, `serious` and
-`challenge`.
+One open variant for `neutral`, `smile`, `serious` and `challenge`.
 
 `docs/MAYA_CHARACTER_BIBLE.md` §5 uses voice selectively: greetings, strong
 warnings, strong disagreement and meaningful praise. Those land on the four
-expressions above. The remaining five never play a clip, so they only need a
-resting mouth, which is already part of the expression image.
+expressions above. The remaining five never play a clip, so they only need the
+resting mouth already in the expression image.
+
+`MouthState` keeps `closed | small | open`, and the resolver maps `small` the same
+way. With two states, `LipSyncController` runs on a single threshold: set
+`smallThreshold` equal to `openThreshold`.
 
 ### Scenes — 5 background plates
 
@@ -171,12 +179,19 @@ is not negotiable.
 `assets/reference/maya-safe-zone-diagram.png` marks the zones on the current
 reference.
 
-| Set | Count |
-| --- | --- |
-| Generated cut-outs | 9 |
-| Generated scene plates | 5 |
-| Derived eye frames | 27 |
-| Derived mouth frames | 12 |
+Nothing is derived geometrically, so every frame below is a generation except the
+fourth state of each expression, which is composited from the other three.
+
+| Set | Count | 残り |
+| --- | --- | --- |
+| Expression cut-outs | 9 | 8（`neutral` は採用済み） |
+| Blink variants | 9 | 9 |
+| Mouth-open variants | 4 | 4 |
+| Scene plates | 5 | 5 |
+| Composited, not generated | 9 | — |
+
+`neutral` already has a blink and an open mouth, but they were generated with
+`lite` at 896x1200. They are regenerated with the rest at production settings.
 
 ## 6. Format and framing
 
