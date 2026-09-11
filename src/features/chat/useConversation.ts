@@ -4,6 +4,13 @@ import type { CharacterRuntime } from '@/features/character';
 import type { ApiTier } from '@/services/llm/apiKey';
 import { LlmError, type ChatExchange } from '@/services/llm/geminiClient';
 
+import {
+  createConversation,
+  listConversations,
+  loadMessages,
+  saveMayaMessage,
+  saveUserMessage,
+} from './conversationRepository';
 import type { MayaResponse } from './mayaResponse';
 import { MockResponderError } from './mockResponder';
 import { ask } from './responder';
@@ -87,10 +94,55 @@ export function useConversation({
 
   const waitingRef = useRef(false);
   const abort = useRef<AbortController | null>(null);
+  // One conversation per app session. Phase 5 can let the user pick an older one.
+  const conversationId = useRef(`conv-${Date.now()}`);
+  const started = useRef(false);
   const turnsRef = useRef<Turn[]>([]);
   turnsRef.current = state.turns;
 
   useEffect(() => () => abort.current?.abort(), []);
+
+  // Reopen the most recent conversation so closing the app does not lose it.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const recent = await listConversations(1);
+      const latest = recent[0];
+      if (!latest || cancelled) {
+        return;
+      }
+      const messages = await loadMessages(latest.id);
+      if (cancelled || messages.length === 0) {
+        return;
+      }
+      conversationId.current = latest.id;
+      started.current = true;
+      const turns: Turn[] = messages.map((message) =>
+        message.role === 'user'
+          ? { id: message.id, role: 'user', text: message.text, at: Date.parse(message.createdAt) }
+          : {
+              id: message.id,
+              role: 'maya',
+              at: Date.parse(message.createdAt),
+              // Only what was stored. The reply is shown again, not replayed.
+              response: {
+                message: message.text,
+                emotion: (message.emotion ?? 'neutral') as MayaResponse['emotion'],
+                pose: (message.pose ?? 'default') as MayaResponse['pose'],
+                scene: (message.scene ?? 'work') as MayaResponse['scene'],
+                voice: { shouldPlay: false },
+              },
+              warnings: [],
+              source: 'mock',
+            },
+      );
+      const lastMaya = [...turns].reverse().find((turn): turn is MayaTurn => turn.role === 'maya');
+      setState((current) => ({ ...current, turns, latest: lastMaya ?? null }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setDraft = useCallback((draft: string) => {
     setState((current) => ({ ...current, draft }));
@@ -109,6 +161,12 @@ export function useConversation({
       runtime.beginThinking();
 
       const userTurn: UserTurn = { id: turnId('user'), role: 'user', text, at: Date.now() };
+      if (!started.current) {
+        started.current = true;
+        // The opening question names the conversation; it is what it was about.
+        void createConversation(conversationId.current, text.slice(0, 40));
+      }
+      void saveUserMessage(conversationId.current, userTurn.id, text);
       setState((current) => ({
         ...current,
         turns: [...current.turns, userTurn],
@@ -153,6 +211,7 @@ export function useConversation({
           source: reply.source,
         };
         waitingRef.current = false;
+        void saveMayaMessage(conversationId.current, turn.id, reply.response);
         setState((current) => ({
           ...current,
           turns: [...current.turns, turn],

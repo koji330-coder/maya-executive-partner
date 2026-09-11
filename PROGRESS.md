@@ -96,6 +96,22 @@ Two things worth keeping in mind:
   looked like it worked. Failures now say so on screen, which matters more on a
   device than in the web preview.
 
+### 会話の保存（Phase 2 の積み残し）
+
+`docs/DATA_MODEL.md` が定義し migration が作っていた `cached_conversations` と
+`cached_messages` に、どこからも書いていませんでした。相談はすべてメモリ上だけで、
+アプリを閉じると消えていました。表だけ用意して使っていない状態です。
+
+- 発言とMAYAの応答を保存する。応答は emotion / pose / scene / voice_key も残す
+- 起動時に直近の会話を読み戻す
+- 設定画面から全文を書き出して共有できる。表情とポーズ付きで出る
+
+書き出しを付けたのは、MAYAの口調が狙いどおりか見直すのに、会話の実物が要るから
+です。端末の中だけにあると、誰も読み返せません。
+
+保存は best effort です。保存に失敗しても相談は相談なので、書き込みの失敗が
+会話を止めることはありません。
+
 ## Verification
 
 - 55 unit tests pass (state machine, blink timing, lip sync thresholds, clip manifest, audio lifecycle, Today greeting, response validation, mock responder, company context).

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
+import { exportTranscript, listConversations } from '@/features/chat/conversationRepository';
 import { ApiKeySection } from '@/features/settings/ApiKeySection';
 import { apiBaseUrl, appEnv, isApiConfigured } from '@/services/api/config';
 import { initializeDatabase, LATEST_SCHEMA_VERSION, type DatabaseStatus } from '@/services/storage';
@@ -9,6 +10,8 @@ import { colors, radius, spacing } from '@/theme';
 /** Phase 1 settings screen: environment and local-storage diagnostics. */
 export default function SettingsScreen() {
   const [status, setStatus] = useState<DatabaseStatus>({ state: 'idle' });
+  const [conversationCount, setConversationCount] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -22,12 +25,57 @@ export default function SettingsScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const conversations = await listConversations(100);
+      if (!cancelled) {
+        setConversationCount(conversations.length);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onExport = async () => {
+    setExporting(true);
+    try {
+      const text = await exportTranscript();
+      await Share.share({ message: text });
+    } catch {
+      /* the user dismissed the sheet, or there was nothing to send */
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <Section title="ローカル保存">
         <Row label="状態" value={describeStatus(status)} />
         <Row label="スキーマ" value={`v${LATEST_SCHEMA_VERSION}`} />
       </Section>
+
+      <Section title="会話の記録">
+        <Row
+          label="保存された相談"
+          value={conversationCount === null ? '読み込み中…' : `${conversationCount}件`}
+        />
+      </Section>
+      <Pressable
+        accessibilityRole="button"
+        disabled={exporting || conversationCount === 0}
+        onPress={() => void onExport()}
+        style={[styles.export, (exporting || conversationCount === 0) && styles.exportDisabled]}
+      >
+        <Text style={styles.exportText}>
+          {exporting ? '書き出しています…' : '会話を書き出して共有'}
+        </Text>
+      </Pressable>
+      <Text style={styles.note}>
+        MAYAの応答が狙いどおりか見直すために、会話の全文を書き出せます。表情とポーズも一緒に出ます。
+      </Text>
 
       <ApiKeySection />
 
@@ -126,4 +174,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.muted,
   },
+  export: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 4,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.ivory,
+  },
+  exportDisabled: { opacity: 0.4 },
+  exportText: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
 });
