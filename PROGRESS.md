@@ -60,4 +60,17 @@ frames derived.
 
 - Reference image rebuild. The crops taken from the design sheet are too coarse to lock identity for production generation: the face is 287x412 and each expression panel is about 130px wide. The design sheet also has hands on the cheek in every panel and hair crossing the eyes, neither of which survives cut-out and eye-frame derivation. `docs/REFERENCE_IMAGE_REQUEST.md` is the request for a purpose-built replacement set, and `assets/reference/maya-safe-zone-diagram.png` is its spec attachment: the eye and mouth regions the derivation step replaces, marked on the current reference. The constraint is local to those two regions so the artwork keeps its richness everywhere else.
 - Image asset production, starting with the `emotion_neutral` master. Blocked on the reference rebuild.
+
+### Reference rebuild status
+
+First candidate for the front neutral master received and reviewed
+(`assets/reference/candidates/`). One revision requested: a bang crosses the
+viewer-left eyebrow and reaches the upper lid, so the eye safe zone fails.
+Everything else passes, including a measured-uniform background and a clear mouth
+safe zone.
+
+The matte test on that candidate settled an open question. Alpha keyed off the
+flat background and composited over a warm plate keeps fine flyaway strands with
+no grey halo, so the cut-out plus scene-plate model is confirmed on real output
+and the hair needs no simplification.
 - Phase 2 — Local conversation prototype: chat composer, mocked `MayaResponse` payloads, visual state driven by response JSON, Decisions UI with local mocked records.

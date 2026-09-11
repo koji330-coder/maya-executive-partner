@@ -1,0 +1,48 @@
+{
+  "rounds": [
+    {
+      "round": "reference",
+      "purpose": "Rebuild the identity reference before production generation.",
+      "assets": [
+        {
+          "asset": "neutral-a-01.png",
+          "target": "A — front neutral master",
+          "status": "revision_requested",
+          "size": [1086, 1448],
+          "scores": {
+            "face_identity": 9,
+            "hair_consistency": 9,
+            "age_consistency": 9,
+            "eye_consistency": 9,
+            "visual_style": 8,
+            "brand_fit": 8,
+            "anatomy_quality": 9,
+            "ios_usability": 7
+          },
+          "passed": [
+            "Single cut, not a contact sheet.",
+            "Background measured at 139,139,138 and uniform across every sampled patch.",
+            "Mouth safe zone clear: mouth closed, no hair, no hand, no hard shadow.",
+            "Both eyes fully open.",
+            "Hands out of frame.",
+            "No text anywhere.",
+            "Detail outside the safe zones matches the design sheet."
+          ],
+          "failed": [
+            "Eye safe zone: a bang crosses the viewer-left eyebrow and reaches the upper lid. The brow is fully occluded. The viewer-right brow is correct."
+          ],
+          "matte_test": {
+            "method": "Alpha from distance to the flat background colour, threshold 34, unpremultiplied to de-spill, composited over a warm cream plate.",
+            "result": "pass",
+            "notes": "Flyaway strands survive matting without a grey halo. The earlier concern about fine strands is resolved by the flat background. Hair needs no change. This validates the cut-out plus scene-plate composition model on real output."
+          },
+          "open_questions": [
+            "Neckline is more open than the buttoned blouse in the wardrobe reference. Decide whether to align the wardrobe.",
+            "Rendering reads slightly more photoreal and glossier than the 2.5D design sheet."
+          ],
+          "next": "Localised fix of the left bang only. Full regeneration is a fallback, not the preference."
+        }
+      ]
+    }
+  ]
+}
