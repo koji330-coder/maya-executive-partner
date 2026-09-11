@@ -55,7 +55,10 @@ that the response contract produces a screen worth looking at. Each screen carri
 what already runs and what is still to build, which keeps it honest as the phases
 land.
 
-The first scene plate is in `assets/maya/scenes/scene_work.webp`. Four remain.
+The first scene plate is in `assets/maya/scenes/scene_work.webp`. Four remain, and
+`docs/SCENE_PLATE_REQUEST.md` is the pasteable request for them. It carries the
+`work` plate as the reference, because the five have to read as one room at
+different hours rather than five different places.
 
 ## Image asset requirements — confirmed
 
