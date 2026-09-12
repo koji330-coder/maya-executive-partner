@@ -10,8 +10,8 @@ const MOUTHS: MouthState[] = ['closed', 'small', 'open'];
 
 describe('expressionAssets', () => {
   it('has artwork for every emotion except wink', () => {
-    // wink is produced by holding one eye open and one closed, so a tenth
-    // master would be a generation for nothing (assets/maya/README.md).
+    // wink has no set of its own. It resolves to neutral's frames instead; the
+    // stage renders whatever resolveFrame returns rather than branching on this.
     expect(artworkEmotions().sort()).toEqual(ALL.filter((e) => e !== 'wink').sort());
     expect(hasArtwork('wink')).toBe(false);
   });
@@ -35,7 +35,12 @@ describe('expressionAssets', () => {
     }
   });
 
-  it('falls back to neutral for wink, which the renderer then splits', () => {
+  it('falls back to neutral for wink', () => {
+    // The original plan was to hold one eye open and one closed, which worked
+    // while eyes were their own layer. The pipeline composites whole frames and
+    // MayaArtwork takes a single eye value, so there is no eye left to close
+    // alone. Borrowing neutral loses the wink but keeps her on screen; a tenth
+    // master would restore it.
     expect(resolveFrame('wink', 'open', 'closed')).toBe(resolveFrame('neutral', 'open', 'closed'));
   });
 

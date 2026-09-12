@@ -3,9 +3,7 @@ import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { colors, isDarkScene, radius, sceneThemes, spacing } from '@/theme';
 
-import { hasArtwork } from './expressionAssets';
 import { MayaArtwork } from './MayaArtwork';
-import { PlaceholderMaya } from './placeholder/PlaceholderMaya';
 import { resolveScenePlate } from './sceneAssets';
 
 import type { CharacterRuntime } from './useCharacterRuntime';
@@ -176,7 +174,7 @@ function StageCharacter({
   eye: CharacterRuntime['eye'];
   mouth: CharacterRuntime['mouth'];
 }) {
-  const { emotion, pose, isSpeaking } = runtime.visualState;
+  const { emotion, pose } = runtime.visualState;
   const shared = {
     width,
     height,
@@ -187,11 +185,12 @@ function StageCharacter({
     breath: breathing.breath,
     idleSway: breathing.idleSway,
   };
-  return hasArtwork(emotion) ? (
-    <MayaArtwork {...shared} />
-  ) : (
-    <PlaceholderMaya {...shared} isSpeaking={isSpeaking} />
-  );
+  // `resolveFrame` is total: every emotion lands on a frame, `wink` included,
+  // because it falls back to neutral. Gating on `hasArtwork` instead sent `wink`
+  // to the placeholder, so a playful reply swapped MAYA for the crude shapes
+  // mid-conversation. `hasArtwork` still answers a different question — which
+  // emotions have a set of their own — and the developer controls use it.
+  return <MayaArtwork {...shared} />;
 }
 
 /** Three dots that fade in sequence. Deliberately not a spinner (docs/UX_SPEC.md §4). */

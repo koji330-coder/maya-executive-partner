@@ -114,19 +114,29 @@ Two things worth keeping in mind:
 
 ## Verification
 
-- 55 unit tests pass (state machine, blink timing, lip sync thresholds, clip manifest, audio lifecycle, Today greeting, response validation, mock responder, company context).
-- Typecheck and lint are clean.
-- `npx expo export --platform ios` bundles successfully (1183 modules).
+- 70 unit tests across 11 suites. Typecheck and lint are clean.
+- `npx expo export --platform ios` bundles successfully.
 - The app was run in a browser and checked visually: character renders, blinking runs, expression/pose/scene controls drive the character, the thinking caption appears, and the mouth opens during clip playback. The developer controls are absent from an export build, as `docs/ACCEPTANCE_CRITERIA.md` requires.
 
 ## Known issues and limitations
 
-- The character is a placeholder built from plain views. It is deliberately crude; the generated MAYA layers from `docs/ASSET_PIPELINE.md` are not in the repo yet.
-- No audio actually plays. `EnvelopeAudioEngine` drives lip sync from an amplitude envelope with no sound. Phase 6 swaps in an expo-audio implementation once the OmniVoice renders exist.
+- **No audio plays yet.** The six OmniVoice clips are in `assets/audio/fixed/`, but
+  `EnvelopeAudioEngine` is still the engine: it drives lip sync from an amplitude
+  envelope and makes no sound. Phase 6 swaps in expo-audio. The clips landing
+  unblocks that.
 - Lip sync reads a shipped amplitude envelope rather than the live audio stream. React Native cannot read PCM from a playing file without a heavy native dependency, so the amplitude track has to ship alongside each clip.
-- The composer on the Talk screen is present but disabled. Sending is wired up in Phase 2.
+- **`wink` has no master of its own** and borrows neutral's frames, so the wink
+  itself does not show. The plan to derive it by closing one eye died when the
+  pipeline moved to composited whole frames; `MayaArtwork` takes a single eye
+  value. A tenth master would restore it.
+- **Four scene plates are missing.** Only `scene_work.webp` exists;
+  `docs/SCENE_PLATE_REQUEST.md` is the request for the rest.
+- **The two expression sets are not at the same resolution.** `challenge` came
+  from a 2K generation and bundles at 1086x1448; `neutral` is the `lite` 1K
+  generation at 720x960. The app stretches both into the same box, so `neutral`
+  renders softer.
+- Decisions are still mocked records. `cached_decisions` exists but has no repository.
 - SQLite is not enabled for the web target. The web build exists for fast layout iteration only and reports the local cache as unavailable.
-- Only the settings key-value repository is implemented. The company / conversation / message / decision tables exist but have no repositories yet.
 - Animation was verified in a browser, not on an iPhone. The 60fps target in `docs/ACCEPTANCE_CRITERIA.md` is unverified on device.
 
 ## Finished-screen preview
@@ -157,8 +167,9 @@ Settled before any generation, and written into `docs/ASSET_PIPELINE.md` and
 - **Pose**: generated artwork for `default` only in v0.1. The union and the response contract are unchanged; the asset resolver falls back.
 - **References**: the design sheet is not fed to the generator because its baked text bleeds into output. Three text-free crops were cut from it for that purpose.
 
-Generation counts: 9 cut-outs and 5 plates generated, 27 eye frames and 12 mouth
-frames derived.
+Generated so far: 9 expression sets of four composited frames each, and one of
+the five scene plates. Nothing is derived geometrically — every frame is a
+generation composited through measured ellipse masks.
 
 ## Review tooling
 
