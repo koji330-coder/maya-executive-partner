@@ -6,3 +6,5 @@ export { LipSyncController, type LipSyncEngine } from './LipSyncController';
 export { CharacterStage } from './CharacterStage';
 export { DevExpressionControls } from './DevExpressionControls';
 export { useCharacterRuntime, type CharacterRuntime } from './useCharacterRuntime';
+export { useReactionSpotlight, deservesSpotlight, firstSentence } from './useReactionSpotlight';
+export type { StagePresentation } from './CharacterStage';

@@ -13,9 +13,15 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CharacterStage, DevExpressionControls, useCharacterRuntime } from '@/features/character';
+import {
+  CharacterStage,
+  DevExpressionControls,
+  useCharacterRuntime,
+  useReactionSpotlight,
+} from '@/features/character';
 import {
   AttachmentError,
   describeAttachment,
@@ -37,6 +43,9 @@ import { colors, radius, spacing } from '@/theme';
  */
 export default function TalkScreen() {
   const { height } = useWindowDimensions();
+  // Seeded from a home-screen opener. It fills the draft rather than sending:
+  // the president still gets to say what he actually means before it goes.
+  const { seed } = useLocalSearchParams<{ seed?: string }>();
   const insets = useSafeAreaInsets();
   const runtime = useCharacterRuntime({ initialState: { scene: 'work' } });
   const company = useCompanyProfile();
@@ -46,6 +55,17 @@ export default function TalkScreen() {
     companyIsReal: company.profile.isRealCompany,
   });
   const scroller = React.useRef<ScrollView>(null);
+
+  // Once per arrival. Re-seeding on every render would fight the president's
+  // own typing, and re-seeding on a back-navigation would overwrite a draft he
+  // left behind.
+  const seeded = React.useRef(false);
+  React.useEffect(() => {
+    if (seed && !seeded.current) {
+      seeded.current = true;
+      conversation.setDraft(seed);
+    }
+  }, [seed, conversation]);
 
   const [keyboardUp, setKeyboardUp] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
@@ -68,8 +88,20 @@ export default function TalkScreen() {
     };
   }, []);
 
-  const compact = keyboardUp || collapsed;
-  const stageHeight = compact ? COMPACT_STAGE : Math.round(height * 0.35);
+  // The mock has three resting sizes and one that only happens for a moment.
+  // With the keyboard up she moves to a small portrait beside the transcript
+  // instead of a full-width strip, which is what buys back the input room.
+  const portrait = keyboardUp || collapsed;
+  const base = portrait ? 'input' : 'chat';
+  const spotlight = useReactionSpotlight(conversation.latest?.response ?? null, base, {
+    // Never steal the screen while the president is mid-sentence.
+    enabled: !keyboardUp,
+  });
+  const stageHeight = spotlight.active
+    ? Math.round(height * 0.44)
+    : portrait
+      ? PORTRAIT_STAGE
+      : Math.round(height * 0.32);
   const canSend =
     (conversation.draft.trim().length > 0 || conversation.attachments.length > 0) &&
     !conversation.waiting;
@@ -117,17 +149,37 @@ export default function TalkScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={insets.bottom}
     >
-      <View style={{ paddingTop: insets.top }}>
-        <CharacterStage runtime={runtime} height={stageHeight} compact={compact} />
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <Text style={styles.headerTitle}>MAYA</Text>
+      </View>
+
+      <View style={portrait && !spotlight.active ? styles.portraitRow : undefined}>
+        <CharacterStage
+          runtime={runtime}
+          height={stageHeight}
+          presentation={spotlight.presentation}
+          rounded={portrait && !spotlight.active ? radius.lg : undefined}
+          style={portrait && !spotlight.active ? styles.portrait : undefined}
+        />
+        {spotlight.line ? (
+          <View style={styles.bubble} pointerEvents="none">
+            <Text style={styles.bubbleText}>{spotlight.line}</Text>
+          </View>
+        ) : null}
+        {portrait && !spotlight.active ? (
+          <Text style={styles.portraitHint} numberOfLines={2}>
+            {conversation.waiting ? '考えています…' : '入力を待っています…'}
+          </Text>
+        ) : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={compact ? 'MAYAを大きく表示' : 'MAYAを小さく表示'}
+          accessibilityLabel={portrait ? 'MAYAを大きく表示' : 'MAYAを小さく表示'}
           onPress={toggleStage}
           hitSlop={10}
           style={styles.stageToggle}
         >
           <Ionicons
-            name={compact ? 'chevron-down' : 'chevron-up'}
+            name={portrait ? 'chevron-down' : 'chevron-up'}
             size={16}
             color={colors.charcoalSoft}
           />
@@ -254,9 +306,57 @@ export default function TalkScreen() {
 }
 
 /** Tall enough for her face, short enough to leave ten lines with the keyboard up. */
-const COMPACT_STAGE = 88;
+const PORTRAIT_STAGE = 88;
 
 const styles = StyleSheet.create({
+  header: {
+    backgroundColor: colors.ivory,
+    alignItems: 'center',
+    paddingBottom: spacing.xs,
+  },
+  headerTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 2,
+    color: colors.charcoal,
+  },
+  // Keyboard up: she sits in a small rounded frame on the left, the way the
+  // mock does it, instead of a full-width strip. Same height, far less width,
+  // so the transcript beside her stays readable.
+  portraitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.ivory,
+  },
+  portrait: {
+    width: PORTRAIT_STAGE,
+    overflow: 'hidden',
+  },
+  portraitHint: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.charcoalSoft,
+  },
+  // Floats over her while she is enlarged. The full reply is in the transcript
+  // below; this is the one line she would say out loud.
+  bubble: {
+    position: 'absolute',
+    left: spacing.md,
+    top: spacing.md,
+    maxWidth: '62%',
+    backgroundColor: colors.ivory,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  bubbleText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.charcoal,
+  },
   stageToggle: {
     position: 'absolute',
     right: spacing.sm,

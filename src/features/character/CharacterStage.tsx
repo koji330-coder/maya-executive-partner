@@ -15,26 +15,42 @@ export interface CharacterStageProps {
   height: number;
   /** Shows the "考えています…" caption while MAYA is thinking. */
   showStatus?: boolean;
-  /**
-   * Crops to the face instead of showing the whole figure.
-   *
-   * With the keyboard up, the full stage leaves about three lines of
-   * conversation on a 844pt screen, which is unusable. Shrinking the stage on
-   * its own would scale her down to a thumbnail; cropping keeps the face, and
-   * the face is what carries the expression.
-   */
-  compact?: boolean;
+  /** How much of her the moment calls for. See `CROPS`. */
+  presentation?: StagePresentation;
+  /** Rounds the stage and clips it, for the small portrait beside the input. */
+  rounded?: number;
   style?: ViewStyle;
 }
 
 /**
- * Where the head sits in the artwork, as a fraction of image height.
+ * The four ways MAYA appears, from the screen mock.
  *
- * Measured from the mask work: eyes land around 27-29%, the mouth at 40%. The
- * band below leaves room for the chin and shoulders.
+ * She is one bust-up cut-out; what changes between these is how much of it the
+ * frame keeps. That is the whole animation budget: enlarging her for one reply
+ * and letting her settle back reads as a reaction without a second drawing.
  */
-const FACE_TOP = 0.06;
-const FACE_BOTTOM = 0.56;
+export type StagePresentation = 'hero' | 'chat' | 'input' | 'reaction';
+
+/**
+ * The band of the artwork each presentation keeps, as a fraction of image
+ * height. Eyes land around 27-29% and the mouth at 40%, measured from the mask
+ * work, so every crop but `hero` keeps that range well inside it.
+ */
+const CROPS: Record<StagePresentation, { top: number; bottom: number }> = {
+  // The whole figure, standing in the room. Home screen only.
+  hero: { top: 0.0, bottom: 1.0 },
+  // Head and shoulders. Enough presence to be listened to, short enough to
+  // leave the conversation the rest of the screen.
+  chat: { top: 0.02, bottom: 0.68 },
+  // Just the face. With the keyboard up the full stage leaves about three
+  // lines of conversation on an 844pt screen, which is unusable. Shrinking her
+  // instead of cropping would make a thumbnail of the whole figure, and the
+  // face is what carries the expression.
+  input: { top: 0.04, bottom: 0.44 },
+  // Bigger than `chat` and tighter than `hero`: she has come closer to say
+  // something that matters.
+  reaction: { top: 0.0, bottom: 0.58 },
+};
 
 /** The plates are drawn 3:4 portrait (docs/ASSET_PIPELINE.md §7). */
 const PLATE_ASPECT = 4 / 3;
@@ -50,7 +66,8 @@ export function CharacterStage({
   runtime,
   height,
   showStatus = true,
-  compact = false,
+  presentation = 'chat',
+  rounded,
   style,
 }: CharacterStageProps) {
   const { visualState, eye, mouth, breathing } = runtime;
@@ -59,18 +76,26 @@ export function CharacterStage({
   const [stageWidth, setStageWidth] = React.useState(0);
   const plate = resolveScenePlate(visualState.scene);
 
-  // Full: the figure stands in the room, anchored at the floor.
-  // Compact: the face band fills the strip, so the rest is clipped away.
-  const characterHeight = compact ? height / (FACE_BOTTOM - FACE_TOP) : height * 0.92;
+  // Scale the artwork so the kept band exactly fills the stage, then slide it
+  // up so that band starts at the top. `hero` keeps everything, so it reduces
+  // to the figure standing on the floor of the frame.
+  const crop = CROPS[presentation];
+  const hero = presentation === 'hero';
+  const characterHeight = hero ? height * 0.92 : height / (crop.bottom - crop.top);
   const characterWidth = Math.min(
-    compact ? Number.POSITIVE_INFINITY : stageWidth * 0.9,
+    hero ? stageWidth * 0.9 : Number.POSITIVE_INFINITY,
     characterHeight * 0.78,
   );
-  const characterTop = compact ? -characterHeight * FACE_TOP : height - characterHeight;
+  const characterTop = hero ? height - characterHeight : -characterHeight * crop.top;
 
   return (
     <View
-      style={[styles.root, { height, backgroundColor: scene.backgroundBottom }, style]}
+      style={[
+        styles.root,
+        { height, backgroundColor: scene.backgroundBottom },
+        rounded === undefined ? null : { borderRadius: rounded },
+        style,
+      ]}
       onLayout={(event) => setStageWidth(event.nativeEvent.layout.width)}
     >
       {plate ? (
@@ -84,7 +109,7 @@ export function CharacterStage({
           style={[
             styles.plate,
             { height: stageWidth > 0 ? stageWidth * PLATE_ASPECT : '100%' },
-            compact ? styles.plateTop : styles.plateBottom,
+            hero ? styles.plateBottom : styles.plateTop,
           ]}
           resizeMode="cover"
         />
@@ -117,7 +142,7 @@ export function CharacterStage({
         <View
           style={[
             styles.status,
-            compact && styles.statusCompact,
+            presentation !== 'hero' && styles.statusCompact,
             { backgroundColor: dark ? '#00000055' : '#FFFFFFCC' },
           ]}
         >

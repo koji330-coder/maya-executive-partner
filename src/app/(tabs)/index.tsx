@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -9,9 +9,36 @@ import { CharacterStage, useCharacterRuntime } from '@/features/character';
 import { getTodayGreeting } from '@/features/today/greeting';
 import { colors, radius, spacing } from '@/theme';
 
+/**
+ * Quick ways in, from the screen mock.
+ *
+ * The point of putting these on the home screen is that a president opening the
+ * app at 7am has not yet decided what to ask. A blank input asks him to; these
+ * ask him to pick. Each one seeds the conversation rather than opening an empty
+ * screen.
+ *
+ * UNDECIDED: the mock also shows スケジュール確認 and 資料の整理. Both need
+ * capabilities `README.md` puts outside v0.1, so they are not here yet.
+ */
+const OPENERS: { label: string; icon: keyof typeof Ionicons.glyphMap; seed: string }[] = [
+  { label: '相談する', icon: 'chatbubble-ellipses-outline', seed: '' },
+  {
+    label: '数字を見てほしい',
+    icon: 'stats-chart-outline',
+    seed: '今月の数字を見てほしい。',
+  },
+  {
+    label: '決めきれていない話がある',
+    icon: 'help-circle-outline',
+    seed: '決めきれていないことがある。',
+  },
+  { label: '雑談する', icon: 'cafe-outline', seed: 'ちょっと雑談したい。' },
+];
+
 /** Today screen — docs/UX_SPEC.md §2. Makes MAYA present before any chat starts. */
 export default function TodayScreen() {
   const router = useRouter();
+  const { height } = useWindowDimensions();
   const greeting = useMemo(() => getTodayGreeting(), []);
   const runtime = useCharacterRuntime({
     initialState: { scene: greeting.scene, emotion: 'smile' },
@@ -38,20 +65,34 @@ export default function TodayScreen() {
         </Link>
       </View>
 
-      <CharacterStage runtime={runtime} height={320} showStatus={false} />
+      {/* The one screen that shows the whole figure. Everywhere else crops to
+          her face, so this is where the room and the silhouette register. */}
+      <CharacterStage
+        runtime={runtime}
+        height={Math.round(height * 0.52)}
+        presentation="hero"
+        showStatus={false}
+      />
 
       <View style={styles.body}>
         <Text style={styles.greeting}>{greeting.greeting}</Text>
         <Text style={styles.prompt}>{greeting.prompt}</Text>
 
-        <Pressable
-          accessibilityRole="button"
-          style={styles.cta}
-          onPress={() => router.push('/talk')}
-        >
-          <Text style={styles.ctaText}>MAYAに相談する</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.ivory} />
-        </Pressable>
+        <View style={styles.openers}>
+          {OPENERS.map((opener) => (
+            <Pressable
+              key={opener.label}
+              accessibilityRole="button"
+              style={styles.opener}
+              onPress={() =>
+                router.push(opener.seed ? `/talk?seed=${encodeURIComponent(opener.seed)}` : '/talk')
+              }
+            >
+              <Ionicons name={opener.icon} size={18} color={colors.gold} />
+              <Text style={styles.openerText}>{opener.label}</Text>
+            </Pressable>
+          ))}
+        </View>
 
         <EmptyState
           title="未決の判断"
@@ -89,18 +130,21 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     color: colors.charcoalSoft,
   },
-  cta: {
+  openers: {
+    gap: spacing.sm,
+  },
+  opener: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.ivory,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
   },
-  ctaText: {
-    color: colors.ivory,
-    fontSize: 16,
-    fontWeight: '600',
+  openerText: {
+    color: colors.charcoal,
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
