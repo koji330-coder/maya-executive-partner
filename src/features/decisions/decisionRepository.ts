@@ -1,4 +1,5 @@
 import type { DecisionContext } from '@/features/chat/systemPrompt';
+import { ServerError, serverRequest, usingServer } from '@/services/api/server';
 import { openDatabase } from '@/services/storage';
 
 import {
@@ -17,6 +18,14 @@ export { RECALL_LIMIT, toDecisionContext } from './types';
 
 /**
  * Decision persistence.
+ *
+ * On the phone's SQLite, or on the MAYA server's D1 when a server address is set
+ * (`src/services/api/server.ts`). Screens call the same functions either way.
+ *
+ * On the server, list reads throw instead of returning an empty list. An empty
+ * Decisions screen during an outage would look exactly like having no decisions,
+ * which is the same false reassurance as the old save button that said 保存しました
+ * and stored nothing.
  *
  * `company_id` is `'current'` for the same reason it is in the conversation
  * repository: v0.1 has one company per device, and the column exists so a
@@ -48,6 +57,13 @@ export async function saveDecision({
   conversationId,
   sourceMessageId,
 }: SaveDecisionInput): Promise<string> {
+  if (await usingServer()) {
+    const { id } = await serverRequest<{ id: string }>('/v1/decisions', {
+      method: 'POST',
+      body: { draft, conversationId, sourceMessageId },
+    });
+    return id;
+  }
   const db = await openDatabase();
   const now = new Date().toISOString();
   const decisionId = newId('decision');
@@ -90,6 +106,10 @@ export async function saveDecision({
 
 /** Newest first. Each decision carries at most one action in v0.1. */
 export async function listDecisions(): Promise<DecisionRecord[]> {
+  if (await usingServer()) {
+    const { decisions } = await serverRequest<{ decisions: DecisionRecord[] }>('/v1/decisions');
+    return decisions;
+  }
   try {
     const db = await openDatabase();
     const rows = await db.getAllAsync<DecisionRow>(
@@ -110,6 +130,10 @@ export async function listDecisions(): Promise<DecisionRecord[]> {
 }
 
 export async function setDecisionStatus(id: string, status: DecisionStatus): Promise<void> {
+  if (await usingServer()) {
+    await serverRequest(`/v1/decisions/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status } });
+    return;
+  }
   const db = await openDatabase();
   await db.runAsync(
     'UPDATE cached_decisions SET status = ?, updated_at = ? WHERE id = ?;',
@@ -120,6 +144,10 @@ export async function setDecisionStatus(id: string, status: DecisionStatus): Pro
 }
 
 export async function setActionStatus(id: string, status: ActionStatus): Promise<void> {
+  if (await usingServer()) {
+    await serverRequest(`/v1/actions/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status } });
+    return;
+  }
   const db = await openDatabase();
   await db.runAsync(
     'UPDATE cached_actions SET status = ?, updated_at = ? WHERE id = ?;',
@@ -131,6 +159,19 @@ export async function setActionStatus(id: string, status: ActionStatus): Promise
 
 /** Replies in a conversation that already have a saved decision. */
 export async function savedSourceMessages(conversationId: string): Promise<Set<string>> {
+  if (await usingServer()) {
+    try {
+      const { messageIds } = await serverRequest<{ messageIds: string[] }>(
+        `/v1/decisions/saved?conversationId=${encodeURIComponent(conversationId)}`,
+      );
+      return new Set(messageIds);
+    } catch (error) {
+      // Only the save button's state depends on this. A conversation should
+      // still open when the server is down.
+      if (error instanceof ServerError) return new Set();
+      throw error;
+    }
+  }
   try {
     const db = await openDatabase();
     const rows = await db.getAllAsync<{ id: string }>(
@@ -152,6 +193,11 @@ export async function savedSourceMessages(conversationId: string): Promise<Set<s
  * nothing rather than failing the send.
  */
 export async function loadDecisionsForPrompt(limit = RECALL_LIMIT): Promise<DecisionContext[]> {
+  // The server reads decisions from its own database when it builds the prompt.
+  // The phone's copy is not sent, so it is not read either.
+  if (await usingServer()) {
+    return [];
+  }
   try {
     const db = await openDatabase();
     const rows = await db.getAllAsync<DecisionRow>(

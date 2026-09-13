@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-nati
 
 import { exportTranscript, listConversations } from '@/features/chat/conversationRepository';
 import { ApiKeySection } from '@/features/settings/ApiKeySection';
+import { ServerSection } from '@/features/settings/ServerSection';
 import { apiBaseUrl, appEnv, isApiConfigured } from '@/services/api/config';
 import { initializeDatabase, LATEST_SCHEMA_VERSION, type DatabaseStatus } from '@/services/storage';
 import { colors, radius, spacing } from '@/theme';
@@ -52,6 +53,9 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
+      {/* First, because it decides whether the key section below is used at all. */}
+      <ServerSection />
+
       <Section title="ローカル保存">
         <Row label="状態" value={describeStatus(status)} />
         <Row label="スキーマ" value={`v${LATEST_SCHEMA_VERSION}`} />
@@ -85,8 +89,8 @@ export default function SettingsScreen() {
       </Section>
 
       <Text style={styles.note}>
-        アプリにAPIキーは同梱していません。上で登録した利用者自身のキーを端末のキーチェーンから
-        読み出し、Googleへ直接送っています。配布する場合はバックエンド経由へ変える必要があります。
+        アプリにAPIキーは同梱していません。MAYAサーバーを使わないときだけ、上で登録したキーを端末の
+        キーチェーンから読み出し、Googleへ直接送ります。サーバーを使うときは、キーはサーバー側にあります。
       </Text>
     </ScrollView>
   );

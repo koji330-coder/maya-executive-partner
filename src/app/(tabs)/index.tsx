@@ -8,6 +8,7 @@ import { CharacterStage, useCharacterRuntime } from '@/features/character';
 import { listDecisions } from '@/features/decisions/decisionRepository';
 import type { DecisionRecord } from '@/features/decisions/types';
 import { getTodayGreeting } from '@/features/today/greeting';
+import { errorText } from '@/services/api/errorText';
 import { colors, radius, spacing } from '@/theme';
 
 /**
@@ -44,9 +45,15 @@ export default function TodayScreen() {
   // What is still open. Completed decisions are history, not something to act on
   // this morning, so they stay on the Decisions screen and off the home screen.
   const [open, setOpen] = React.useState<DecisionRecord[]>([]);
+  const [openError, setOpenError] = React.useState<string | null>(null);
   useFocusEffect(
     React.useCallback(() => {
-      void listDecisions().then((all) => setOpen(all.filter((d) => d.status !== 'completed')));
+      listDecisions()
+        .then((all) => {
+          setOpen(all.filter((d) => d.status !== 'completed'));
+          setOpenError(null);
+        })
+        .catch((error: unknown) => setOpenError(errorText(error, '判断を読み込めませんでした。')));
     }, []),
   );
 
@@ -113,7 +120,9 @@ export default function TodayScreen() {
               </Pressable>
             ) : null}
           </View>
-          {open.length === 0 ? (
+          {openError ? (
+            <Text style={styles.pendingError}>{openError}</Text>
+          ) : open.length === 0 ? (
             <Text style={styles.pendingEmpty}>
               まだありません。相談の中で決めたことを保存すると、ここに並びます。
             </Text>
@@ -187,6 +196,11 @@ const styles = StyleSheet.create({
   pendingLink: {
     fontSize: 13,
     color: colors.gold,
+  },
+  pendingError: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.danger,
   },
   pendingEmpty: {
     fontSize: 13,

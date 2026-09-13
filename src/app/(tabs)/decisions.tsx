@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -14,6 +14,7 @@ import {
   type DecisionRecord,
   type DecisionStatus,
 } from '@/features/decisions/types';
+import { errorText } from '@/services/api/errorText';
 import { colors, radius, spacing } from '@/theme';
 
 /**
@@ -25,9 +26,22 @@ import { colors, radius, spacing } from '@/theme';
  */
 export default function DecisionsScreen() {
   const [decisions, setDecisions] = React.useState<DecisionRecord[] | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
   const reload = React.useCallback(() => {
-    void listDecisions().then(setDecisions);
+    listDecisions()
+      .then((list) => {
+        setDecisions(list);
+        setLoadError(null);
+      })
+      .catch((error: unknown) => {
+        // Not an empty list: an outage must not look like having no decisions.
+        setLoadError(errorText(error, '判断の記録を読み込めませんでした。'));
+      });
+  }, []);
+
+  const failed = React.useCallback((error: unknown) => {
+    Alert.alert('変更できませんでした', errorText(error, 'もう一度お試しください。'));
   }, []);
 
   // On focus, not on mount: the usual way here is saving a decision in the chat
@@ -37,16 +51,16 @@ export default function DecisionsScreen() {
 
   const changeStatus = React.useCallback(
     (id: string, status: DecisionStatus) => {
-      void setDecisionStatus(id, status).then(reload);
+      setDecisionStatus(id, status).then(reload).catch(failed);
     },
-    [reload],
+    [reload, failed],
   );
 
   const toggleAction = React.useCallback(
     (id: string, done: boolean) => {
-      void setActionStatus(id, done ? 'done' : 'open').then(reload);
+      setActionStatus(id, done ? 'done' : 'open').then(reload).catch(failed);
     },
-    [reload],
+    [reload, failed],
   );
 
   return (
@@ -57,6 +71,8 @@ export default function DecisionsScreen() {
           相談の中で決めたことです。MAYAはここにある判断を覚えていて、矛盾する相談をすると指摘します。
         </Text>
       </View>
+
+      {loadError ? <Text style={styles.loadError}>{loadError}</Text> : null}
 
       {decisions === null ? null : decisions.length === 0 ? (
         <View style={styles.empty}>
@@ -171,6 +187,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: colors.charcoalSoft,
+  },
+  loadError: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.danger,
+    marginBottom: spacing.sm,
   },
   empty: {
     paddingVertical: spacing.lg,

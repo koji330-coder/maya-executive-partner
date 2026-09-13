@@ -20,6 +20,12 @@ npm run db:migrate:local
 npm run dev                            # http://127.0.0.1:8787
 ```
 
+To reach it from the phone on the same Wi-Fi, use `npm run dev:lan` and set the
+PC's address (for example `http://192.168.11.6:8787`) in the app's settings. This
+exposes the server to everything on that Wi-Fi with no lock on it, which is
+acceptable at home and not elsewhere. Windows may ask to allow the connection the
+first time.
+
 `.dev.vars` holds secrets and is git-ignored. Restart `npm run dev` after
 editing it; the key is read at start-up, not on reload.
 
@@ -52,7 +58,8 @@ npx wrangler d1 execute MAYA_DB --local --command "DELETE FROM actions; DELETE F
 
 - **Access.** In production the Worker sits behind a Cloudflare Access service
   token and `workers_dev` is off. Until that exists, it only runs locally
-- **The app does not call this.** It still calls Gemini directly
+- **The app only calls this when a server address is set** in its settings.
+  Left empty, it calls Gemini directly as before
 
 Creating the D1 database, setting secrets and deploying all act on the
 Cloudflare account, and are done as separate, confirmed steps.

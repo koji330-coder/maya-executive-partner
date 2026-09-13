@@ -1,3 +1,4 @@
+import { getServerConfig, ServerError, serverRequest, SERVER_TIMEOUT_MS } from '@/services/api/server';
 import { getApiKeys, type ApiTier } from '@/services/llm/apiKey';
 import {
   eligibleForPaidRetry,
@@ -51,6 +52,10 @@ export interface AskOptions {
  * working consultation.
  */
 export async function ask(options: AskOptions): Promise<Reply> {
+  if (await getServerConfig()) {
+    return askServer(options);
+  }
+
   const keys = await getApiKeys();
   if (!keys.free && !keys.paid) {
     const reply = scriptedReply(options.message, options.scriptId);
@@ -118,4 +123,69 @@ function finish(payload: unknown, source: ApiTier): Reply {
     );
   }
   return { response: result.value, warnings: result.warnings, source };
+}
+
+/**
+ * One turn through the MAYA server.
+ *
+ * The server holds the keys and reads past decisions from its own database, so
+ * `decisions` is not sent: the phone's copy would be the wrong half of memory
+ * once the server is in use. The reply is validated again here. The server
+ * already did, but the screen should not trust a network hop it cannot see.
+ */
+async function askServer(options: AskOptions): Promise<Reply> {
+  let data: { response?: unknown; warnings?: unknown; source?: unknown };
+  try {
+    data = await serverRequest('/v1/chat', {
+      method: 'POST',
+      body: {
+        message: options.message,
+        history: options.history,
+        company: options.company,
+        companyIsReal: options.companyIsReal ?? false,
+        attachments: options.attachments,
+      },
+      timeoutMs: SERVER_TIMEOUT_MS,
+      signal: options.signal,
+    });
+  } catch (error) {
+    throw asLlmError(error);
+  }
+
+  const result = validateMayaResponse(data.response);
+  if (!result.ok) {
+    throw new LlmError('bad_response', `応答が契約を満たしていません。${result.errors.join(' ')}`);
+  }
+  const serverWarnings = Array.isArray(data.warnings)
+    ? data.warnings.filter((w): w is string => typeof w === 'string')
+    : [];
+  const source: ApiTier = data.source === 'paid' ? 'paid' : 'free';
+  return { response: result.value, warnings: [...serverWarnings, ...result.warnings], source };
+}
+
+const LLM_KINDS = new Set([
+  'no_key',
+  'auth',
+  'quota',
+  'rate_limit',
+  'safety',
+  'bad_response',
+  'network',
+  'server',
+  'limit_reached',
+]);
+
+/**
+ * Keeps server failures in the shape the conversation already handles.
+ *
+ * `useConversation` shows an `LlmError`'s message as-is and treats an abort as
+ * the president's own cancel. Anything else would surface as a generic failure
+ * and lose the server's explanation.
+ */
+export function asLlmError(error: unknown): unknown {
+  if (!(error instanceof ServerError)) {
+    return error;
+  }
+  const kind = error.serverKind && LLM_KINDS.has(error.serverKind) ? error.serverKind : 'network';
+  return new LlmError(kind as ConstructorParameters<typeof LlmError>[0], error.message, error.status);
 }

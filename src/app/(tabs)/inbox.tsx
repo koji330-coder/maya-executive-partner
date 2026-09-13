@@ -24,6 +24,7 @@ import {
   type JournalEntry,
   type ParseResult,
 } from '@/features/inbox/journal';
+import { errorText } from '@/services/api/errorText';
 import { colors, radius, spacing } from '@/theme';
 
 type Mode = 'journal' | 'topic';
@@ -79,9 +80,15 @@ function JournalInbox() {
   const [showClean, setShowClean] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState<StoredJournal[]>([]);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
   const reload = React.useCallback(() => {
-    void listJournals().then(setSaved);
+    listJournals()
+      .then((list) => {
+        setSaved(list);
+        setLoadError(null);
+      })
+      .catch((error: unknown) => setLoadError(errorText(error, '保存した Journal を読み込めませんでした。')));
   }, []);
   useFocusEffect(reload);
 
@@ -118,7 +125,7 @@ function JournalInbox() {
     } catch (error) {
       Alert.alert(
         '保存できませんでした',
-        error instanceof InboxError ? error.message : 'もう一度保存を押してください。',
+        error instanceof InboxError ? error.message : errorText(error, 'もう一度保存を押してください。'),
       );
     } finally {
       setSaving(false);
@@ -163,6 +170,7 @@ function JournalInbox() {
       )}
 
       <Text style={styles.listTitle}>保存した Journal</Text>
+      {loadError ? <Text style={styles.problemText}>{loadError}</Text> : null}
       {saved.length === 0 ? (
         <Text style={styles.empty}>まだありません。</Text>
       ) : (
@@ -300,7 +308,9 @@ function SavedJournal({ item, onChanged }: { item: StoredJournal; onChanged: () 
   };
 
   const decide = (verdict: AiVerdict) => {
-    void setJournalVerdict(item.id, entry, verdict, entry.aiReason).then(onChanged);
+    setJournalVerdict(item.id, entry, verdict, entry.aiReason)
+      .then(onChanged)
+      .catch((error: unknown) => Alert.alert('変更できませんでした', errorText(error, 'もう一度お試しください。')));
   };
 
   return (
@@ -340,9 +350,15 @@ function TopicInbox() {
   const [pasted, setPasted] = React.useState('');
   const [note, setNote] = React.useState('');
   const [topics, setTopics] = React.useState<StoredTopic[]>([]);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
   const reload = React.useCallback(() => {
-    void listTopics().then(setTopics);
+    listTopics()
+      .then((list) => {
+        setTopics(list);
+        setLoadError(null);
+      })
+      .catch((error: unknown) => setLoadError(errorText(error, '貯めた話題を読み込めませんでした。')));
   }, []);
   useFocusEffect(reload);
 
@@ -355,7 +371,7 @@ function TopicInbox() {
     } catch (error) {
       Alert.alert(
         '保存できませんでした',
-        error instanceof InboxError ? error.message : 'もう一度保存を押してください。',
+        error instanceof InboxError ? error.message : errorText(error, 'もう一度保存を押してください。'),
       );
     }
   };
@@ -388,6 +404,7 @@ function TopicInbox() {
       </Pressable>
 
       <Text style={styles.listTitle}>貯めた話題</Text>
+      {loadError ? <Text style={styles.problemText}>{loadError}</Text> : null}
       {topics.length === 0 ? (
         <Text style={styles.empty}>まだありません。</Text>
       ) : (

@@ -36,6 +36,7 @@ import { useConversation } from '@/features/chat/useConversation';
 import { useCompanyProfile } from '@/features/company/useCompanyProfile';
 import { DecisionEditor } from '@/features/decisions/DecisionEditor';
 import { draftFromResponse, type DecisionDraft } from '@/features/decisions/types';
+import { errorText } from '@/services/api/errorText';
 import { colors, radius, spacing } from '@/theme';
 
 /**
@@ -88,8 +89,11 @@ export default function TalkScreen() {
         // Left open on failure so what he corrected is not thrown away, and
         // said out loud, because a sheet that silently stays up reads as a
         // save button that does nothing.
-        .catch(() =>
-          Alert.alert('保存できませんでした', 'もう一度保存を押してください。直した内容はそのまま残っています。'),
+        .catch((error: unknown) =>
+          Alert.alert(
+            '保存できませんでした',
+            `${errorText(error, 'もう一度保存を押してください。')}直した内容はそのまま残っています。`,
+          ),
         )
         .finally(() => setSavingDecision(false));
     },
