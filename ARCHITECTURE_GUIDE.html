@@ -1,0 +1,945 @@
+<title>MAYAサーバーの仕組み</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Noto+Sans+JP:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  /* Palette is the app's own (src/theme, Character Bible §6):
+     cream / ivory / sand / charcoal / muted gold. No blue-purple. */
+  :root {
+    --ground:    #FDFBF7;
+    --surface:   #F6F1E9;
+    --surface-2: #EDE6DC;
+    --ink:       #2B2723;
+    --ink-soft:  #4A443D;
+    --muted:     #8C8175;
+    --line:      #E2D9CC;
+    --line-firm: #CDBFAA;
+    --accent:    #A8823F;
+    --accent-dim:#D9C29A;
+    --ok:        #4F6B4A;
+    --warn:      #A8823F;
+    --stop:      #A8472F;
+    --shadow:    0 1px 2px rgba(43, 39, 35, .06);
+
+    --display: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+    --body: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #211C19;
+      --surface:   #2C2621;
+      --surface-2: #3A342E;
+      --ink:       #F2EADF;
+      --ink-soft:  #D6CCBE;
+      --muted:     #A2968A;
+      --line:      #463F38;
+      --line-firm: #5C534A;
+      --accent:    #D3B071;
+      --accent-dim:#6E5C3C;
+      --ok:        #8FAE87;
+      --warn:      #D3B071;
+      --stop:      #D98A72;
+      --shadow:    0 1px 2px rgba(0, 0, 0, .3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:    #211C19;
+    --surface:   #2C2621;
+    --surface-2: #3A342E;
+    --ink:       #F2EADF;
+    --ink-soft:  #D6CCBE;
+    --muted:     #A2968A;
+    --line:      #463F38;
+    --line-firm: #5C534A;
+    --accent:    #D3B071;
+    --accent-dim:#6E5C3C;
+    --ok:        #8FAE87;
+    --warn:      #D3B071;
+    --stop:      #D98A72;
+    --shadow:    0 1px 2px rgba(0, 0, 0, .3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.85;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 720px; margin-inline: auto; }
+  .wide { max-width: 940px; margin-inline: auto; }
+
+  /* ---------- masthead ---------- */
+  header.top {
+    border-bottom: 1px solid var(--line);
+    padding-block: 44px 30px;
+    margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(28px, 6vw, 40px);
+    line-height: 1.3;
+    letter-spacing: .01em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 16px;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 60ch;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 22px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ---------- nav ---------- */
+  nav.toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 44px;
+  }
+  nav.toc a {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 13px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 13px;
+    transition: border-color .15s, color .15s;
+  }
+  nav.toc a:hover { border-color: var(--accent); color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- sections ---------- */
+  section { margin-bottom: 60px; scroll-margin-top: 20px; }
+  h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 1.45;
+    margin: 0 0 6px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block;
+    text-wrap: balance;
+  }
+  .lede { color: var(--ink-soft); margin: 18px 0 26px; }
+  h3 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 16px;
+    margin: 34px 0 10px;
+  }
+  p { margin: 0 0 18px; max-width: 64ch; }
+  ul, ol { margin: 0 0 18px; padding-left: 1.35em; max-width: 64ch; }
+  li { margin-bottom: 9px; }
+  li::marker { color: var(--muted); }
+  strong { font-weight: 700; }
+  code {
+    font-family: var(--mono);
+    font-size: .86em;
+    background: var(--surface-2);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  a { color: var(--accent); }
+
+  /* ---------- figures ---------- */
+  figure {
+    margin: 0 0 30px;
+    padding: 26px 22px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  figure svg { display: block; width: 100%; max-width: 100%; height: auto; }
+  /* Accent lives on a group so `currentColor` inside it stays theme-aware. */
+  figure svg .hl { color: var(--accent); }
+  figure svg .dim { color: var(--muted); }
+  figcaption {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* ---------- numbered flow ---------- */
+  ol.flow { list-style: none; padding: 0; counter-reset: step; max-width: 66ch; }
+  ol.flow > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 44px;
+    margin-bottom: 20px;
+  }
+  ol.flow > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--ground);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    display: grid;
+    place-items: center;
+  }
+  ol.flow b { font-family: var(--display); }
+
+  /* ---------- tables ---------- */
+  .scroll { overflow-x: auto; margin-bottom: 24px; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 480px;
+    font-size: 14px;
+  }
+  caption {
+    text-align: left;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 15px;
+    padding-bottom: 10px;
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    line-height: 1.65;
+  }
+  thead th {
+    font-family: var(--display);
+    font-size: 12px;
+    letter-spacing: .04em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line-firm);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.id { font-family: var(--mono); font-size: 13px; }
+  tr.current { background: var(--surface); }
+  tr.current td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+  /* ---------- pills ---------- */
+  .pill {
+    display: inline-block;
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 11px;
+    line-height: 1.7;
+    padding: 1px 9px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .pill.on   { color: var(--ok); }
+  .pill.off  { color: var(--muted); }
+  .pill.hold { color: var(--warn); }
+  .pill.no   { color: var(--stop); }
+
+  /* ---------- callouts ---------- */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    border-radius: 0 10px 10px 0;
+    padding: 18px 20px;
+    margin: 0 0 26px;
+    max-width: 66ch;
+  }
+  .note.alert { border-left-color: var(--stop); }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 7px;
+  }
+  .note.alert .tag { color: var(--stop); }
+
+  /* ---------- answer block ---------- */
+  .verdict {
+    background: var(--surface-2);
+    border: 1px solid var(--line-firm);
+    border-radius: 14px;
+    padding: 24px 24px 6px;
+    margin-bottom: 28px;
+  }
+  .verdict .q {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 16px;
+    margin: 0 0 4px;
+    color: var(--muted);
+  }
+  .verdict .a {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(19px, 4.4vw, 24px);
+    line-height: 1.5;
+    margin: 0 0 16px;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  /* ---------- key/value rows ---------- */
+  dl.kv { margin: 0 0 24px; max-width: 64ch; }
+  dl.kv > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  dl.kv dt {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 14px;
+    min-width: 160px;
+    color: var(--ink-soft);
+  }
+  dl.kv dd { margin: 0; font-size: 14px; flex: 1 1 200px; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 22px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  @media (max-width: 560px) {
+    body { line-height: 1.8; }
+    figure { padding: 18px 13px 14px; }
+    dl.kv dt { min-width: 100%; }
+  }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">2026-09-14 / v0.2</p>
+    <h1>MAYAサーバーの仕組み</h1>
+    <p class="standfirst">
+      MAYAは、スマホの中だけで動くアプリから、Cloudflare上の専用サーバーを持つ形に変わりました。
+      何がどこにあって、相談したときに何が起きるのかを、一枚にまとめています。
+    </p>
+    <div class="meta">
+      <span>28コミット</span>
+      <span>110ファイル</span>
+      <span>テスト 153件 通過</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc">
+    <a href="#change">何が変わったか</a>
+    <a href="#map">全体の図</a>
+    <a href="#flow">相談すると何が起きるか</a>
+    <a href="#keys">鍵と入口</a>
+    <a href="#status">できたこと・これから</a>
+    <a href="#models">モデル一覧</a>
+    <a href="#quota">無料で使える量</a>
+    <a href="#picker">設定のモデル選択</a>
+    <a href="#trouble">困ったときに見るところ</a>
+  </nav>
+</div>
+
+<!-- ============ 1. 何が変わったか ============ -->
+<section id="change">
+  <div class="wrap">
+    <h2>何が変わったか</h2>
+    <p class="lede">
+      ひとことで言うと、<strong>鍵と記憶がスマホから出て、あなた専用のサーバーに移りました。</strong>
+    </p>
+  </div>
+
+  <div class="wide">
+    <figure>
+      <svg viewBox="0 0 720 316" role="img" aria-label="v0.1ではスマホが直接Geminiを呼び、鍵と記憶をスマホが持っていた。v0.2ではスマホとGeminiの間にMAYAサーバーが入り、鍵と記憶はそのサーバーに移った">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- ===== row 1 : v0.1 ===== -->
+        <text x="0" y="14" font-size="12.5" font-weight="700" fill="currentColor">これまで（v0.1）</text>
+        <line x1="0" y1="24" x2="720" y2="24" stroke="currentColor" stroke-width="1" opacity=".2"/>
+
+        <rect x="0" y="46" width="150" height="58" rx="11" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="75" y="81" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">スマホ</text>
+        <text x="75" y="124" font-size="11" text-anchor="middle" fill="currentColor" opacity=".7">鍵と記憶はここ</text>
+
+        <line x1="156" y1="75" x2="564" y2="75" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+        <text x="360" y="66" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".75">直接よぶ</text>
+
+        <rect x="570" y="46" width="150" height="58" rx="11" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="645" y="81" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Gemini</text>
+
+        <text x="0" y="152" font-size="11" fill="currentColor" opacity=".6">機種変で記憶が消える。鍵が配布アプリの中に入る。</text>
+
+        <!-- ===== row 2 : v0.2 ===== -->
+        <g class="hl">
+          <text x="0" y="196" font-size="12.5" font-weight="700" fill="currentColor">いま（v0.2）</text>
+          <line x1="0" y1="206" x2="720" y2="206" stroke="currentColor" stroke-width="1.5" opacity=".5"/>
+        </g>
+
+        <rect x="0" y="228" width="150" height="58" rx="11" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="75" y="263" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">スマホ</text>
+        <text x="75" y="306" font-size="11" text-anchor="middle" fill="currentColor" opacity=".7">鍵を持たない</text>
+
+        <g class="hl">
+          <line x1="156" y1="257" x2="264" y2="257" stroke="currentColor" stroke-width="2" marker-end="url(#ar)"/>
+          <text x="210" y="248" font-size="11.5" text-anchor="middle" fill="currentColor">相談</text>
+
+          <rect x="270" y="228" width="200" height="58" rx="11" fill="none" stroke="currentColor" stroke-width="2"/>
+          <text x="370" y="252" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">MAYAサーバー</text>
+          <text x="370" y="272" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".8">Cloudflare</text>
+          <text x="370" y="306" font-size="11" text-anchor="middle" fill="currentColor">鍵と記憶はここへ移った</text>
+
+          <line x1="476" y1="257" x2="564" y2="257" stroke="currentColor" stroke-width="2" marker-end="url(#ar)"/>
+          <text x="520" y="248" font-size="11.5" text-anchor="middle" fill="currentColor">よぶ</text>
+        </g>
+
+        <rect x="570" y="228" width="150" height="58" rx="11" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="645" y="263" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Gemini</text>
+      </svg>
+      <figcaption>
+        上下で変わったのは、真ん中に1つ箱が増えたことだけです。「Geminiを呼ぶ」という行為自体は前からありました。変わったのは、それを呼ぶのが誰かということ。スマホが呼ぶのをやめ、サーバーが呼ぶようになりました。
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 2. 全体の図 ============ -->
+<section id="map">
+  <div class="wrap">
+    <h2>全体の図</h2>
+    <p class="lede">
+      アプリが話す相手は<strong>MAYAサーバーだけ</strong>です。Geminiにもデータベースにも、アプリは直接触りません。
+    </p>
+  </div>
+
+  <div class="wide">
+    <figure>
+      <svg viewBox="0 0 880 470" role="img" aria-label="スマホはCloudflare Accessの認証を通ってMAYAサーバーに相談を送り、サーバーがGeminiに問い合わせD1データベースを読み書きする。売上とfit-logとGitHubをD1へ写す同期ジョブはまだ作られていない">
+        <defs>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- Cloudflare boundary -->
+        <rect x="268" y="28" width="352" height="238" rx="14" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/>
+        <text x="284" y="50" font-size="11.5" fill="currentColor" opacity=".6">Cloudflare</text>
+
+        <!-- iPhone -->
+        <rect x="16" y="96" width="136" height="88" rx="12" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="84" y="130" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">MAYAアプリ</text>
+        <text x="84" y="152" font-size="11" text-anchor="middle" fill="currentColor" opacity=".7">iPhone</text>
+        <text x="84" y="169" font-size="11" text-anchor="middle" fill="currentColor" opacity=".7">鍵は持たない</text>
+
+        <!-- Access lock + Worker (the new hop) -->
+        <g class="hl">
+          <line x1="158" y1="140" x2="196" y2="140" stroke="currentColor" stroke-width="2"/>
+          <rect x="196" y="118" width="66" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M 221 139 v -7 a 8 8 0 0 1 16 0 v 7" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <rect x="217" y="139" width="24" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <text x="229" y="180" font-size="11" text-anchor="middle" fill="currentColor">Access</text>
+          <line x1="262" y1="140" x2="304" y2="140" stroke="currentColor" stroke-width="2" marker-end="url(#ar2)"/>
+
+          <rect x="310" y="100" width="152" height="80" rx="12" fill="none" stroke="currentColor" stroke-width="2"/>
+          <text x="386" y="130" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">MAYAサーバー</text>
+        </g>
+        <text x="386" y="152" font-size="11" text-anchor="middle" fill="currentColor" opacity=".75">鍵はすべてここ</text>
+        <text x="386" y="169" font-size="11" text-anchor="middle" fill="currentColor" opacity=".75">Worker</text>
+
+        <!-- D1 cylinder -->
+        <ellipse cx="386" cy="212" rx="62" ry="11" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M 324 212 v 26 a 62 11 0 0 0 124 0 v -26" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="386" y="236" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">D1</text>
+        <line x1="386" y1="182" x2="386" y2="199" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <text x="398" y="196" font-size="10.5" fill="currentColor" opacity=".7">読む・書く</text>
+
+        <!-- Gemini -->
+        <line x1="468" y1="132" x2="672" y2="132" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <text x="570" y="123" font-size="11" text-anchor="middle" fill="currentColor" opacity=".75">道具つきで問い合わせ</text>
+        <line x1="672" y1="156" x2="468" y2="156" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <text x="570" y="174" font-size="11" text-anchor="middle" fill="currentColor" opacity=".75">答えを返す</text>
+        <rect x="678" y="104" width="120" height="62" rx="12" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="738" y="141" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Gemini</text>
+
+        <!-- ===== planned: sync jobs (dashed) ===== -->
+        <text x="16" y="306" font-size="12" font-weight="700" fill="currentColor" opacity=".55">これから作る部分</text>
+        <line x1="16" y1="316" x2="688" y2="316" stroke="currentColor" stroke-width="1" opacity=".18"/>
+
+        <g class="dim">
+          <rect x="16" y="338" width="112" height="44" rx="10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <text x="72" y="365" font-size="11.5" text-anchor="middle" fill="currentColor">売上</text>
+          <rect x="142" y="338" width="112" height="44" rx="10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <text x="198" y="365" font-size="11.5" text-anchor="middle" fill="currentColor">fit-log</text>
+          <rect x="268" y="338" width="112" height="44" rx="10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <text x="324" y="365" font-size="11.5" text-anchor="middle" fill="currentColor">GitHub</text>
+
+          <!-- three sources join one bus, bus feeds the job -->
+          <path d="M 72 382 v 22 M 198 382 v 22 M 324 382 v 22" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <line x1="72" y1="404" x2="452" y2="404" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <line x1="452" y1="404" x2="494" y2="404" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#ar2)"/>
+
+          <rect x="500" y="382" width="140" height="44" rx="10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <text x="570" y="409" font-size="11.5" text-anchor="middle" fill="currentColor">同期ジョブ</text>
+
+          <!-- job writes into D1: right, up, then left into the cylinder -->
+          <path d="M 640 404 h 76 v -178 h -246" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <line x1="470" y1="226" x2="452" y2="226" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#ar2)"/>
+          <text x="730" y="300" font-size="10.5" fill="currentColor">毎晩4時にD1へ写す</text>
+        </g>
+      </svg>
+      <figcaption>
+        実線は動いているもの、点線はまだ作っていないものです。金色は、今回の工事で新しく増えた経路を指しています。
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="wrap">
+    <div class="note">
+      <span class="tag">設計の柱</span>
+      <p>
+        <strong>全部をプロンプトに詰めず、MAYAが必要なときに取りに行きます。</strong>
+        晩御飯の相談に売上表とコミット履歴を毎回送ると、費用がかさみ、応答が遅くなり、
+        関係のない情報が増えるぶん答えがぼやけます。だから「常に渡すもの」と「頼まれたら取りに行くもの」を分けました。
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <caption>毎回渡すもの／必要なときだけ取りに行くもの</caption>
+        <thead>
+          <tr><th>毎回渡す（小さい）</th><th>取りに行く（大きい）</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>人格と相談の手順</td><td>売上の月次サマリー</td></tr>
+          <tr><td>会社の情報</td><td>食事・筋トレ・体重の記録</td></tr>
+          <tr><td>実行中の判断（最大12件）</td><td>リポジトリの動き</td></tr>
+          <tr><td>今日の日付と時刻</td><td>貯めた話題、終わった過去の判断</td></tr>
+          <tr><td>今の会話</td><td>活動の記録と個人の記録</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      判断だけは毎回渡し続けます。数が少なく、どの相談でも「前に決めたことと矛盾していないか」の確認が要るからです。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 3. 相談すると何が起きるか ============ -->
+<section id="flow">
+  <div class="wrap">
+    <h2>相談すると何が起きるか</h2>
+    <p class="lede">送信ボタンを押してから答えが返るまでの順番です。</p>
+
+    <ol class="flow">
+      <li><b>アプリがサーバーに送る。</b> 本文と、いま開いている会話だけです。鍵も、過去の判断も送りません。</li>
+      <li><b>入口で身分を確かめる。</b> Cloudflare Accessが、登録した認証を持たない通信をここで止めます。通らなければサーバーの中には入れません。</li>
+      <li><b>サーバーが記憶を読む。</b> D1から、実行中の判断と直近14日の記録を読み出します。アプリに送らせないので、どの入口から相談しても同じことを覚えています。</li>
+      <li><b>プロンプトを組んで、道具を添えてGeminiに渡す。</b> 人格、相談手順、会社情報、今日の日付と時刻、読み出した記憶が一つにまとまります。</li>
+      <li><b>Geminiが必要なら道具を呼ぶ。</b> 過去を探す必要があれば、サーバーに探させて結果を受け取り、それから答えます。<strong>このとき往復が2回になります。</strong></li>
+      <li><b>サーバーが答えを検証して返す。</b> 形が崩れていないか確かめ、判断が含まれていればD1に保存します。</li>
+      <li><b>アプリが表情とポーズを動かして表示する。</b></li>
+    </ol>
+
+    <div class="note">
+      <span class="tag">つながらないとき</span>
+      <p>
+        <strong>サーバーが落ちていても、勝手にGemini直呼びには戻りません。</strong>
+        戻ると判断がスマホとサーバーに分かれて保存され、MAYAはそのとき届いた側の半分しか覚えていない状態になります。
+        記憶が静かに割れるくらいなら、エラーを出して止まる方を選んでいます。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. 鍵と入口 ============ -->
+<section id="keys">
+  <div class="wrap">
+    <h2>鍵と入口</h2>
+    <p class="lede">
+      鍵は3種類あって、置き場所がそれぞれ違います。どこに何があるかだけ分かっていれば十分です。
+    </p>
+
+    <dl class="kv">
+      <div>
+        <dt>Geminiの鍵（無料・有料）</dt>
+        <dd>MAYAサーバーの中だけ。アプリにも、GitHubにも入っていません。</dd>
+      </div>
+      <div>
+        <dt>Accessの認証情報</dt>
+        <dd>スマホのキーチェーン。設定画面から入れます。保存すると入力欄からは消え、末尾しか表示されません。</dd>
+      </div>
+      <div>
+        <dt>サーバーのアドレス</dt>
+        <dd>ビルドに入っています。設定画面で確認できます。秘密ではありません。</dd>
+      </div>
+    </dl>
+
+    <h3>入口が二重になっている理由</h3>
+    <p>
+      Cloudflare Accessが手前で止め、さらにサーバー自身がAccessの署名をもう一度確かめます。
+      同じチームの別のアプリ宛ての認証では入れません。
+    </p>
+    <p>
+      そして<strong>Accessの設定が済むまで、サーバーはすべての通信を断ります。</strong>
+      これがあるので、先に公開してから鍵をかけても、その間に無防備な時間が生まれません。
+      公開した直後に外から叩いて、健康確認も相談も記録も、偽の認証も、すべて弾かれることを確認済みです。
+    </p>
+
+    <div class="note alert">
+      <span class="tag">無料キーに送ってはいけないもの</span>
+      <p>
+        無料枠のプロジェクトは、送った内容がGoogleのサービス改善に使われる場合があります。
+        会社情報を「実在する会社」として登録すると、無料キーは自動的に塞がれます。
+        体重や食事の記録は無料枠でよい、という判断は 2026-09-13 に確定しています。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. できたこと・これから ============ -->
+<section id="status">
+  <div class="wrap">
+    <h2>できたこと・これから</h2>
+    <p class="lede">設計は全体像まで描けていますが、動いているのはまだ真ん中の部分だけです。</p>
+
+    <div class="scroll">
+      <table>
+        <caption>2026-09-14 時点</caption>
+        <thead>
+          <tr><th>仕組み</th><th>状態</th><th>ひとこと</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>サーバーで相談する</td>
+            <td><span class="pill on">動く</span></td>
+            <td>実機で確認済み</td>
+          </tr>
+          <tr>
+            <td>判断・次の一手の記憶</td>
+            <td><span class="pill on">動く</span></td>
+            <td>D1に保存。見直し中の判断を持ち出して反論した</td>
+          </tr>
+          <tr>
+            <td>記録と話題の受け箱</td>
+            <td><span class="pill on">動く</span></td>
+            <td>PCのスキルから画面を通さず送れる</td>
+          </tr>
+          <tr>
+            <td>直近14日の記録を読んで相談に乗る</td>
+            <td><span class="pill on">動く</span></td>
+            <td>文字数で上限を切ってあるので、記録が増えても遅くならない</td>
+          </tr>
+          <tr>
+            <td>Cloudflare Accessで入口を守る</td>
+            <td><span class="pill on">動く</span></td>
+            <td>スマホからの接続を確認済み</td>
+          </tr>
+          <tr>
+            <td>再ビルドなしで直しを届ける</td>
+            <td><span class="pill on">動く</span></td>
+            <td>EAS Update</td>
+          </tr>
+          <tr>
+            <td>過去を検索する道具</td>
+            <td><span class="pill hold">保留</span></td>
+            <td>手元では動作確認済み。無料枠の上限でGemini経由の確認ができず、本番には出していない</td>
+          </tr>
+          <tr>
+            <td>添付を次のターン以降も覚える</td>
+            <td><span class="pill hold">保留</span></td>
+            <td>直し方は決めてある（案3）。まだ着手していない</td>
+          </tr>
+          <tr>
+            <td>売上を読む</td>
+            <td><span class="pill off">これから</span></td>
+            <td>D1から読むと決定。取り込む仕組みは未着手</td>
+          </tr>
+          <tr>
+            <td>食事・筋トレ・体重を読む</td>
+            <td><span class="pill off">これから</span></td>
+            <td>写す5つのシートは確定済み</td>
+          </tr>
+          <tr>
+            <td>毎晩の同期</td>
+            <td><span class="pill off">これから</span></td>
+            <td>定期実行の仕掛けはまだ入っていない</td>
+          </tr>
+          <tr>
+            <td>体の写真をMAYAに渡す</td>
+            <td><span class="pill no">やらない</span></td>
+            <td>必要なのは体重の推移であって写真ではない</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. モデル一覧 ============ -->
+<section id="models">
+  <div class="wrap">
+    <h2>モデル一覧</h2>
+    <p class="lede">
+      いまMAYAが使っているのは <code>gemini-3.6-flash</code> です。
+      サーバーの設定ファイルに直接書いてあり、変えるにはサーバーを出し直します。
+    </p>
+
+    <div class="scroll">
+      <table>
+        <caption>選べるモデルと、実際に測った差</caption>
+        <thead>
+          <tr><th>モデル</th><th>応答</th><th>性格（実測）</th><th>いまの扱い</th></tr>
+        </thead>
+        <tbody>
+          <tr class="current">
+            <td class="id">gemini-3.6-flash</td>
+            <td class="num">約9秒</td>
+            <td>「10%下げると同じ粗利額に45%の増産が要る」まで計算する</td>
+            <td><span class="pill on">使用中</span></td>
+          </tr>
+          <tr>
+            <td class="id">gemini-3.5-flash</td>
+            <td class="num">未計測</td>
+            <td>中間</td>
+            <td><span class="pill off">選べる</span></td>
+          </tr>
+          <tr>
+            <td class="id">gemini-3.5-flash-lite</td>
+            <td class="num">約2秒</td>
+            <td>方向は正しいが、数字の検算をしない</td>
+            <td><span class="pill off">選べる</span></td>
+          </tr>
+          <tr>
+            <td class="id">gemini-3.8-flash</td>
+            <td class="num">応答なし</td>
+            <td>最新。新しい無料キーでは混み合って返ってこなかった</td>
+            <td><span class="pill hold">不安定</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      <strong>3.6を選んだ理由は、速さより検算です。</strong>
+      数字を出せることがMAYAの核なので、2秒で数字の甘い答えより、9秒で検算する答えを取りました。
+      架空の会社で3往復ずつ実際に投げて比べた結果です。
+    </p>
+
+    <div class="note">
+      <span class="tag">キーによって使えるモデルが変わる</span>
+      <p>
+        新しく作ったAPIキーでは、古い世代のモデルが「新規ユーザーには提供されていない」と拒否されます。
+        既存プロジェクトのキーでは通るため、<strong>手元のキーだけで試していると気づけません。</strong>
+        モデルを変えるときは、そのキーで使えるかを先に確かめてください。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7. 無料枠 ============ -->
+<section id="quota">
+  <div class="wrap">
+    <h2>無料で使える量</h2>
+
+    <div class="note alert">
+      <span class="tag">出典について</span>
+      <p>
+        <strong>Googleの公式ページ（ai.google.dev）は、この作業環境からは遮断されていて読めませんでした。</strong>
+        以下の数字は検索で拾った二次情報で、私は公式で裏を取れていません。数字そのものは、必ず公式で確かめてください。
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <caption>一般に流通している無料枠の数字（未確認）</caption>
+        <thead>
+          <tr><th>項目</th><th>Flash系</th><th>Flash-Lite</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1分あたりの回数</td><td class="num">15回</td><td class="num">15回</td></tr>
+          <tr><td>1日あたりの回数</td><td class="num">1,500回</td><td class="num">1,000回</td></tr>
+          <tr><td>1分あたりのトークン</td><td class="num">250,000</td><td class="num">250,000</td></tr>
+          <tr><td>リセット</td><td colspan="2">太平洋時間の深夜（日本時間の夕方ごろ）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>確実に知る方法</h3>
+    <p>
+      上限はプロジェクトごとに違い、実際に何が効いているかはGoogle側のダッシュボードにしか出ません。
+      Google AI Studioを開いて、使っているプロジェクトの制限を見るのが唯一確実なやり方です。
+      公式の解説は <a href="https://ai.google.dev/gemini-api/docs/rate-limits">ai.google.dev/gemini-api/docs/rate-limits</a> にあります。
+    </p>
+
+    <h3>思ったより早く尽きた理由</h3>
+    <p>これはこちら側の記録から説明がつきます。3つ重なっています。</p>
+    <ul>
+      <li><strong>道具を使う相談は、1回の相談で2回分を消費します。</strong> モデルが道具を呼び、結果を受け取ってから答えるので、往復が2回になります。実測でも、道具を使わない質問の3〜4倍の時間がかかっていました。</li>
+      <li><strong>上限は回数だけでなく分あたりのトークンでも効きます。</strong> MAYAは毎回、人格・相談手順・会社情報・実行中の判断・直近14日の記録をまとめて送ります。1回が重いので、回数を使い切る前に分あたりのトークンで止まることがあります。</li>
+      <li><strong>上限に達しても有料キーへは切り替わりません。</strong> 自動切替は既定で切ってあります。無料枠が尽きた時点で止まるのは、設定どおりの動きです。</li>
+    </ul>
+
+    <h3>有料に切り替えるとどうなるか</h3>
+    <p>
+      切り替えは設定で入れられますが、その場合も<strong>1日50円で止まる歯止め</strong>が別にかかっています。
+      アプリは1回の相談を多めに見積もって（約1.6円）先に加算し、超える見込みなら送信前に止めます。
+      Googleの請求上限ではなく、こちら側のブレーカーです。50円だと、1日およそ30回ほどの計算になります。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 8. 設定のモデル選択 ============ -->
+<section id="picker">
+  <div class="wrap">
+    <h2>設定のモデル選択は、今も効くのか</h2>
+
+    <div class="verdict">
+      <p class="q">ご質問</p>
+      <p class="a">効きません。サーバー経由で相談しているあいだ、あの画面でモデルを変えても何も変わりません。</p>
+    </div>
+
+    <p>コードを追って確認した内容です。</p>
+    <ul>
+      <li><strong>アプリはモデル名をサーバーに送っていません。</strong> 送信内容にモデルは含まれていません。逆に、接続確認のときにサーバーが「今このモデルを使っています」と教えてくれるだけです。</li>
+      <li><strong>サーバーのモデルは設定ファイルに直接書いてあります。</strong> 変えるにはサーバーを出し直す必要があります。</li>
+      <li><strong>モデル選択の画面は、サーバーを使っていても出たままです。</strong> 隠す作りにはなっていません。</li>
+    </ul>
+
+    <p>
+      同じことがAPIキーの欄にも言えます。サーバー経由のとき、Geminiの鍵はサーバーの中のものが使われるので、
+      設定画面に入れたキーは相談には使われていません。
+    </p>
+
+    <h3>どういうときに効くのか</h3>
+    <p>
+      設定画面の<strong>サーバーのアドレスを空にしたとき</strong>だけです。空にすると、アプリが以前どおり自分でGeminiを呼び、
+      記憶もスマホの中に戻ります。そのときはモデル選択もAPIキーも、これまでどおり効きます。
+    </p>
+
+    <div class="note">
+      <span class="tag">つまり</span>
+      <p>
+        あの画面はv0.1の名残ですが、壊れているわけではなく、切り戻したときの経路として生きています。
+        紛らわしいと感じるなら、サーバー使用中は「いまはサーバーのモデルを使っています」と出すか、選択欄を畳むのが素直です。
+        <strong>今回は報告だけで、直していません。</strong>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9. 困ったとき ============ -->
+<section id="trouble">
+  <div class="wrap">
+    <h2>困ったときに見るところ</h2>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>症状</th><th>たぶんこれ</th><th>やること</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>「入れませんでした」と出る</td>
+            <td>Accessの認証情報</td>
+            <td>設定画面で入れ直す。末尾しか出ないので、合っているかは入れ直して確かめる</td>
+          </tr>
+          <tr>
+            <td>急に答えが返らなくなった</td>
+            <td>無料枠の上限</td>
+            <td>AI Studioで残りを見る。有料へは自動で切り替わらない</td>
+          </tr>
+          <tr>
+            <td>1分ほど待って止まる</td>
+            <td>モデルの混雑</td>
+            <td>45秒で打ち切る作りになっている。待たずに取り消してよい</td>
+          </tr>
+          <tr>
+            <td>判断の一覧が出ない</td>
+            <td>サーバーとの通信</td>
+            <td>空ではなくエラーが出る。空に見えたら本当に0件</td>
+          </tr>
+          <tr>
+            <td>時刻がずれた返事をする</td>
+            <td>時間帯の設定</td>
+            <td>過去に9時間ずれた前例あり。何時と言ったかを控えて報告</td>
+          </tr>
+          <tr>
+            <td>設定画面のモデルを変えても変わらない</td>
+            <td>仕様</td>
+            <td>サーバー経由では効かない。上の節のとおり</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>切り戻したいとき</h3>
+    <p>
+      設定画面でサーバーのアドレスを空にすれば、v0.1と同じ「スマホだけで動く」状態に戻ります。
+      ただし、<strong>サーバーに保存された判断はスマホからは見えません。</strong>
+      記憶が2つに分かれるので、確かめたいことがあるときの一時的な手段として使ってください。
+    </p>
+  </div>
+</section>
+
+<div class="wrap">
+  <footer>
+    <p>
+      内容はリポジトリのコミットと設計文書から起こしたものです。無料枠の数字だけは公式で裏が取れていません。
+      構成の正本は <code>docs/PLATFORM_ARCHITECTURE.md</code>、この手引きの元ファイルはリポジトリ直下の
+      <code>ARCHITECTURE_GUIDE.html</code> です。
+    </p>
+    <p>
+      更新のきまりは <code>AGENTS.md</code> に書いてあります。図が変わる改修をしたらこのファイルを直し、
+      <strong>同じアドレスへ公開し直します</strong>（新しく作りません）。公開先は
+      <code>claude.ai/code/artifact/aebe739f-d47d-45d7-95a2-2bb64b276bdb</code>。
+    </p>
+  </footer>
+</div>
