@@ -81,6 +81,18 @@ export interface RequestAttachment {
   data: string;
 }
 
+/** A function the model may call, in Gemini's declaration format. */
+export interface ToolDeclaration {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface ToolCall {
+  name: string;
+  args: Record<string, unknown>;
+}
+
 export interface GenerateOptions {
   apiKey: string;
   systemPrompt: string;
@@ -89,6 +101,10 @@ export interface GenerateOptions {
   attachments?: RequestAttachment[];
   model?: string;
   signal?: AbortSignal;
+  /** Offered to the model. Only the server passes these; it is the one with the data. */
+  tools?: ToolDeclaration[];
+  /** Runs a call the model made. Its return value goes back to the model as the result. */
+  runTool?: (call: ToolCall) => Promise<unknown>;
 }
 
 export interface GenerateResult {
@@ -97,7 +113,17 @@ export interface GenerateResult {
   promptTokens: number;
   responseTokens: number;
   totalTokens: number;
+  /** The tools the model called on the way to this answer, in order. */
+  toolCalls: ToolCall[];
 }
+
+/**
+ * How many rounds of tool calls one turn may take before the model must answer.
+ *
+ * Each round is another full request, measured at three to four times a plain
+ * turn. Two lets her search, then narrow once; past that she is looping.
+ */
+export const MAX_TOOL_ROUNDS = 2;
 
 function describeHttpError(status: number, body: unknown): LlmError {
   const error =
@@ -166,7 +192,7 @@ ${attachment.data}` });
     }
   }
 
-  const contents = [
+  const contents: Record<string, unknown>[] = [
     ...options.history.map((turn) => ({
       role: turn.role === 'user' ? 'user' : 'model',
       parts: [{ text: turn.text }],
@@ -174,6 +200,105 @@ ${attachment.data}` });
     { role: 'user', parts },
   ];
 
+  const usage = { prompt: 0, response: 0, total: 0 };
+  const toolCalls: ToolCall[] = [];
+  const canUseTools = Boolean(options.tools?.length && options.runTool);
+
+  for (let round = 0; ; round += 1) {
+    // After the last allowed round the tools are withdrawn, so the model has no
+    // way left but to answer with what it found.
+    const offerTools = canUseTools && round < MAX_TOOL_ROUNDS;
+    const body = await postGenerate(model, options, {
+      systemInstruction: { parts: [{ text: options.systemPrompt }] },
+      contents,
+      ...(offerTools ? { tools: [{ functionDeclarations: options.tools }] } : {}),
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: MAYA_RESPONSE_SCHEMA,
+        temperature: 0.8,
+        // A consultation answer needs a few hundred tokens. The cap is here so
+        // a model that starts repeating itself stops cheaply instead of
+        // running to the ceiling and returning JSON cut off mid-string, which
+        // is a failure this actually hit in testing.
+        maxOutputTokens: 2048,
+      },
+    });
+
+    const metadata = (body as { usageMetadata?: Record<string, number> })?.usageMetadata ?? {};
+    usage.prompt += metadata.promptTokenCount ?? 0;
+    usage.response += metadata.candidatesTokenCount ?? 0;
+    usage.total += metadata.totalTokenCount ?? 0;
+
+    const candidate = (
+      body as {
+        candidates?: {
+          content?: { role?: string; parts?: { text?: string; functionCall?: ToolCall }[] };
+          finishReason?: string;
+        }[];
+      }
+    )?.candidates?.[0];
+    if (candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'PROHIBITED_CONTENT') {
+      throw new LlmError('safety', 'この内容には回答できないと判断されました。表現を変えてお試しください。');
+    }
+    if (candidate?.finishReason === 'MAX_TOKENS') {
+      // Say what happened. Truncated JSON would otherwise surface as a parse
+      // error, which sends the reader looking in the wrong place.
+      throw new LlmError('bad_response', '応答が長くなりすぎて途中で切れました。もう一度お試しください。');
+    }
+
+    const calls = (candidate?.content?.parts ?? [])
+      .map((part) => part.functionCall)
+      .filter((call): call is ToolCall => Boolean(call?.name));
+    if (calls.length > 0 && offerTools && options.runTool) {
+      // The model's turn goes back exactly as it came. Gemini 3 attaches thought
+      // signatures to it, and a rebuilt turn without them is rejected.
+      contents.push(candidate?.content as Record<string, unknown>);
+      const results = await Promise.all(
+        calls.map(async (call) => {
+          toolCalls.push({ name: call.name, args: call.args ?? {} });
+          let result: unknown;
+          try {
+            result = await options.runTool!({ name: call.name, args: call.args ?? {} });
+          } catch (error) {
+            // Told to the model rather than thrown: a failed search should make
+            // her say she could not look, not lose the whole consultation.
+            result = { error: error instanceof Error ? error.message : '道具の実行に失敗しました。' };
+          }
+          return { functionResponse: { name: call.name, response: { result } } };
+        }),
+      );
+      contents.push({ role: 'user', parts: results });
+      continue;
+    }
+
+    const text = candidate?.content?.parts?.find((part) => typeof part.text === 'string')?.text;
+    if (!text) {
+      throw new LlmError('bad_response', '応答が空でした。もう一度お試しください。');
+    }
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      throw new LlmError('bad_response', '応答の形式が壊れていました。もう一度お試しください。');
+    }
+
+    return {
+      payload,
+      promptTokens: usage.prompt,
+      responseTokens: usage.response,
+      totalTokens: usage.total,
+      toolCalls,
+    };
+  }
+}
+
+/** One request to Gemini, with the deadline and error mapping every round needs. */
+async function postGenerate(
+  model: string,
+  options: GenerateOptions,
+  requestBody: Record<string, unknown>,
+): Promise<unknown> {
   // The caller's signal and a deadline both have to be able to end the request.
   // Without the deadline a stalled turn sits on "考えています…" indefinitely.
   const controller = new AbortController();
@@ -189,20 +314,7 @@ ${attachment.data}` });
         'x-goog-api-key': options.apiKey,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: options.systemPrompt }] },
-        contents,
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: MAYA_RESPONSE_SCHEMA,
-          temperature: 0.8,
-          // A consultation answer needs a few hundred tokens. The cap is here so
-          // a model that starts repeating itself stops cheaply instead of
-          // running to the ceiling and returning JSON cut off mid-string, which
-          // is a failure this actually hit in testing.
-          maxOutputTokens: 2048,
-        },
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
   } catch (error) {
@@ -225,37 +337,7 @@ ${attachment.data}` });
   if (!response.ok) {
     throw describeHttpError(response.status, body);
   }
-
-  const candidate = (body as { candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[] })
-    ?.candidates?.[0];
-  if (candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'PROHIBITED_CONTENT') {
-    throw new LlmError('safety', 'この内容には回答できないと判断されました。表現を変えてお試しください。');
-  }
-  if (candidate?.finishReason === 'MAX_TOKENS') {
-    // Say what happened. Truncated JSON would otherwise surface as a parse
-    // error, which sends the reader looking in the wrong place.
-    throw new LlmError('bad_response', '応答が長くなりすぎて途中で切れました。もう一度お試しください。');
-  }
-
-  const text = candidate?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new LlmError('bad_response', '応答が空でした。もう一度お試しください。');
-  }
-
-  let payload: unknown;
-  try {
-    payload = JSON.parse(text);
-  } catch {
-    throw new LlmError('bad_response', '応答の形式が壊れていました。もう一度お試しください。');
-  }
-
-  const usage = (body as { usageMetadata?: Record<string, number> })?.usageMetadata ?? {};
-  return {
-    payload,
-    promptTokens: usage.promptTokenCount ?? 0,
-    responseTokens: usage.candidatesTokenCount ?? 0,
-    totalTokens: usage.totalTokenCount ?? 0,
-  };
+  return body;
 }
 
 export interface KeyCheckResult {

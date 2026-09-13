@@ -64,6 +64,21 @@ export interface ActivityContext {
  * of journals must not make every consultation slower. Older entries are for a
  * search tool to fetch when needed, not for this section.
  */
+/**
+ * How to use the memory search, for requests that offer it (the server's).
+ *
+ * The limits matter as much as the permission: every search is another round
+ * trip, and a model given no rule for an empty result fills the gap itself.
+ */
+export const SEARCH_GUIDE = `過去の記録を探す道具 search_memory を使えます。
+
+- 使うのは、プロンプトにある最近の分より前のことや、そこに無い細部が、相談に本当に必要なときだけです。
+  挨拶、雑談、一般的な質問、いま書かれている情報で答えられる相談では使いません。探すと返事が数秒遅れます
+- 社長が「前に」「去年」「あのとき」のように過去を指したら、推測で答えず探します
+- 語は短く分けて渡します。見つからなければ、語を変えるか期間を広げて、もう一度だけ探せます
+- 見つからなかったら、見つからなかったと言います。記録に無い過去を作らないでください
+- 見つけた記録を読み上げず、覚えている相手として必要な分だけ触れます`;
+
 export const ACTIVITY_BUDGET_CHARS = 2400;
 const LINE_CHARS = 120;
 
@@ -257,6 +272,7 @@ export function buildSystemPrompt(
   decisions: DecisionContext[] = [],
   today: Date = new Date(),
   activity?: ActivityContext,
+  canSearch = false,
 ): string {
   const sections = [PERSONA];
   const context = formatCompany(company);
@@ -271,6 +287,9 @@ export function buildSystemPrompt(
   const recent = formatActivity(activity);
   if (recent) {
     sections.push(recent);
+  }
+  if (canSearch) {
+    sections.push(SEARCH_GUIDE);
   }
   sections.push(PROTOCOL, CONTRACT);
   return sections.join('\n\n---\n\n');

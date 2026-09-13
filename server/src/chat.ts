@@ -20,6 +20,7 @@ import { presidentDate, presidentNow } from './clock';
 import type { Env } from './env';
 import { decisionsForPrompt } from './memory/decisions';
 import { activityForPrompt } from './memory/inbox';
+import { runMemoryTool, SEARCH_MEMORY_TOOL } from './memory/search';
 import { paidLimitReached, recordUsage } from './usage';
 
 /** What the app sends. Mirrors `AskOptions` in `src/features/chat/responder.ts`. */
@@ -35,6 +36,8 @@ export interface ChatReply {
   response: unknown;
   warnings: string[];
   source: ApiTier;
+  /** The memory searches made for this answer. For checking how often she looks. */
+  searches: number;
 }
 
 /** Waits before each retry of a busy model. Measured: the second try got through. */
@@ -117,11 +120,13 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   ]);
 
   const base: Omit<GenerateOptions, 'apiKey'> = {
-    systemPrompt: buildSystemPrompt(request.company, decisions, now, activity),
+    systemPrompt: buildSystemPrompt(request.company, decisions, now, activity, true),
     history: request.history,
     message: request.message,
     attachments: request.attachments,
     model: env.MODEL,
+    tools: [SEARCH_MEMORY_TOOL],
+    runTool: (call) => runMemoryTool(env.MAYA_DB, call),
   };
 
   const run = async (tier: ApiTier, apiKey: string): Promise<ChatReply> => {
@@ -131,7 +136,12 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     if (!validated.ok) {
       throw new LlmError('bad_response', `応答が契約を満たしていません。${validated.errors.join(' ')}`);
     }
-    return { response: validated.value, warnings: validated.warnings, source: tier };
+    return {
+      response: validated.value,
+      warnings: validated.warnings,
+      source: tier,
+      searches: result.toolCalls.length,
+    };
   };
 
   const askPaid = async (): Promise<ChatReply> => {
