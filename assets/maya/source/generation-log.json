@@ -235,6 +235,36 @@
         ],
         "note": "The other five get the master's mouth in their open frames. Those expressions never play a clip, so the frame is never shown."
       }
+    },
+    {
+      "round": "reaction-poses",
+      "purpose": "Stop MAYA standing stiffly. Five expressions get a body posture baked into their cut-out.",
+      "model": "flash",
+      "size": [
+        1792,
+        2400
+      ],
+      "calls": {
+        "masters": 5,
+        "blink": 5,
+        "mouth_open": 0,
+        "retries": 0
+      },
+      "decision": "The pose versions REPLACE the standing sets for these five emotions. Considered keeping both and using the pose only during the reaction spotlight; the user chose replacement.",
+      "poses": {
+        "serious": "upright, hands lightly clasped at waist",
+        "annoyed": "arms folded firmly across the chest",
+        "thinking": "one arm supports the other elbow, index finger at the chin, gaze off",
+        "challenge": "shoulders forward, one hand on the hip",
+        "happy": "shoulders lifted, hands together at the collarbone"
+      },
+      "prompt_changes": [
+        "The asset backlog had assigned crossed arms to both serious and annoyed, the pair the pose was meant to separate. serious was changed to clasped hands.",
+        "Head position, size and angle pinned. The blink ellipses sit at fixed canvas coordinates, so a moving head would misplace them. challenge carries its lean in the shoulders, not the head.",
+        "Hand anatomy spelled out, and hands kept clear of the eyes and mouth. A hand inside an ellipse cannot be rescued by masking the way drift can."
+      ],
+      "drift": "scale 1.00, dx 0, dy 0 on face and eye band for all five masters against their parents, and all five blink frames against their masters.",
+      "consequence": "serious and challenge lost the mouth-open frames they had as standing sets. Voice is postponed, so nothing is shown wrong now. When voice returns, serious, challenge and happy each need a mouth-open frame drawn from the pose master."
     }
   ]
 }
