@@ -83,6 +83,34 @@ with looks complete while the thing to check on is missing.
 - created_at
 - updated_at
 
+### journal_entries
+
+Local table `cached_journal_entries`, created in migration 4. The source of
+truth for journal entries from every route, until v0.2 moves it to D1.
+
+- id
+- entry_date — `YYYY-MM-DD`, from the entry itself
+- topic
+- sensitivity — home | business | company. `private` is refused, never stored
+- source — ChatGPT, Claude, and later MAYA
+- ai_verdict — accepted | rejected | undecided
+- entry_json — the parsed entry, whole. The skill carries a `journal_version`
+  and will add fields, so they are not given columns each
+- raw_text — exactly what was pasted, so a parser mistake can be repaired from
+  the original later
+- created_at
+- updated_at
+
+### topics
+
+Local table `cached_topics`, created in migration 4. Kept forever.
+
+- id
+- url nullable
+- body nullable
+- note nullable — why it caught the president's eye
+- created_at
+
 ### memories
 
 Use only after v0.1 if needed.

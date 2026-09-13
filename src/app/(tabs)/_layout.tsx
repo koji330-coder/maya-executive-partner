@@ -58,6 +58,7 @@ export default function TabsLayout() {
           you switch between while talking. */}
       <Tabs.Screen name="decisions" options={{ href: null }} />
       <Tabs.Screen name="company" options={{ href: null }} />
+      <Tabs.Screen name="inbox" options={{ href: null }} />
     </Tabs>
   );
 }

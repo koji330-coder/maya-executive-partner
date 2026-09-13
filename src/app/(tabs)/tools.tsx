@@ -22,7 +22,7 @@ interface Tool {
   status: Status;
   /** Why it is not here yet. Shown when a tile that is not ready is pressed. */
   note: string;
-  run?: 'company' | 'decisions' | 'export';
+  run?: 'company' | 'decisions' | 'export' | 'inbox';
 }
 
 /**
@@ -50,6 +50,13 @@ const TOOLS: Tool[] = [
     status: 'ready',
     note: '',
     run: 'decisions',
+  },
+  {
+    label: '受け箱',
+    icon: 'file-tray-full-outline',
+    status: 'ready',
+    note: '',
+    run: 'inbox',
   },
   {
     label: '会話を書き出す',
@@ -132,6 +139,9 @@ export default function ToolsScreen() {
           return;
         case 'decisions':
           router.push('/decisions');
+          return;
+        case 'inbox':
+          router.push('/inbox');
           return;
         case 'export':
           void exportTranscript().then((text) =>

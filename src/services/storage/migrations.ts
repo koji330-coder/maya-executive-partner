@@ -106,6 +106,42 @@ export const MIGRATIONS: readonly Migration[] = [
         ON cached_decisions (source_message_id);`,
     ],
   },
+  {
+    version: 4,
+    statements: [
+      // The inbox: things brought in from outside MAYA. Journal entries written
+      // by chat skills had nowhere to land, which is why the journal stopped
+      // after its first day. This table is where they land until v0.2 moves it
+      // to D1 (docs/PLATFORM_ARCHITECTURE.md).
+      //
+      // The parsed entry is kept whole as JSON, for the same reason replies are:
+      // the skill carries a journal_version and will grow fields. The raw paste
+      // is kept too, so a parser bug can be repaired later from what was
+      // actually sent.
+      `CREATE TABLE IF NOT EXISTS cached_journal_entries (
+        id TEXT PRIMARY KEY NOT NULL,
+        entry_date TEXT NOT NULL,
+        topic TEXT NOT NULL,
+        sensitivity TEXT,
+        source TEXT,
+        ai_verdict TEXT NOT NULL CHECK (ai_verdict IN ('accepted', 'rejected', 'undecided')),
+        entry_json TEXT NOT NULL,
+        raw_text TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_cached_journal_date
+        ON cached_journal_entries (entry_date);`,
+      // Topics from X and elsewhere. Kept forever, by decision on 2026-09-13.
+      `CREATE TABLE IF NOT EXISTS cached_topics (
+        id TEXT PRIMARY KEY NOT NULL,
+        url TEXT,
+        body TEXT,
+        note TEXT,
+        created_at TEXT NOT NULL
+      );`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(
