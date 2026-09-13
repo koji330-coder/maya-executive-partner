@@ -68,7 +68,9 @@ const TOOLS: Tool[] = [
     label: '売上ダッシュボード',
     icon: 'stats-chart-outline',
     status: 'planned',
-    note: '外部のダッシュボードへのリンクを置く場所です。リンク先をまだ決めていません。',
+    // Reads the sales lab's D1 copy, never the spreadsheet or GAS directly.
+    // See docs/SALES_DATA.md before wiring this: the endpoint has no auth yet.
+    note: '売上ラボのD1から読む予定です。接続の前に、読み出し口の認証を決めます。',
   },
   {
     label: '資料を要約する',
