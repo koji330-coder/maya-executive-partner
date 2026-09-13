@@ -19,7 +19,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   CharacterStage,
-  DevExpressionControls,
   useCharacterRuntime,
   useReactionSpotlight,
 } from '@/features/character';
@@ -298,8 +297,6 @@ export default function TalkScreen() {
             <Text style={styles.cancelText}>送信を取り消す</Text>
           </Pressable>
         ) : null}
-
-        {__DEV__ ? <DevExpressionControls runtime={runtime} /> : null}
       </ScrollView>
 
       {conversation.attachments.length > 0 || attachError ? (

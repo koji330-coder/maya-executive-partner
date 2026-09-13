@@ -25,7 +25,7 @@ v0.2 started 2026-09-13. Steps 1-3 done and verified on a device the same day: t
 - `CharacterStage` — the scene MAYA inhabits, including the "考えています…" state (three fading dots, not a spinner).
 - `PlaceholderMaya` — layered shapes standing in for the generated artwork, driven by exactly the state the real layers will consume.
 - `MayaArtwork` and `expressionAssets` — the generated artwork, shipped as four pre-composited frames per expression. The stage picks the artwork when the current emotion has it and the placeholder when it does not, so the backend can already return any emotion from the response contract.
-- `DevExpressionControls` — Phase 1 control surface for expression, pose, scene, activity and clip playback. Gated behind `__DEV__`.
+- `DevExpressionControls` — Phase 1 control surface for expression, pose, scene, activity and clip playback. Gated behind `__DEV__`. Removed 2026-09-14: the real conversation now drives every expression and pose.
 - Audio abstraction — `AudioEngine` interface, fixed-clip manifest for the six OmniVoice lines, and `EnvelopeAudioEngine`, which plays a clip's amplitude envelope so lip sync is exercisable before any audio file exists.
 
 ### Phase 2 — Local conversation prototype
