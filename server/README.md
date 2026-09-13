@@ -56,13 +56,20 @@ npx wrangler d1 execute MAYA_DB --local --command "DELETE FROM actions; DELETE F
 
 ## What is not done yet
 
-- **Access.** In production the Worker sits behind a Cloudflare Access service
-  token and `workers_dev` is off. Until that exists, it only runs locally
+- **Access is done.** The Worker runs at its workers.dev address behind
+  Cloudflare Access (scope: all traffic). Two policies: Cloudflare account
+  members (browser login) and `maya-app` (Service Auth, the app's service
+  token). `ACCESS_AUD` in `wrangler.jsonc` is that application's tag; the
+  Worker verifies the Access JWT against it. Preview URLs are off, because they
+  would be a second door
 - **The app only calls this when a server address is set** in its settings.
   Left empty, it calls Gemini directly as before
 
-Creating the D1 database, setting secrets and deploying all act on the
-Cloudflare account, and are done as separate, confirmed steps.
+Deploy with `npx wrangler deploy`; schema changes with
+`npx wrangler d1 migrations apply MAYA_DB --remote`. Both act on the Cloudflare
+account, so they are confirmed first. If the Access application is ever deleted
+and recreated, its tag changes and `ACCESS_AUD` must be updated, or every
+request is refused.
 
 ## Things that bit
 
