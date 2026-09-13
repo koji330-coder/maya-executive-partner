@@ -3,9 +3,12 @@
   "name": "maya-server",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
-  // Reached only through the hostname Cloudflare Access protects. The
-  // workers.dev address would be a second door with no lock on it.
-  "workers_dev": false,
+  // The workers.dev address is the only way in (decided 2026-09-13: gakky.jp's
+  // DNS is not on Cloudflare, so a Worker cannot sit at maya.gakky.jp). It is
+  // protected twice: Cloudflare Access in front, and src/access.ts inside.
+  "workers_dev": true,
+  // Preview URLs would be a second door, one Access is not configured for.
+  "preview_urls": false,
   "vars": {
     "MODEL": "gemini-3.6-flash",
     "PREFER_FREE": "true",
@@ -21,9 +24,8 @@
     {
       "binding": "MAYA_DB",
       "database_name": "maya",
-      // Placeholder for local development. Replaced with the real id when the
-      // database is created on Cloudflare, which is a separate, confirmed step.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Created on Cloudflare 2026-09-13 in APAC. An id, not a secret.
+      "database_id": "11ed662b-5540-43ca-80cb-3b6c9654404e",
       "migrations_dir": "migrations"
     }
   ]
