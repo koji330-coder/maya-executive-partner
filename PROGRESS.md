@@ -334,3 +334,7 @@ animation; the brow only has to stay readable, because it is what carries
 `challenge`, `annoyed` and `concerned`. The eyes and mouth stay absolute. The spec
 was relaxed instead of the hairstyle.
 - Phase 5 — Decisions: detection is already in the response contract and rendered on the Talk screen. What remains is persisting a confirmed decision and reading it back on the Decisions screen.
+
+## Pending
+
+- **Attachments are forgotten after the turn they were sent (decided 2026-09-14: option 3).** History carries text only, not even the fact an image was attached (`src/features/chat/useConversation.ts` history build). Plan: on a turn with attachments, the response JSON gains an attachment note (facts, numbers, labels worth keeping); save it with the user message (migration), put it into later history as 〔添付 name：note〕, and tell MAYA to ask for the image again when the note lacks a detail. Server redeploy + `npm run update:ios`; no rebuild.
