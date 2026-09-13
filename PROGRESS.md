@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 5 — Decisions and conversation sessions: complete. Verified on a device on 2026-09-13: conversation list, new conversation, expressions. Decision recall and the time stamps are not yet tried on a device. Phase 6 (voice) is postponed by decision; see docs/ASSET_BACKLOG.md.
+Phase 5 — Decisions and conversation sessions: complete. Verified on a device on 2026-09-13: conversation list, new conversation, expressions. Decision recall verified the same day: a decision saved in one conversation was brought up in a new one. The time stamps are not yet tried on a device. Phase 6 (voice) is postponed by decision; see docs/ASSET_BACKLOG.md.
 
 ## Completed
 
