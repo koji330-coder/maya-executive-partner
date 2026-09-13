@@ -2,3 +2,6 @@
 # In production these are set with `wrangler secret put`, never in wrangler.jsonc.
 GEMINI_API_KEY_FREE=
 GEMINI_API_KEY_PAID=
+
+# The local dev server has no Access in front of it. Never set this in production.
+ACCESS_DISABLED=true

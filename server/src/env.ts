@@ -1,4 +1,6 @@
-export interface Env {
+import type { AccessEnv } from './access';
+
+export interface Env extends AccessEnv {
   MAYA_DB: D1Database;
   /** Secrets. Set with `wrangler secret put`, or `.dev.vars` locally. */
   GEMINI_API_KEY_FREE?: string;

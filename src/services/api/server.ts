@@ -111,6 +111,40 @@ export async function saveServerUrl(input: string): Promise<string | null> {
   return url;
 }
 
+/**
+ * The Cloudflare Access service token, for the deployed server.
+ *
+ * Both halves live in the keychain, like the Gemini keys did. The id alone is
+ * not enough to get in, but the pair is, so neither is logged or shown back in
+ * full.
+ */
+export async function saveAccessToken(clientId: string, clientSecret: string): Promise<void> {
+  const id = clientId.trim();
+  const secret = clientSecret.trim();
+  if (!id || !secret) {
+    throw new ServerError('rejected', 'Client ID と Client Secret の両方を入力してください。');
+  }
+  await Promise.all([
+    SecureStore.setItemAsync(ACCESS_ID_KEY, id),
+    SecureStore.setItemAsync(ACCESS_SECRET_KEY, secret),
+  ]);
+  cached = undefined;
+}
+
+export async function clearAccessToken(): Promise<void> {
+  await Promise.all([SecureStore.deleteItemAsync(ACCESS_ID_KEY), SecureStore.deleteItemAsync(ACCESS_SECRET_KEY)]);
+  cached = undefined;
+}
+
+/** Whether a token is stored, and the end of its id so it can be recognised. Never the secret. */
+export async function describeAccessToken(): Promise<string | null> {
+  const [id, secret] = await Promise.all([
+    SecureStore.getItemAsync(ACCESS_ID_KEY),
+    SecureStore.getItemAsync(ACCESS_SECRET_KEY),
+  ]);
+  return id && secret ? `…${id.slice(-6)}` : null;
+}
+
 export async function getStoredServerUrl(): Promise<string> {
   return (await SecureStore.getItemAsync(URL_KEY)) ?? '';
 }
@@ -164,7 +198,9 @@ export async function serverRequest<T>(path: string, options: RequestOptions = {
     }
     throw new ServerError(
       'unreachable',
-      'MAYAサーバーにつながりません。PCでサーバーが動いているか、スマホとPCが同じWi-Fiにいるかを確かめてください。',
+      // Worded for both the PC dev server and the deployed one: the president
+      // uses both, and a message about Wi-Fi would mislead him on the second.
+      'MAYAサーバーにつながりません。通信状況と、設定のアドレスを確かめてください。PCの開発用サーバーなら、PCで動いているかと、同じWi-Fiにいるかも確かめてください。',
     );
   } finally {
     clearTimeout(timer);

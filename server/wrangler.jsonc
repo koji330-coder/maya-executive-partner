@@ -10,7 +10,12 @@
     "MODEL": "gemini-3.6-flash",
     "PREFER_FREE": "true",
     "ALLOW_PAID_FALLBACK": "false",
-    "PAID_DAILY_LIMIT_YEN": "50"
+    "PAID_DAILY_LIMIT_YEN": "50",
+    // Cloudflare Access. Neither value is a secret. Until ACCESS_AUD is filled
+    // with the Access application's audience tag, the server refuses every
+    // request (src/access.ts), so deploying before Access exists is safe.
+    "ACCESS_TEAM_DOMAIN": "https://morning-block-80c5.cloudflareaccess.com",
+    "ACCESS_AUD": ""
   },
   "d1_databases": [
     {
