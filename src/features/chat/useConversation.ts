@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { CharacterRuntime } from '@/features/character';
+import {
+  loadDecisionsForPrompt,
+  saveDecision as storeDecision,
+  savedSourceMessages,
+} from '@/features/decisions/decisionRepository';
+import type { DecisionDraft } from '@/features/decisions/types';
 import type { ApiTier } from '@/services/llm/apiKey';
 import { LlmError, type ChatExchange } from '@/services/llm/geminiClient';
 
@@ -123,6 +129,12 @@ export function useConversation({
       }
       conversationId.current = latest.id;
       started.current = true;
+      // Replies whose decision was already stored come back marked, or every
+      // old decision card would offer to save itself a second time.
+      const saved = await savedSourceMessages(latest.id);
+      if (cancelled) {
+        return;
+      }
       const turns: Turn[] = messages.map((message) =>
         message.role === 'user'
           ? { id: message.id, role: 'user', text: message.text, at: Date.parse(message.createdAt) }
@@ -145,6 +157,7 @@ export function useConversation({
               },
               warnings: [],
               source: 'mock',
+              decisionSaved: saved.has(message.id),
             },
       );
       const lastMaya = [...turns].reverse().find((turn): turn is MayaTurn => turn.role === 'maya');
@@ -221,6 +234,9 @@ export function useConversation({
       abort.current = controller;
 
       try {
+        // Read fresh on every send rather than once per screen, so a decision
+        // saved one reply ago is already something she remembers.
+        const decisions = await loadDecisionsForPrompt();
         const reply = await ask({
           message: text || 'この添付について、気づくことを教えてください。',
           attachments: attachments.map((attachment) => ({
@@ -231,6 +247,7 @@ export function useConversation({
           })),
           history,
           company,
+          decisions,
           companyIsReal,
           scriptId,
           signal: controller.signal,
@@ -301,7 +318,19 @@ export function useConversation({
     setState((current) => ({ ...current, error: null }));
   }, []);
 
-  const saveDecision = useCallback((turnIdToSave: string) => {
+  /**
+   * Stores a confirmed decision, then marks its reply.
+   *
+   * Marked only after the write succeeds. The old version flipped the flag
+   * straight away and stored nothing, so the card said 保存しました and the
+   * decision was gone on the next launch.
+   */
+  const saveDecision = useCallback(async (turnIdToSave: string, draft: DecisionDraft) => {
+    await storeDecision({
+      draft,
+      conversationId: conversationId.current,
+      sourceMessageId: turnIdToSave,
+    });
     setState((current) => ({
       ...current,
       turns: current.turns.map((turn) =>

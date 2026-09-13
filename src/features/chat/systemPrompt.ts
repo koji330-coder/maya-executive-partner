@@ -18,6 +18,21 @@ export interface CompanyContext {
   issues?: string[];
 }
 
+/**
+ * A decision the president saved earlier, as the model sees it.
+ *
+ * Only what the model needs to notice a conflict: when, what, why, and what was
+ * supposed to happen next. Ids and timestamps stay in the database.
+ */
+export interface DecisionContext {
+  /** `YYYY-MM-DD`. */
+  date: string;
+  title: string;
+  reason?: string;
+  status: 'active' | 'reconsider' | 'completed';
+  action?: { title: string; dueDate?: string };
+}
+
 const PERSONA = `あなたは MAYA。社長に一番近い経営参謀です。
 
 秘書でも、コンサルタントでも、質問に答える機械でもありません。社長が毎日
@@ -203,13 +218,76 @@ nextAction
 followUpQuestion
   判断に足りない事実が1つあるとき、それだけを訊きます。なければ null。`;
 
-export function buildSystemPrompt(company?: CompanyContext): string {
-  const sections = [PERSONA, PROTOCOL, CONTRACT];
+export function buildSystemPrompt(
+  company?: CompanyContext,
+  decisions: DecisionContext[] = [],
+  today: Date = new Date(),
+): string {
+  const sections = [PERSONA];
   const context = formatCompany(company);
   if (context) {
-    sections.splice(1, 0, context);
+    sections.push(context);
   }
+  // Always present, even when empty. Protocol step 5 asks her to check past
+  // decisions, and with nothing written here she invents one: the same failure
+  // the company section had before its absence was stated outright.
+  sections.push(formatDecisions(decisions, today));
+  sections.push(PROTOCOL, CONTRACT);
   return sections.join('\n\n---\n\n');
+}
+
+const STATUS_WORD: Record<DecisionContext['status'], string> = {
+  active: '実行中',
+  reconsider: '見直し中',
+  completed: '完了',
+};
+
+export function formatDecisions(decisions: DecisionContext[], today: Date = new Date()): string {
+  const todayIso = localIsoDate(today);
+  if (decisions.length === 0) {
+    return `社長が記録した過去の判断はまだありません。今日は ${todayIso} です。
+
+「前に決めましたよね」のように、記録に無い過去の判断を持ち出さないでください。`;
+  }
+
+  const lines = decisions.map((decision) => {
+    const parts = [`- ${decision.date}［${STATUS_WORD[decision.status]}］${decision.title}`];
+    if (decision.reason) {
+      parts.push(`    理由: ${decision.reason}`);
+    }
+    if (decision.action) {
+      const due = decision.action.dueDate ? `（期限 ${decision.action.dueDate}）` : '';
+      const overdue =
+        decision.action.dueDate && decision.action.dueDate < todayIso ? ' ※期限切れ' : '';
+      parts.push(`    次の一手: ${decision.action.title}${due}${overdue}`);
+    }
+    return parts.join('\n');
+  });
+
+  return `社長がこれまでに記録した判断です。新しい順。今日は ${todayIso} です。
+
+${lines.join('\n')}
+
+この記録の使い方:
+- 新しい相談が実行中の判断と矛盾するなら、最初にそれを指摘します。日付と判断を
+  挙げて「何が変わりましたか？」と訊きます。判断を変えること自体は止めません。
+  変えるなら、気づかないうちにではなく、決め直したと分かったうえで変えさせます
+- 見直し中の判断に関わる相談は、決め直す好機です。前回の理由から始めます
+- 同じ論点に何度も戻ってきているなら annoyed を選んでよい場面です
+- 期限切れの次の一手は、相談の中身に関係するときだけ触れます。毎回言うと小言になります
+- 新しい返答で、ここにある判断と同じものを decision として検出しないでください。
+  二重に記録されます
+- 記録を読み上げたり、一覧にして返したりしないでください。覚えている相手として
+  自然に触れるだけです
+- ここに無い過去の判断を作らないでください`;
+}
+
+/** The device's calendar date, not UTC: a president in Tokyo at 8am is on today. */
+function localIsoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function formatCompany(company?: CompanyContext): string | null {

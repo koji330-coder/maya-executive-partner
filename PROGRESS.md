@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 4 — Company Brain: complete. Phase 5 is next.
+Phase 5 — Decisions: complete in code, not yet tried on a device. Phase 6 (voice) is postponed by decision; see docs/ASSET_BACKLOG.md.
 
 ## Completed
 

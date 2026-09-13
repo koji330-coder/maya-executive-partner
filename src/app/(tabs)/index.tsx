@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { EmptyState } from '@/components/EmptyState';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { CharacterStage, useCharacterRuntime } from '@/features/character';
+import { listDecisions } from '@/features/decisions/decisionRepository';
+import type { DecisionRecord } from '@/features/decisions/types';
 import { getTodayGreeting } from '@/features/today/greeting';
 import { colors, radius, spacing } from '@/theme';
 
@@ -40,6 +41,15 @@ export default function TodayScreen() {
   const router = useRouter();
   const { height } = useWindowDimensions();
   const greeting = useMemo(() => getTodayGreeting(), []);
+  // What is still open. Completed decisions are history, not something to act on
+  // this morning, so they stay on the Decisions screen and off the home screen.
+  const [open, setOpen] = React.useState<DecisionRecord[]>([]);
+  useFocusEffect(
+    React.useCallback(() => {
+      void listDecisions().then((all) => setOpen(all.filter((d) => d.status !== 'completed')));
+    }, []),
+  );
+
   const runtime = useCharacterRuntime({
     initialState: { scene: greeting.scene, emotion: 'smile' },
   });
@@ -94,11 +104,38 @@ export default function TodayScreen() {
           ))}
         </View>
 
-        <EmptyState
-          title="未決の判断"
-          body="保存した判断と次のアクションがここに並びます。まだ何も記録されていません。"
-          phase="Phase 5"
-        />
+        <View style={styles.pending}>
+          <View style={styles.pendingHead}>
+            <Text style={styles.pendingTitle}>進行中の判断</Text>
+            {open.length > 0 ? (
+              <Pressable accessibilityRole="button" onPress={() => router.push('/decisions')} hitSlop={8}>
+                <Text style={styles.pendingLink}>すべて見る</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {open.length === 0 ? (
+            <Text style={styles.pendingEmpty}>
+              まだありません。相談の中で決めたことを保存すると、ここに並びます。
+            </Text>
+          ) : (
+            // Three at most. The home screen is for what to pick up today, and a
+            // long list would push the openers above it out of reach.
+            open.slice(0, 3).map((decision) => (
+              <View key={decision.id} style={styles.pendingItem}>
+                <Text style={styles.pendingItemTitle} numberOfLines={2}>
+                  {decision.status === 'reconsider' ? '【見直し】' : ''}
+                  {decision.title}
+                </Text>
+                {decision.action && decision.action.status === 'open' ? (
+                  <Text style={styles.pendingItemAction} numberOfLines={1}>
+                    次の一手: {decision.action.title}
+                    {decision.action.dueDate ? `（${decision.action.dueDate}）` : ''}
+                  </Text>
+                ) : null}
+              </View>
+            ))
+          )}
+        </View>
       </View>
     </ScreenContainer>
   );
@@ -132,6 +169,45 @@ const styles = StyleSheet.create({
   },
   openers: {
     gap: spacing.sm,
+  },
+  pending: {
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  pendingHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  pendingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.charcoal,
+  },
+  pendingLink: {
+    fontSize: 13,
+    color: colors.gold,
+  },
+  pendingEmpty: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.charcoalSoft,
+  },
+  pendingItem: {
+    gap: 2,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  pendingItemTitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '600',
+    color: colors.charcoal,
+  },
+  pendingItemAction: {
+    fontSize: 12,
+    color: colors.charcoalSoft,
   },
   opener: {
     flexDirection: 'row',

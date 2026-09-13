@@ -80,6 +80,32 @@ export const MIGRATIONS: readonly Migration[] = [
       `ALTER TABLE cached_messages ADD COLUMN response_json TEXT;`,
     ],
   },
+  {
+    version: 3,
+    statements: [
+      // Phase 5. A decision without its next action is a note; the action is
+      // what gets checked on. `docs/DATA_MODEL.md` has defined `actions` from
+      // the start, but nothing needed it until decisions were actually saved.
+      `CREATE TABLE IF NOT EXISTS cached_actions (
+        id TEXT PRIMARY KEY NOT NULL,
+        decision_id TEXT,
+        company_id TEXT,
+        title TEXT NOT NULL,
+        due_date TEXT,
+        status TEXT NOT NULL CHECK (status IN ('open', 'done', 'cancelled')),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_cached_actions_decision
+        ON cached_actions (decision_id);`,
+      // Which reply a decision was saved from. Without it, reopening the app
+      // shows every past decision card as unsaved again and invites a second
+      // copy of the same decision.
+      `ALTER TABLE cached_decisions ADD COLUMN source_message_id TEXT;`,
+      `CREATE INDEX IF NOT EXISTS idx_cached_decisions_source
+        ON cached_decisions (source_message_id);`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(

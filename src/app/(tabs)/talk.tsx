@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   LayoutAnimation,
@@ -32,6 +33,8 @@ import {
 import { MayaAnswer } from '@/features/chat/MayaAnswer';
 import { useConversation } from '@/features/chat/useConversation';
 import { useCompanyProfile } from '@/features/company/useCompanyProfile';
+import { DecisionEditor } from '@/features/decisions/DecisionEditor';
+import { draftFromResponse, type DecisionDraft } from '@/features/decisions/types';
 import { colors, radius, spacing } from '@/theme';
 
 /**
@@ -55,6 +58,42 @@ export default function TalkScreen() {
     companyIsReal: company.profile.isRealCompany,
   });
   const scroller = React.useRef<ScrollView>(null);
+
+  // Which reply's decision is being confirmed, and what it starts as.
+  const [editing, setEditing] = React.useState<{ turnId: string; draft: DecisionDraft } | null>(
+    null,
+  );
+  const [savingDecision, setSavingDecision] = React.useState(false);
+
+  const openDecision = React.useCallback(
+    (turnId: string) => {
+      const turn = conversation.turns.find((t) => t.id === turnId);
+      if (turn?.role === 'maya') {
+        setEditing({ turnId, draft: draftFromResponse(turn.response) });
+      }
+    },
+    [conversation.turns],
+  );
+
+  const confirmDecision = React.useCallback(
+    (draft: DecisionDraft) => {
+      if (!editing) {
+        return;
+      }
+      setSavingDecision(true);
+      conversation
+        .saveDecision(editing.turnId, draft)
+        .then(() => setEditing(null))
+        // Left open on failure so what he corrected is not thrown away, and
+        // said out loud, because a sheet that silently stays up reads as a
+        // save button that does nothing.
+        .catch(() =>
+          Alert.alert('保存できませんでした', 'もう一度保存を押してください。直した内容はそのまま残っています。'),
+        )
+        .finally(() => setSavingDecision(false));
+    },
+    [conversation, editing],
+  );
 
   // Once per arrival. Re-seeding on every render would fight the president's
   // own typing, and re-seeding on a back-navigation would overwrite a draft he
@@ -206,7 +245,7 @@ export default function TalkScreen() {
               <Text style={styles.userText}>{turn.text}</Text>
             </View>
           ) : (
-            <MayaAnswer key={turn.id} turn={turn} onSaveDecision={conversation.saveDecision} />
+            <MayaAnswer key={turn.id} turn={turn} onSaveDecision={openDecision} />
           ),
         )}
 
@@ -301,6 +340,12 @@ export default function TalkScreen() {
           <Ionicons name="arrow-up" size={20} color={colors.ivory} />
         </Pressable>
       </View>
+      <DecisionEditor
+        initial={editing?.draft ?? null}
+        saving={savingDecision}
+        onCancel={() => setEditing(null)}
+        onSave={confirmDecision}
+      />
     </KeyboardAvoidingView>
   );
 }

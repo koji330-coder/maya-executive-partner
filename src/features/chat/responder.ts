@@ -11,7 +11,7 @@ import { ASSUMED_TOKENS_PER_TURN, paidLimitReached, recordUsage } from '@/servic
 
 import { validateMayaResponse, type MayaResponse } from './mayaResponse';
 import { respondTo as scriptedReply } from './mockResponder';
-import { buildSystemPrompt, type CompanyContext } from './systemPrompt';
+import { buildSystemPrompt, type CompanyContext, type DecisionContext } from './systemPrompt';
 
 export interface Reply {
   response: MayaResponse;
@@ -24,6 +24,11 @@ export interface AskOptions {
   message: string;
   history: ChatExchange[];
   company?: CompanyContext;
+  /**
+   * Decisions the president saved earlier. They ride in the prompt alongside
+   * the company, so they fall under the same real-company gate below.
+   */
+  decisions?: DecisionContext[];
   /**
    * Set when the profile describes a real company. The company context goes out
    * with every message, so the free tier is closed off rather than left to the
@@ -59,7 +64,7 @@ export async function ask(options: AskOptions): Promise<Reply> {
       '実在する会社の情報が登録されているため、無料APIキーは使いません。設定から有料APIキーを登録してください。',
     );
   }
-  const systemPrompt = buildSystemPrompt(options.company);
+  const systemPrompt = buildSystemPrompt(options.company, options.decisions);
   const request = {
     systemPrompt,
     history: options.history,

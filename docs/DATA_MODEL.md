@@ -50,10 +50,15 @@
 
 ### decisions
 
+Local table `cached_decisions`.
+
 - id
 - user_id
 - company_id
 - conversation_id nullable
+- source_message_id nullable — the reply it was saved from. Without it,
+  reopening the app shows every past decision card as unsaved and invites a
+  second copy of the same decision. Added in migration 3.
 - title
 - reason
 - status: active | completed | reconsider
@@ -67,8 +72,14 @@
 - decision_id nullable
 - company_id
 - title
-- due_date nullable
+- due_date nullable — `YYYY-MM-DD`. Free text like 「来週中」 is dropped at
+  save time, because it cannot be compared with today and would never count
+  as overdue.
 - status: open | done | cancelled
+
+Local table `cached_actions`, created in migration 3. A decision and its action
+are written in one transaction: a decision stored without the action it came
+with looks complete while the thing to check on is missing.
 - created_at
 - updated_at
 
