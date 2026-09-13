@@ -9,10 +9,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.maya.executivepartner"
+      "bundleIdentifier": "jp.gakky.maya"
     },
     "android": {
-      "package": "com.maya.executivepartner",
+      "package": "jp.gakky.maya",
       "adaptiveIcon": {
         "backgroundColor": "#F6F1E9",
         "foregroundImage": "./assets/app/android-icon-foreground.png",
@@ -35,10 +35,19 @@
           "resizeMode": "contain",
           "backgroundColor": "#F6F1E9"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "11b45e35-b3eb-4644-9bf3-3eda0fb5b4e3"
+      }
+    },
+    "owner": "gakky330"
   }
 }
