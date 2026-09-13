@@ -16,9 +16,10 @@ import {
   freeTierAllowed,
 } from '@/services/llm/policy';
 
-import { presidentNow } from './clock';
+import { presidentDate, presidentNow } from './clock';
 import type { Env } from './env';
 import { decisionsForPrompt } from './memory/decisions';
+import { activityForPrompt } from './memory/inbox';
 import { paidLimitReached, recordUsage } from './usage';
 
 /** What the app sends. Mirrors `AskOptions` in `src/features/chat/responder.ts`. */
@@ -109,10 +110,14 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
 
   // Decisions are read here, not sent by the app. From v0.2 they live in D1, so
   // every route into the server remembers the same decisions.
-  const decisions = await decisionsForPrompt(env.MAYA_DB);
+  const now = presidentNow();
+  const [decisions, activity] = await Promise.all([
+    decisionsForPrompt(env.MAYA_DB),
+    activityForPrompt(env.MAYA_DB, presidentDate()),
+  ]);
 
   const base: Omit<GenerateOptions, 'apiKey'> = {
-    systemPrompt: buildSystemPrompt(request.company, decisions, presidentNow()),
+    systemPrompt: buildSystemPrompt(request.company, decisions, now, activity),
     history: request.history,
     message: request.message,
     attachments: request.attachments,

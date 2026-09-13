@@ -5,6 +5,7 @@ import {
   type JournalEntry,
 } from '@/features/inbox/journal';
 import { splitTopic } from '@/features/inbox/topic';
+import type { ActivityContext } from '@/features/chat/systemPrompt';
 
 import { invalid, newId, notFound, nowIso } from '../http';
 
@@ -157,4 +158,59 @@ export async function listTopics(db: D1Database, limit = 200): Promise<StoredTop
     .bind(limit)
     .all<StoredTopic>();
   return results;
+}
+
+/**
+ * The recent journal entries and topics for the system prompt.
+ *
+ * Bounded twice: by age here, and by size in `formatActivity`. Entries the
+ * president marked private are never stored, so none can reach the prompt.
+ */
+export async function activityForPrompt(
+  db: D1Database,
+  today: string,
+  days = 14,
+  limit = 12,
+): Promise<ActivityContext> {
+  const since = new Date(`${today}T00:00:00Z`);
+  since.setUTCDate(since.getUTCDate() - days);
+  const sinceIso = since.toISOString().slice(0, 10);
+  const [journals, topics] = await Promise.all([
+    db
+      .prepare(
+        `SELECT entry_json AS entryJson FROM journal_entries
+         WHERE entry_date >= ? ORDER BY entry_date DESC, created_at DESC LIMIT ?;`,
+      )
+      .bind(sinceIso, limit)
+      .all<{ entryJson: string }>(),
+    db
+      .prepare(
+        `SELECT url, body, note, created_at AS createdAt FROM topics
+         WHERE created_at >= ? ORDER BY created_at DESC LIMIT ?;`,
+      )
+      .bind(sinceIso, limit)
+      .all<{ url: string | null; body: string | null; note: string | null; createdAt: string }>(),
+  ]);
+  return {
+    journals: journals.results.flatMap((row) => {
+      try {
+        const entry = JSON.parse(row.entryJson) as JournalEntry;
+        return [
+          {
+            date: entry.date,
+            topic: entry.topic,
+            decisions: entry.decisions ?? [],
+            userPerspective: entry.userPerspective ?? [],
+          },
+        ];
+      } catch {
+        return [];
+      }
+    }),
+    topics: topics.results.map((row) => ({
+      date: row.createdAt.slice(0, 10),
+      text: [row.body, row.url].filter(Boolean).join(' '),
+      ...(row.note ? { note: row.note } : {}),
+    })),
+  };
 }

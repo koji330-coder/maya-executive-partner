@@ -35,6 +35,38 @@ export interface DecisionContext {
   action?: { title: string; dueDate?: string };
 }
 
+/** One journal entry, cut down to what the president said and decided. */
+export interface JournalContext {
+  /** `YYYY-MM-DD`. */
+  date: string;
+  topic: string;
+  decisions: string[];
+  userPerspective: string[];
+}
+
+/** A topic the president saved, as a link or pasted text plus their note. */
+export interface TopicContext {
+  /** `YYYY-MM-DD`. */
+  date: string;
+  text: string;
+  note?: string;
+}
+
+export interface ActivityContext {
+  journals: JournalContext[];
+  topics: TopicContext[];
+}
+
+/**
+ * The most this section may add to every request, in characters.
+ *
+ * Fixed so the prompt stays the same size however many entries pile up: a year
+ * of journals must not make every consultation slower. Older entries are for a
+ * search tool to fetch when needed, not for this section.
+ */
+export const ACTIVITY_BUDGET_CHARS = 2400;
+const LINE_CHARS = 120;
+
 const PERSONA = `あなたは MAYA。社長に一番近い経営参謀です。
 
 秘書でも、コンサルタントでも、質問に答える機械でもありません。社長が毎日
@@ -224,6 +256,7 @@ export function buildSystemPrompt(
   company?: CompanyContext,
   decisions: DecisionContext[] = [],
   today: Date = new Date(),
+  activity?: ActivityContext,
 ): string {
   const sections = [PERSONA];
   const context = formatCompany(company);
@@ -235,6 +268,10 @@ export function buildSystemPrompt(
   // decisions, and with nothing written here she invents one: the same failure
   // the company section had before its absence was stated outright.
   sections.push(formatDecisions(decisions, today));
+  const recent = formatActivity(activity);
+  if (recent) {
+    sections.push(recent);
+  }
   sections.push(PROTOCOL, CONTRACT);
   return sections.join('\n\n---\n\n');
 }
@@ -299,6 +336,54 @@ ${lines.join('\n')}
 - 記録を読み上げたり、一覧にして返したりしないでください。覚えている相手として
   自然に触れるだけです
 - ここに無い過去の判断を作らないでください`;
+}
+
+/**
+ * What the president has been doing lately, within `ACTIVITY_BUDGET_CHARS`.
+ *
+ * Newest first, and cut off at the budget rather than trimmed evenly, so what is
+ * dropped is always the oldest. The AI interpretation in a journal is left out:
+ * it is another model's reading, and MAYA should not take it as the president's.
+ */
+export function formatActivity(activity?: ActivityContext): string | null {
+  if (!activity || (activity.journals.length === 0 && activity.topics.length === 0)) {
+    return null;
+  }
+  const clip = (text: string) => (text.length > LINE_CHARS ? `${text.slice(0, LINE_CHARS)}…` : text);
+  const header = `社長の最近の活動です（Journal と、気になって保存した話題）。新しい順。
+
+使い方:
+- 相談に関係するときだけ、知っている相手として自然に触れます。一覧にして返さないでください
+- ここにあるのは最近の分だけです。書かれていない過去の活動を作らないでください`;
+
+  const blocks: string[] = [];
+  let used = header.length;
+  const take = (block: string) => {
+    if (used + block.length > ACTIVITY_BUDGET_CHARS) return false;
+    blocks.push(block);
+    used += block.length;
+    return true;
+  };
+
+  const journalLines = activity.journals.map((journal) => {
+    const parts = [`- ${journal.date} ${clip(journal.topic)}`];
+    journal.decisions.slice(0, 2).forEach((d) => parts.push(`    決めたこと: ${clip(d)}`));
+    journal.userPerspective.slice(0, 2).forEach((p) => parts.push(`    社長の考え: ${clip(p)}`));
+    return parts.join('\n');
+  });
+  const topicLines = activity.topics.map(
+    (topic) => `- ${topic.date} ${clip(topic.text)}${topic.note ? `（メモ: ${clip(topic.note)}）` : ''}`,
+  );
+
+  if (journalLines.length) {
+    take('\n\nJournal:');
+    for (const line of journalLines) if (!take(`\n${line}`)) break;
+  }
+  if (topicLines.length) {
+    take('\n\n話題:');
+    for (const line of topicLines) if (!take(`\n${line}`)) break;
+  }
+  return header + blocks.join('');
 }
 
 /** The device's calendar date, not UTC: a president in Tokyo at 8am is on today. */
