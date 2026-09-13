@@ -18,7 +18,7 @@
     // with the Access application's audience tag, the server refuses every
     // request (src/access.ts), so deploying before Access exists is safe.
     "ACCESS_TEAM_DOMAIN": "https://morning-block-80c5.cloudflareaccess.com",
-    "ACCESS_AUD": ""
+    "ACCESS_AUD": "2377e499cb2f02aca2a30434ebf3c2038f428956f167083637a218ed7d78c668"
   },
   "d1_databases": [
     {
