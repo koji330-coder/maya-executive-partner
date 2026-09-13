@@ -12,6 +12,9 @@
       "bundleIdentifier": "jp.gakky.maya",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
@@ -51,6 +54,9 @@
         "projectId": "11b45e35-b3eb-4644-9bf3-3eda0fb5b4e3"
       }
     },
-    "owner": "gakky330"
+    "owner": "gakky330",
+    "updates": {
+      "url": "https://u.expo.dev/11b45e35-b3eb-4644-9bf3-3eda0fb5b4e3"
+    }
   }
 }
