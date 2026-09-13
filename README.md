@@ -30,6 +30,8 @@ The first usable iPhone build must support:
 - decision extraction and storage
 - local persistence for conversations and user settings
 
+v0.1 is complete as of 2026-09-13. What comes after it — a Cloudflare server, data from sales, health records, project logs and GitHub — is designed in `docs/PLATFORM_ARCHITECTURE.md`.
+
 Not in v0.1:
 
 - Gmail / Calendar / Drive integration
