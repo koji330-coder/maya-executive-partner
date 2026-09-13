@@ -1,4 +1,4 @@
-import { splitTopic } from '../inboxRepository';
+import { isXLink, linkLabel, splitTopic } from '../inboxRepository';
 
 describe('splitTopic', () => {
   it('takes the link out of a copied post and keeps the rest as the body', () => {
@@ -18,5 +18,29 @@ describe('splitTopic', () => {
 
   it('returns nothing for an empty paste', () => {
     expect(splitTopic('   ')).toEqual({ url: null, body: null });
+  });
+});
+
+describe('isXLink / linkLabel', () => {
+  it('recognises X links, including the old twitter.com ones', () => {
+    for (const url of [
+      'https://x.com/someone/status/123',
+      'https://twitter.com/someone/status/123',
+      'https://www.x.com/someone',
+      'https://mobile.twitter.com/someone/status/123',
+    ]) {
+      expect(isXLink(url)).toBe(true);
+      expect(linkLabel(url)).toBe('X で開く');
+    }
+  });
+
+  it('treats everything else as an ordinary link', () => {
+    expect(isXLink('https://example.com/x.com')).toBe(false);
+    expect(isXLink('https://notx.com/a')).toBe(false);
+    expect(linkLabel('https://example.com')).toBe('開く');
+  });
+
+  it('does not throw on something that is not a URL', () => {
+    expect(isXLink('not a url')).toBe(false);
   });
 });

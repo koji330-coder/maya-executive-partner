@@ -1,11 +1,14 @@
 import React from 'react';
-import { Alert, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Linking, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { ScreenContainer } from '@/components/ScreenContainer';
 import {
   findSameJournal,
   InboxError,
+  isXLink,
+  linkLabel,
   listJournals,
   listTopics,
   saveJournal,
@@ -395,11 +398,7 @@ function TopicInbox() {
                 {topic.body}
               </Text>
             ) : null}
-            {topic.url ? (
-              <Text style={styles.meta} numberOfLines={1}>
-                {topic.url}
-              </Text>
-            ) : null}
+            {topic.url ? <TopicLink url={topic.url} /> : null}
             {topic.note ? <Text style={styles.note}>「{topic.note}」</Text> : null}
             <Text style={styles.meta}>{topic.createdAt.slice(0, 10)}</Text>
           </View>
@@ -409,7 +408,34 @@ function TopicInbox() {
   );
 }
 
+/**
+ * Opens a saved link.
+ *
+ * Handed to the system rather than shown inside MAYA, so an X link opens in the
+ * X app when it is installed. That is where a post can actually be read, with
+ * its replies and the account behind it.
+ */
+function TopicLink({ url }: { url: string }) {
+  const open = () => {
+    Linking.openURL(url).catch(() =>
+      Alert.alert('開けませんでした', 'リンクが壊れているか、対応するアプリがありません。'),
+    );
+  };
+  return (
+    <Pressable accessibilityRole="link" onPress={open} hitSlop={6} style={styles.linkRow}>
+      <Ionicons name={isXLink(url) ? 'logo-twitter' : 'open-outline'} size={14} color={colors.gold} />
+      <Text style={styles.linkText}>{linkLabel(url)}</Text>
+      <Text style={styles.linkHost} numberOfLines={1}>
+        {url}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
+  linkText: { fontSize: 13, fontWeight: '600', color: colors.gold },
+  linkHost: { flex: 1, fontSize: 12, color: colors.muted },
   title: { fontSize: 22, fontWeight: '600', color: colors.charcoal },
   lede: { marginTop: spacing.xs, fontSize: 14, lineHeight: 21, color: colors.charcoalSoft },
   segment: {
