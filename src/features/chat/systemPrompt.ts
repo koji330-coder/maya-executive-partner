@@ -1,3 +1,5 @@
+import { formatNow } from './timeline';
+
 /**
  * MAYA's system prompt.
  *
@@ -228,12 +230,29 @@ export function buildSystemPrompt(
   if (context) {
     sections.push(context);
   }
+  sections.push(formatTime(today));
   // Always present, even when empty. Protocol step 5 asks her to check past
   // decisions, and with nothing written here she invents one: the same failure
   // the company section had before its absence was stated outright.
   sections.push(formatDecisions(decisions, today));
   sections.push(PROTOCOL, CONTRACT);
   return sections.join('\n\n---\n\n');
+}
+
+/**
+ * Now, and how to read the stamps in the history.
+ *
+ * Without this, a conversation left open for three days reached her as one
+ * sitting: she called a remark from the day before さっき, and carried the
+ * previous night's topic into the next morning's greeting.
+ */
+export function formatTime(now: Date = new Date()): string {
+  return `いまは ${formatNow(now)} です。
+
+会話の発言には、時間が空いたところにだけ〔9月12日(金) 21:40〕のような日時が付いています。
+- 前の日の発言を「さっき」と呼ばないでください。「昨日」「先週」と言います
+- 久しぶりの発言なら、前の話題を当然のように続けず、いまの話から入ります
+- 〔日時〕を返答に書き写さないでください`;
 }
 
 const STATUS_WORD: Record<DecisionContext['status'], string> = {

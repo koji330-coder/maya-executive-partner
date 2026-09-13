@@ -30,6 +30,7 @@ import {
   pickImage,
   pickTextFile,
 } from '@/features/chat/attachments';
+import { ConversationSheet } from '@/features/chat/ConversationSheet';
 import { MayaAnswer } from '@/features/chat/MayaAnswer';
 import { useConversation } from '@/features/chat/useConversation';
 import { useCompanyProfile } from '@/features/company/useCompanyProfile';
@@ -132,7 +133,10 @@ export default function TalkScreen() {
   // instead of a full-width strip, which is what buys back the input room.
   const portrait = keyboardUp || collapsed;
   const base = portrait ? 'input' : 'chat';
-  const spotlight = useReactionSpotlight(conversation.latest?.response ?? null, base, {
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  // A reply loaded from storage has already had its moment.
+  const fresh = conversation.latest && !conversation.latest.restored ? conversation.latest : null;
+  const spotlight = useReactionSpotlight(fresh?.response ?? null, base, {
     // Never steal the screen while the president is mid-sentence.
     enabled: !keyboardUp,
   });
@@ -189,7 +193,25 @@ export default function TalkScreen() {
       keyboardVerticalOffset={insets.bottom}
     >
       <View style={[styles.header, { paddingTop: insets.top }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="会話の一覧"
+          onPress={() => setSheetOpen(true)}
+          hitSlop={10}
+          style={styles.headerButton}
+        >
+          <Ionicons name="chatbubbles-outline" size={20} color={colors.charcoalSoft} />
+        </Pressable>
         <Text style={styles.headerTitle}>MAYA</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="新しい会話を始める"
+          onPress={conversation.startNewConversation}
+          hitSlop={10}
+          style={styles.headerButton}
+        >
+          <Ionicons name="create-outline" size={20} color={colors.charcoalSoft} />
+        </Pressable>
       </View>
 
       <View style={portrait && !spotlight.active ? styles.portraitRow : undefined}>
@@ -340,6 +362,18 @@ export default function TalkScreen() {
           <Ionicons name="arrow-up" size={20} color={colors.ivory} />
         </Pressable>
       </View>
+      <ConversationSheet
+        visible={sheetOpen}
+        activeId={conversation.activeConversationId}
+        onClose={() => setSheetOpen(false)}
+        onNew={() => {
+          conversation.startNewConversation();
+          setSheetOpen(false);
+        }}
+        onOpen={(id) => {
+          void conversation.openConversation(id).then(() => setSheetOpen(false));
+        }}
+      />
       <DecisionEditor
         initial={editing?.draft ?? null}
         saving={savingDecision}
@@ -356,8 +390,15 @@ const PORTRAIT_STAGE = 88;
 const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.ivory,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
     paddingBottom: spacing.xs,
+  },
+  headerButton: {
+    width: 32,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 15,

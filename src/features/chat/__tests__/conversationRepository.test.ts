@@ -1,4 +1,4 @@
-import { formatMayaMessage } from '../conversationRepository';
+import { formatConversation, formatMayaMessage } from '../conversationRepository';
 import type { StoredMessage } from '../conversationRepository';
 import type { MayaResponse } from '../mayaResponse';
 
@@ -58,5 +58,51 @@ describe('formatMayaMessage', () => {
     expect(formatMayaMessage(mayaMessage(null))).toBe(
       'MAYA [serious / thinking / work]: 値上げは通ります。',
     );
+  });
+});
+
+describe('formatConversation', () => {
+  const stamp = (day: number, hour: number, minute: number) =>
+    new Date(2026, 8, day, hour, minute).toISOString();
+
+  function message(overrides: Partial<StoredMessage>): StoredMessage {
+    return {
+      id: 'm',
+      conversationId: 'c1',
+      role: 'user',
+      text: '',
+      emotion: null,
+      pose: null,
+      scene: null,
+      voiceKey: null,
+      createdAt: stamp(11, 22, 0),
+      response: null,
+      ...overrides,
+    };
+  }
+
+  it('puts a time on every message and a heading on every new day', () => {
+    // The export used to print only the conversation's start time, so three
+    // days read as one sitting and old failures looked like new ones.
+    const text = formatConversation({ title: '自己紹介して。' }, [
+      message({ id: 'a', text: 'しゃぶ葉行ってきた', createdAt: stamp(11, 22, 0) }),
+      message({
+        id: 'b',
+        role: 'maya',
+        text: '結局しゃぶ葉ですか',
+        emotion: 'smile',
+        pose: 'default',
+        scene: 'casual',
+        createdAt: stamp(11, 22, 1),
+      }),
+      message({ id: 'c', text: 'おはようございます', createdAt: stamp(12, 8, 0) }),
+    ]);
+
+    expect(text).toContain('### 2026-09-11');
+    expect(text).toContain('22:00 社長: しゃぶ葉行ってきた');
+    expect(text).toContain('22:01 MAYA [smile / default / casual]: 結局しゃぶ葉ですか');
+    expect(text).toContain('### 2026-09-12');
+    expect(text).toContain('08:00 社長: おはようございます');
+    expect(text.indexOf('### 2026-09-12')).toBeGreaterThan(text.indexOf('22:01'));
   });
 });

@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 5 — Decisions: complete in code, not yet tried on a device. Phase 6 (voice) is postponed by decision; see docs/ASSET_BACKLOG.md.
+Phase 5 — Decisions and conversation sessions: complete in code. Decisions tested on a device; recall and sessions not yet. Phase 6 (voice) is postponed by decision; see docs/ASSET_BACKLOG.md.
 
 ## Completed
 
