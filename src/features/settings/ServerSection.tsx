@@ -11,6 +11,7 @@ import {
   ServerError,
   type ServerHealth,
 } from '@/services/api/server';
+import { apiBaseUrl } from '@/services/api/config';
 import { colors, radius, spacing } from '@/theme';
 
 type Check =
@@ -27,6 +28,9 @@ type Check =
  * server. Switching does not move existing data. What was saved on the phone
  * stays on the phone and does not appear while the server is in use.
  */
+/** The address built into the app (eas.json). Used whenever none is saved here. */
+const BUILT_IN_URL = apiBaseUrl.trim().replace(/\/+$/, '');
+
 export function ServerSection() {
   const [url, setUrl] = React.useState('');
   const [savedUrl, setSavedUrl] = React.useState<string | null>(null);
@@ -39,8 +43,8 @@ export function ServerSection() {
 
   React.useEffect(() => {
     void getStoredServerUrl().then((stored) => {
-      setUrl(stored);
-      setSavedUrl(stored || null);
+      setUrl(stored || BUILT_IN_URL);
+      setSavedUrl(stored || BUILT_IN_URL || null);
     });
     void describeAccessToken().then(setTokenLabel);
   }, []);
@@ -81,8 +85,8 @@ export function ServerSection() {
     setError(null);
     try {
       const stored = await saveServerUrl(url);
-      setSavedUrl(stored);
-      setUrl(stored ?? '');
+      setSavedUrl(stored ?? (BUILT_IN_URL || null));
+      setUrl(stored ?? BUILT_IN_URL);
       if (stored) {
         await runCheck();
       } else {
@@ -94,9 +98,9 @@ export function ServerSection() {
   };
 
   const clear = async () => {
-    setUrl('');
     await saveServerUrl('');
-    setSavedUrl(null);
+    setUrl(BUILT_IN_URL);
+    setSavedUrl(BUILT_IN_URL || null);
     setCheck({ state: 'idle' });
   };
 
@@ -113,7 +117,7 @@ export function ServerSection() {
         value={url}
         onChangeText={setUrl}
         style={styles.input}
-        placeholder="http://192.168.11.6:8787"
+        placeholder={BUILT_IN_URL || 'http://192.168.11.6:8787'}
         placeholderTextColor={colors.muted}
         autoCapitalize="none"
         autoCorrect={false}
@@ -138,9 +142,9 @@ export function ServerSection() {
         >
           <Text style={styles.secondaryText}>接続を確認</Text>
         </Pressable>
-        {savedUrl ? (
+        {savedUrl && savedUrl !== BUILT_IN_URL ? (
           <Pressable accessibilityRole="button" onPress={() => void clear()} style={styles.secondary}>
-            <Text style={styles.secondaryText}>使わない</Text>
+            <Text style={styles.secondaryText}>{BUILT_IN_URL ? '既定に戻す' : '使わない'}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -195,7 +199,7 @@ export function ServerSection() {
       </View>
 
       <Text style={styles.note}>
-        サーバーを使うと、判断・Journal・話題はサーバーに保存されます。これまでスマホに保存したものは、サーバー使用中は表示されません。空にすれば元に戻ります。
+        サーバーを使うと、判断・Journal・話題はサーバーに保存されます。これまでスマホに保存したものは、サーバー使用中は表示されません。{BUILT_IN_URL ? 'このアプリには本番サーバーのアドレスが入っています。' : '空にすれば元に戻ります。'}
       </Text>
     </View>
   );
