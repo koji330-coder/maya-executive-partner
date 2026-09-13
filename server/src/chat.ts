@@ -1,5 +1,5 @@
 import { validateMayaResponse } from '@/features/chat/mayaResponse';
-import { buildSystemPrompt, type CompanyContext, type DecisionContext } from '@/features/chat/systemPrompt';
+import { buildSystemPrompt, type CompanyContext } from '@/features/chat/systemPrompt';
 import type { ApiTier } from '@/services/llm/apiKey';
 import {
   eligibleForPaidRetry,
@@ -18,6 +18,7 @@ import {
 
 import { presidentNow } from './clock';
 import type { Env } from './env';
+import { decisionsForPrompt } from './memory/decisions';
 import { paidLimitReached, recordUsage } from './usage';
 
 /** What the app sends. Mirrors `AskOptions` in `src/features/chat/responder.ts`. */
@@ -25,7 +26,6 @@ export interface ChatRequest {
   message: string;
   history: ChatExchange[];
   company?: CompanyContext;
-  decisions?: DecisionContext[];
   companyIsReal?: boolean;
   attachments?: RequestAttachment[];
 }
@@ -79,7 +79,6 @@ export function parseChatRequest(body: unknown): ChatRequest {
     message: b.message,
     history: b.history as ChatExchange[],
     company: b.company as CompanyContext | undefined,
-    decisions: Array.isArray(b.decisions) ? (b.decisions as DecisionContext[]) : undefined,
     companyIsReal: b.companyIsReal === true,
     attachments: Array.isArray(b.attachments) ? (b.attachments as RequestAttachment[]) : undefined,
   };
@@ -108,8 +107,12 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     );
   }
 
+  // Decisions are read here, not sent by the app. From v0.2 they live in D1, so
+  // every route into the server remembers the same decisions.
+  const decisions = await decisionsForPrompt(env.MAYA_DB);
+
   const base: Omit<GenerateOptions, 'apiKey'> = {
-    systemPrompt: buildSystemPrompt(request.company, request.decisions, presidentNow()),
+    systemPrompt: buildSystemPrompt(request.company, decisions, presidentNow()),
     history: request.history,
     message: request.message,
     attachments: request.attachments,

@@ -1,4 +1,5 @@
 import type { MayaResponse } from '@/features/chat/mayaResponse';
+import type { DecisionContext } from '@/features/chat/systemPrompt';
 
 export type DecisionStatus = 'active' | 'completed' | 'reconsider';
 export type ActionStatus = 'open' | 'done' | 'cancelled';
@@ -79,4 +80,61 @@ export function validateDraft(draft: DecisionDraft): DraftProblem | null {
     return 'bad_date';
   }
   return null;
+}
+
+/** A decision joined to its action, as both the app and the server query it. */
+export interface DecisionRow {
+  id: string;
+  title: string;
+  reason: string | null;
+  status: DecisionStatus;
+  followUpDate: string | null;
+  createdAt: string;
+  actionId: string | null;
+  actionTitle: string | null;
+  actionDueDate: string | null;
+  actionStatus: ActionStatus | null;
+}
+
+export function decisionFromRow(row: DecisionRow): DecisionRecord {
+  return {
+    id: row.id,
+    title: row.title,
+    reason: row.reason ?? '',
+    status: row.status,
+    createdAt: row.createdAt,
+    followUpDate: row.followUpDate,
+    action:
+      row.actionId && row.actionTitle && row.actionStatus
+        ? {
+            id: row.actionId,
+            title: row.actionTitle,
+            dueDate: row.actionDueDate,
+            status: row.actionStatus,
+          }
+        : null,
+  };
+}
+
+/**
+ * How many past decisions go into each prompt.
+ *
+ * Enough to cover a quarter of a busy president's decisions, few enough that
+ * the list does not crowd out the company profile or the conversation. Oldest
+ * falls off first; `completed` ones are left out entirely because a finished
+ * decision is not something the new question can conflict with.
+ */
+export const RECALL_LIMIT = 12;
+
+export function toDecisionContext(record: DecisionRecord): DecisionContext {
+  return {
+    date: record.createdAt.slice(0, 10),
+    title: record.title,
+    reason: record.reason || undefined,
+    status: record.status,
+    action:
+      record.action && record.action.status === 'open'
+        ? { title: record.action.title, dueDate: record.action.dueDate ?? undefined }
+        : undefined,
+  };
 }

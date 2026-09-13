@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "wrangler dev --local --port 8787",
     "db:migrate:local": "wrangler d1 migrations apply MAYA_DB --local",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:api": "node scripts/check-memory-api.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260911.1",

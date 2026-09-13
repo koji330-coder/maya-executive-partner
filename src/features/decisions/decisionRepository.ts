@@ -1,7 +1,19 @@
 import type { DecisionContext } from '@/features/chat/systemPrompt';
 import { openDatabase } from '@/services/storage';
 
-import type { ActionStatus, DecisionDraft, DecisionRecord, DecisionStatus } from './types';
+import {
+  decisionFromRow,
+  RECALL_LIMIT,
+  toDecisionContext,
+  type ActionStatus,
+  type DecisionDraft,
+  type DecisionRecord,
+  type DecisionRow,
+  type DecisionStatus,
+} from './types';
+
+// Moved to ./types so the server can share them; re-exported for existing imports.
+export { RECALL_LIMIT, toDecisionContext } from './types';
 
 /**
  * Decision persistence.
@@ -76,19 +88,6 @@ export async function saveDecision({
   return decisionId;
 }
 
-interface DecisionRow {
-  id: string;
-  title: string;
-  reason: string | null;
-  status: DecisionStatus;
-  followUpDate: string | null;
-  createdAt: string;
-  actionId: string | null;
-  actionTitle: string | null;
-  actionDueDate: string | null;
-  actionStatus: ActionStatus | null;
-}
-
 /** Newest first. Each decision carries at most one action in v0.1. */
 export async function listDecisions(): Promise<DecisionRecord[]> {
   try {
@@ -104,30 +103,10 @@ export async function listDecisions(): Promise<DecisionRecord[]> {
        ORDER BY d.created_at DESC;`,
       COMPANY_ID,
     );
-    return rows.map(toRecord);
+    return rows.map(decisionFromRow);
   } catch {
     return [];
   }
-}
-
-function toRecord(row: DecisionRow): DecisionRecord {
-  return {
-    id: row.id,
-    title: row.title,
-    reason: row.reason ?? '',
-    status: row.status,
-    createdAt: row.createdAt,
-    followUpDate: row.followUpDate,
-    action:
-      row.actionId && row.actionTitle && row.actionStatus
-        ? {
-            id: row.actionId,
-            title: row.actionTitle,
-            dueDate: row.actionDueDate,
-            status: row.actionStatus,
-          }
-        : null,
-  };
 }
 
 export async function setDecisionStatus(id: string, status: DecisionStatus): Promise<void> {
@@ -166,16 +145,6 @@ export async function savedSourceMessages(conversationId: string): Promise<Set<s
 }
 
 /**
- * How many past decisions go into each prompt.
- *
- * Enough to cover a quarter of a busy president's decisions, few enough that
- * the list does not crowd out the company profile or the conversation. Oldest
- * falls off first; `completed` ones are left out entirely because a finished
- * decision is not something the new question can conflict with.
- */
-export const RECALL_LIMIT = 12;
-
-/**
  * The decisions MAYA should remember, for the system prompt.
  *
  * Recall is best effort in the same way saving a message is: a consultation
@@ -198,21 +167,8 @@ export async function loadDecisionsForPrompt(limit = RECALL_LIMIT): Promise<Deci
       COMPANY_ID,
       limit,
     );
-    return rows.map(toRecord).map(toDecisionContext);
+    return rows.map(decisionFromRow).map(toDecisionContext);
   } catch {
     return [];
   }
-}
-
-export function toDecisionContext(record: DecisionRecord): DecisionContext {
-  return {
-    date: record.createdAt.slice(0, 10),
-    title: record.title,
-    reason: record.reason || undefined,
-    status: record.status,
-    action:
-      record.action && record.action.status === 'open'
-        ? { title: record.action.title, dueDate: record.action.dueDate ?? undefined }
-        : undefined,
-  };
 }
