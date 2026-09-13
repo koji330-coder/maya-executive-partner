@@ -1,0 +1,155 @@
+import { validateMayaResponse } from '@/features/chat/mayaResponse';
+import { buildSystemPrompt, type CompanyContext, type DecisionContext } from '@/features/chat/systemPrompt';
+import type { ApiTier } from '@/services/llm/apiKey';
+import {
+  eligibleForPaidRetry,
+  generateMayaResponse,
+  LlmError,
+  type ChatExchange,
+  type GenerateOptions,
+  type GenerateResult,
+  type RequestAttachment,
+} from '@/services/llm/geminiClient';
+import {
+  ASSUMED_TOKENS_PER_TURN,
+  estimateRequestAttachmentTokens,
+  freeTierAllowed,
+} from '@/services/llm/policy';
+
+import { presidentNow } from './clock';
+import type { Env } from './env';
+import { paidLimitReached, recordUsage } from './usage';
+
+/** What the app sends. Mirrors `AskOptions` in `src/features/chat/responder.ts`. */
+export interface ChatRequest {
+  message: string;
+  history: ChatExchange[];
+  company?: CompanyContext;
+  decisions?: DecisionContext[];
+  companyIsReal?: boolean;
+  attachments?: RequestAttachment[];
+}
+
+export interface ChatReply {
+  response: unknown;
+  warnings: string[];
+  source: ApiTier;
+}
+
+/** Waits before each retry of a busy model. Measured: the second try got through. */
+export const BUSY_RETRY_DELAYS_MS = [8_000, 20_000];
+
+/**
+ * Retries a model that said it was busy.
+ *
+ * Only a 503. Everything else fails the same way the second time, and a retry
+ * would only make the president wait longer for the same error.
+ */
+export async function withBusyRetry<T>(
+  run: () => Promise<T>,
+  delays: number[] = BUSY_RETRY_DELAYS_MS,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<T> {
+  for (const delay of delays) {
+    try {
+      return await run();
+    } catch (error) {
+      if (!(error instanceof LlmError) || error.status !== 503) {
+        throw error;
+      }
+      await sleep(delay);
+    }
+  }
+  return run();
+}
+
+/** Throws `LlmError('bad_response')` when the body is not a chat request. */
+export function parseChatRequest(body: unknown): ChatRequest {
+  if (typeof body !== 'object' || body === null) {
+    throw new LlmError('bad_response', '相談の形式が正しくありません。');
+  }
+  const b = body as Record<string, unknown>;
+  if (typeof b.message !== 'string' || !b.message.trim()) {
+    throw new LlmError('bad_response', '相談の本文がありません。');
+  }
+  if (!Array.isArray(b.history)) {
+    throw new LlmError('bad_response', '会話の履歴がありません。');
+  }
+  return {
+    message: b.message,
+    history: b.history as ChatExchange[],
+    company: b.company as CompanyContext | undefined,
+    decisions: Array.isArray(b.decisions) ? (b.decisions as DecisionContext[]) : undefined,
+    companyIsReal: b.companyIsReal === true,
+    attachments: Array.isArray(b.attachments) ? (b.attachments as RequestAttachment[]) : undefined,
+  };
+}
+
+/**
+ * One consultation turn on the server.
+ *
+ * The same routing the app does today (`src/features/chat/responder.ts`), with
+ * the keys moved from the phone's keychain into Worker secrets: free first,
+ * paid only when allowed, real company data never on the free key, and the paid
+ * key stopped at the daily ceiling before the request goes out.
+ */
+export async function answer(env: Env, request: ChatRequest): Promise<ChatReply> {
+  const free = env.GEMINI_API_KEY_FREE || undefined;
+  const paid = env.GEMINI_API_KEY_PAID || undefined;
+  const freeAllowed = freeTierAllowed(request.companyIsReal ?? false);
+
+  if (!free && !paid) {
+    throw new LlmError('no_key', 'サーバーに Gemini のキーが設定されていません。');
+  }
+  if (!freeAllowed && !paid) {
+    throw new LlmError(
+      'no_key',
+      '実在する会社の情報が登録されているため、無料キーは使いません。サーバーに有料キーを設定してください。',
+    );
+  }
+
+  const base: Omit<GenerateOptions, 'apiKey'> = {
+    systemPrompt: buildSystemPrompt(request.company, request.decisions, presidentNow()),
+    history: request.history,
+    message: request.message,
+    attachments: request.attachments,
+    model: env.MODEL,
+  };
+
+  const run = async (tier: ApiTier, apiKey: string): Promise<ChatReply> => {
+    const result: GenerateResult = await withBusyRetry(() => generateMayaResponse({ ...base, apiKey }));
+    await recordUsage(env.MAYA_DB, tier, result.totalTokens);
+    const validated = validateMayaResponse(result.payload);
+    if (!validated.ok) {
+      throw new LlmError('bad_response', `応答が契約を満たしていません。${validated.errors.join(' ')}`);
+    }
+    return { response: validated.value, warnings: validated.warnings, source: tier };
+  };
+
+  const askPaid = async (): Promise<ChatReply> => {
+    if (!paid) {
+      throw new LlmError('no_key', 'サーバーに有料キーが設定されていません。');
+    }
+    const limitYen = Number(env.PAID_DAILY_LIMIT_YEN);
+    const expected = ASSUMED_TOKENS_PER_TURN + estimateRequestAttachmentTokens(request.attachments);
+    if (await paidLimitReached(env.MAYA_DB, limitYen, expected)) {
+      throw new LlmError(
+        'limit_reached',
+        `有料キーの1日の上限（${limitYen}円）に達するため、送信を止めました。`,
+      );
+    }
+    return run('paid', paid);
+  };
+
+  if (freeAllowed && env.PREFER_FREE === 'true' && free) {
+    try {
+      return await run('free', free);
+    } catch (error) {
+      if (env.ALLOW_PAID_FALLBACK !== 'true' || !paid || !eligibleForPaidRetry(error)) {
+        throw error;
+      }
+      return askPaid();
+    }
+  }
+  return askPaid();
+}

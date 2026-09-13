@@ -1,0 +1,4 @@
+# Copy to .dev.vars for `npm run dev`. Values are secrets: do not commit them.
+# In production these are set with `wrangler secret put`, never in wrangler.jsonc.
+GEMINI_API_KEY_FREE=
+GEMINI_API_KEY_PAID=

@@ -1,22 +1,9 @@
 import { openDatabase } from '@/services/storage';
 
 import type { ApiTier } from './apiKey';
+import { ASSUMED_TOKENS_PER_TURN, estimateTurnYen } from './policy';
 
-/**
- * What the paid tier is assumed to cost, in yen per 1000 tokens.
- *
- * Deliberately pessimistic. This drives a local circuit breaker, not an invoice
- * prediction, so being wrong in the expensive direction is the safe failure.
- * Google's real price is lower; check it before relaxing this.
- */
-export const ASSUMED_YEN_PER_1K_TOKENS = 0.4;
-
-/** A consultation turn runs a few thousand tokens once thinking is counted. */
-export const ASSUMED_TOKENS_PER_TURN = 4000;
-
-export function estimateTurnYen(tokens = ASSUMED_TOKENS_PER_TURN): number {
-  return Math.max(0.01, (tokens / 1000) * ASSUMED_YEN_PER_1K_TOKENS);
-}
+export { ASSUMED_TOKENS_PER_TURN, ASSUMED_YEN_PER_1K_TOKENS, estimateTurnYen } from './policy';
 
 export function today(date = new Date()): string {
   const y = date.getFullYear();

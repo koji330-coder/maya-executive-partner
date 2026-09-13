@@ -6,7 +6,8 @@ import {
   type ChatExchange,
   type RequestAttachment,
 } from '@/services/llm/geminiClient';
-import { freeTierAllowed, loadLlmSettings } from '@/services/llm/settings';
+import { estimateRequestAttachmentTokens, freeTierAllowed } from '@/services/llm/policy';
+import { loadLlmSettings } from '@/services/llm/settings';
 import { ASSUMED_TOKENS_PER_TURN, paidLimitReached, recordUsage } from '@/services/llm/usage';
 
 import { validateMayaResponse, type MayaResponse } from './mayaResponse';
@@ -106,14 +107,6 @@ export async function ask(options: AskOptions): Promise<Reply> {
   }
 
   return askPaid();
-}
-
-function estimateRequestAttachmentTokens(attachments?: RequestAttachment[]): number {
-  return (attachments ?? []).reduce(
-    (total, attachment) =>
-      total + (attachment.kind === 'image' ? 1300 : Math.ceil(attachment.data.length / 2)),
-    0,
-  );
 }
 
 function finish(payload: unknown, source: ApiTier): Reply {

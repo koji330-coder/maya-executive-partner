@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "maya-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  // Reached only through the hostname Cloudflare Access protects. The
+  // workers.dev address would be a second door with no lock on it.
+  "workers_dev": false,
+  "vars": {
+    "MODEL": "gemini-3.6-flash",
+    "PREFER_FREE": "true",
+    "ALLOW_PAID_FALLBACK": "false",
+    "PAID_DAILY_LIMIT_YEN": "50"
+  },
+  "d1_databases": [
+    {
+      "binding": "MAYA_DB",
+      "database_name": "maya",
+      // Placeholder for local development. Replaced with the real id when the
+      // database is created on Cloudflare, which is a separate, confirmed step.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

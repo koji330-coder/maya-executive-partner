@@ -61,17 +61,7 @@ export async function saveLlmSettings(settings: LlmSettings): Promise<void> {
   await SecureStore.setItemAsync(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-/**
- * Whether the free tier is acceptable for this turn.
- *
- * MAYA injects the company profile into every consultation, so once real company
- * facts are saved the free tier would send them on each message. Voicebox could
- * leave that to the user's judgement per recording; here the context is attached
- * automatically, so the app has to decide.
- */
-export function freeTierAllowed(hasRealCompanyData: boolean): boolean {
-  return !hasRealCompanyData;
-}
+export { freeTierAllowed } from './policy';
 
 export function tierLabel(tier: ApiTier): string {
   return tier === 'free' ? '無料' : '有料';
