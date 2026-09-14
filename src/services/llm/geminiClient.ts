@@ -40,7 +40,9 @@ export function eligibleForPaidRetry(error: unknown): boolean {
  * `MODEL_CHOICES` is what the settings screen offers, and `checkApiKey` reports
  * which of them the key can actually reach.
  */
-export const DEFAULT_MODEL = 'gemini-3.6-flash';
+// 3.5 Flash Lite since 2026-09-15, on both keys: 3.6 Flash allows 20 requests a
+// day on the free tier, which the president hit in ordinary use.
+export const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 
 /**
  * What the settings screen offers.
@@ -57,9 +59,9 @@ export const DEFAULT_MODEL = 'gemini-3.6-flash';
  *   3.8-flash       newest, and the one that returned 503 on a fresh free key
  */
 export const MODEL_CHOICES = [
-  { id: 'gemini-3.6-flash', label: '3.6 Flash', note: '既定。数字を検算する。約9秒' },
+  { id: 'gemini-3.5-flash-lite', label: '3.5 Flash Lite', note: '既定。約2秒。数字は弱い' },
+  { id: 'gemini-3.6-flash', label: '3.6 Flash', note: '数字を検算する。約9秒。無料枠は1日20回' },
   { id: 'gemini-3.5-flash', label: '3.5 Flash', note: '中間' },
-  { id: 'gemini-3.5-flash-lite', label: '3.5 Flash Lite', note: '約2秒。数字は弱い' },
   { id: 'gemini-3.8-flash', label: '3.8 Flash', note: '最新。無料枠では混みやすい' },
 ] as const;
 
