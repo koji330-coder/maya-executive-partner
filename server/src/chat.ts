@@ -21,6 +21,7 @@ import type { Env } from './env';
 import { decisionsForPrompt } from './memory/decisions';
 import { activityForPrompt } from './memory/inbox';
 import { refersToPast, runMemoryTool, SEARCH_MEMORY_TOOL } from './memory/search';
+import { resolveKeys } from './memory/apiKeys';
 import { loadCostPolicy } from './memory/settings';
 import { paidLimitReached, recordUsage } from './usage';
 
@@ -98,8 +99,8 @@ export function parseChatRequest(body: unknown): ChatRequest {
  * key stopped at the daily ceiling before the request goes out.
  */
 export async function answer(env: Env, request: ChatRequest): Promise<ChatReply> {
-  const free = env.GEMINI_API_KEY_FREE || undefined;
-  const paid = env.GEMINI_API_KEY_PAID || undefined;
+  // Keys entered in the app win over the Worker secrets (memory/apiKeys.ts).
+  const { free, paid } = await resolveKeys(env.MAYA_DB, env);
   const freeAllowed = freeTierAllowed(request.companyIsReal ?? false);
 
   if (!free && !paid) {

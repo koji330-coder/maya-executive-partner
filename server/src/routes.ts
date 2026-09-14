@@ -2,7 +2,7 @@ import type { JournalEntry } from '@/features/inbox/journal';
 
 import { answer, parseChatRequest } from './chat';
 import type { Env } from './env';
-import { json, notFound, readJson, str } from './http';
+import { ApiError, json, notFound, readJson, str } from './http';
 import {
   createDecision,
   listDecisions,
@@ -19,7 +19,9 @@ import {
   listTopics,
   setJournalVerdict,
 } from './memory/inbox';
+import { deleteKey, keyStatuses, readKeyText, readTier, resolveKeys, saveKey } from './memory/apiKeys';
 import { loadCostPolicy, parseCostPatch, saveCostPolicy } from './memory/settings';
+import { checkApiKey } from '@/services/llm/geminiClient';
 import {
   addAlias,
   addSource,
@@ -51,13 +53,11 @@ const ROUTES: Route[] = [
   {
     method: 'GET',
     pattern: /^\/health$/,
-    handle: async ({ env }) =>
+    handle: async ({ env }) => {
       // Says which keys exist, never what they are.
-      json({
-        status: 'ok',
-        model: env.MODEL,
-        keys: { free: Boolean(env.GEMINI_API_KEY_FREE), paid: Boolean(env.GEMINI_API_KEY_PAID) },
-      }),
+      const keys = await resolveKeys(env.MAYA_DB, env);
+      return json({ status: 'ok', model: env.MODEL, keys: { free: Boolean(keys.free), paid: Boolean(keys.paid) } });
+    },
   },
   {
     method: 'POST',
@@ -233,6 +233,37 @@ const ROUTES: Route[] = [
       // Return what now applies, so the screen shows the clamped value rather
       // than whatever was typed.
       return json(await loadCostPolicy(env.MAYA_DB, env));
+    },
+  },
+
+  // Gemini keys. Write-only: nothing here returns a key, only whether one is set.
+  {
+    method: 'GET',
+    pattern: /^\/v1\/settings\/keys$/,
+    handle: async ({ env }) => json(await keyStatuses(env.MAYA_DB, env)),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/v1\/settings\/keys\/(free|paid)$/,
+    handle: async ({ request, env, params }) => {
+      const tier = readTier(params[0]);
+      const key = readKeyText((await readJson(request)).key);
+      // Proved before it is stored, so a mistyped key fails here, on the
+      // settings screen, and not in the middle of the next consultation.
+      const check = await checkApiKey(key, env.MODEL);
+      if (!check.ok) {
+        throw new ApiError(400, 'key_rejected', `このキーでは ${env.MODEL} を呼べませんでした。${check.detail}`);
+      }
+      await saveKey(env.MAYA_DB, env, tier, key);
+      return json(await keyStatuses(env.MAYA_DB, env));
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/v1\/settings\/keys\/(free|paid)$/,
+    handle: async ({ env, params }) => {
+      await deleteKey(env.MAYA_DB, readTier(params[0]));
+      return json(await keyStatuses(env.MAYA_DB, env));
     },
   },
 
