@@ -19,6 +19,7 @@ import {
   listTopics,
   setJournalVerdict,
 } from './memory/inbox';
+import { loadCostPolicy, parseCostPatch, saveCostPolicy } from './memory/settings';
 import {
   addAlias,
   addSource,
@@ -214,6 +215,27 @@ const ROUTES: Route[] = [
       return json({ ok: true });
     },
   },
+  // ---- settings
+  //
+  // The cost rules the server actually applies. wrangler.jsonc holds the
+  // starting values; these two let the settings screen move them without a
+  // redeploy, which is what the president asked for on 2026-09-14.
+  {
+    method: 'GET',
+    pattern: /^\/v1\/settings\/cost$/,
+    handle: async ({ env }) => json(await loadCostPolicy(env.MAYA_DB, env)),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/v1\/settings\/cost$/,
+    handle: async ({ request, env }) => {
+      await saveCostPolicy(env.MAYA_DB, parseCostPatch(await readJson(request)));
+      // Return what now applies, so the screen shows the clamped value rather
+      // than whatever was typed.
+      return json(await loadCostPolicy(env.MAYA_DB, env));
+    },
+  },
+
   {
     method: 'POST',
     pattern: new RegExp(`^/v1/projects/${ID}/sources$`),

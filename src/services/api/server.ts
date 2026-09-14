@@ -150,7 +150,7 @@ export async function getStoredServerUrl(): Promise<string> {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   timeoutMs?: number;
   signal?: AbortSignal;
@@ -239,4 +239,33 @@ export interface ServerHealth {
 
 export function checkServer(): Promise<ServerHealth> {
   return serverRequest<ServerHealth>('/health', { timeoutMs: 8_000 });
+}
+
+/**
+ * The cost rules the server applies, as opposed to the ones the app applies
+ * when no server address is set.
+ *
+ * These live in the server's D1 rather than the phone, because the server is
+ * what holds the keys and counts the spending. wrangler.jsonc supplies the
+ * starting values and anything saved here wins, so the ceiling can be changed
+ * without a redeploy.
+ */
+export interface ServerCostPolicy {
+  preferFree: boolean;
+  allowPaidFallback: boolean;
+  paidDailyLimitYen: number;
+}
+
+export function getServerCostPolicy(): Promise<ServerCostPolicy> {
+  return serverRequest<ServerCostPolicy>('/v1/settings/cost');
+}
+
+/**
+ * Saves one or more rules and returns what now applies.
+ *
+ * The server clamps the ceiling, so the screen should show what comes back
+ * rather than what was typed.
+ */
+export function saveServerCostPolicy(patch: Partial<ServerCostPolicy>): Promise<ServerCostPolicy> {
+  return serverRequest<ServerCostPolicy>('/v1/settings/cost', { method: 'PUT', body: patch });
 }

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-nati
 
 import { exportTranscript, listConversations } from '@/features/chat/conversationRepository';
 import { ApiKeySection } from '@/features/settings/ApiKeySection';
+import { ServerCostSection } from '@/features/settings/ServerCostSection';
 import { ServerSection } from '@/features/settings/ServerSection';
 import { apiBaseUrl, appEnv, isApiConfigured } from '@/services/api/config';
 import { initializeDatabase, LATEST_SCHEMA_VERSION, type DatabaseStatus } from '@/services/storage';
@@ -55,6 +56,7 @@ export default function SettingsScreen() {
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       {/* First, because it decides whether the key section below is used at all. */}
       <ServerSection />
+      <ServerCostSection />
 
       <Section title="ローカル保存">
         <Row label="状態" value={describeStatus(status)} />

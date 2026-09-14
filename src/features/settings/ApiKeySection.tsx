@@ -177,7 +177,10 @@ export function ApiKeySection() {
         </Text>
       </View>
 
-      <Text style={styles.sectionTitle}>費用の歯止め</Text>
+      <Text style={styles.sectionTitle}>費用の歯止め（直接呼びのとき）</Text>
+      <Text style={styles.ruleNote}>
+        このスマホが直接 Gemini を呼ぶときの規則です。サーバー経由のときは、上の「サーバーの費用の歯止め」が効きます。
+      </Text>
 
       <View style={styles.card}>
         <View style={styles.ruleRow}>

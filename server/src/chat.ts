@@ -21,6 +21,7 @@ import type { Env } from './env';
 import { decisionsForPrompt } from './memory/decisions';
 import { activityForPrompt } from './memory/inbox';
 import { runMemoryTool, SEARCH_MEMORY_TOOL } from './memory/search';
+import { loadCostPolicy } from './memory/settings';
 import { paidLimitReached, recordUsage } from './usage';
 
 /** What the app sends. Mirrors `AskOptions` in `src/features/chat/responder.ts`. */
@@ -114,9 +115,12 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   // Decisions are read here, not sent by the app. From v0.2 they live in D1, so
   // every route into the server remembers the same decisions.
   const now = presidentNow();
-  const [decisions, activity] = await Promise.all([
+  const [decisions, activity, cost] = await Promise.all([
     decisionsForPrompt(env.MAYA_DB),
     activityForPrompt(env.MAYA_DB, presidentDate()),
+    // The wrangler values are the starting point; the settings screen can move
+    // them without a redeploy (memory/settings.ts).
+    loadCostPolicy(env.MAYA_DB, env),
   ]);
 
   const base: Omit<GenerateOptions, 'apiKey'> = {
@@ -148,7 +152,7 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     if (!paid) {
       throw new LlmError('no_key', 'サーバーに有料キーが設定されていません。');
     }
-    const limitYen = Number(env.PAID_DAILY_LIMIT_YEN);
+    const limitYen = cost.paidDailyLimitYen;
     const expected = ASSUMED_TOKENS_PER_TURN + estimateRequestAttachmentTokens(request.attachments);
     if (await paidLimitReached(env.MAYA_DB, limitYen, expected)) {
       throw new LlmError(
@@ -159,11 +163,11 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     return run('paid', paid);
   };
 
-  if (freeAllowed && env.PREFER_FREE === 'true' && free) {
+  if (freeAllowed && cost.preferFree && free) {
     try {
       return await run('free', free);
     } catch (error) {
-      if (env.ALLOW_PAID_FALLBACK !== 'true' || !paid || !eligibleForPaidRetry(error)) {
+      if (!cost.allowPaidFallback || !paid || !eligibleForPaidRetry(error)) {
         throw error;
       }
       return askPaid();
