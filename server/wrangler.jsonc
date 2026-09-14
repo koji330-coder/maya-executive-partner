@@ -10,7 +10,12 @@
   // Preview URLs would be a second door, one Access is not configured for.
   "preview_urls": false,
   "vars": {
-    "MODEL": "gemini-3.6-flash",
+    // Switched off gemini-3.6-flash on 2026-09-14. Its free-tier daily cap is
+    // 20 requests, measured by the president in real use, and a consultation
+    // that calls a tool spends two of them. Flash-Lite has room to spare.
+    // The cost is arithmetic: 3.6 checked the numbers, Lite is directionally
+    // right but does not (docs/LLM_INTEGRATION.md). Revisit on a paid key.
+    "MODEL": "gemini-3.5-flash-lite",
     "PREFER_FREE": "true",
     "ALLOW_PAID_FALLBACK": "false",
     "PAID_DAILY_LIMIT_YEN": "50",

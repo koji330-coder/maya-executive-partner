@@ -728,38 +728,43 @@
   <div class="wrap">
     <h2>モデル一覧</h2>
     <p class="lede">
-      いまMAYAが使っているのは <code>gemini-3.6-flash</code> です。
+      いまMAYAが使っているのは <code>gemini-3.5-flash-lite</code> です。
       サーバーの設定ファイルに直接書いてあり、変えるにはサーバーを出し直します。
+      2026-09-14 に <code>gemini-3.6-flash</code> から切り替えました。
     </p>
 
     <div class="scroll">
       <table>
         <caption>選べるモデルと、実際に測った差</caption>
         <thead>
-          <tr><th>モデル</th><th>応答</th><th>性格（実測）</th><th>いまの扱い</th></tr>
+          <tr><th>モデル</th><th>応答</th><th>無料枠の1日</th><th>性格（実測）</th><th>いまの扱い</th></tr>
         </thead>
         <tbody>
           <tr class="current">
-            <td class="id">gemini-3.6-flash</td>
-            <td class="num">約9秒</td>
-            <td>「10%下げると同じ粗利額に45%の増産が要る」まで計算する</td>
+            <td class="id">gemini-3.5-flash-lite</td>
+            <td class="num">約2秒</td>
+            <td class="num">余裕あり</td>
+            <td>方向は正しいが、数字の検算をしない</td>
             <td><span class="pill on">使用中</span></td>
           </tr>
           <tr>
+            <td class="id">gemini-3.6-flash</td>
+            <td class="num">約9秒</td>
+            <td class="num">20回</td>
+            <td>「10%下げると同じ粗利額に45%の増産が要る」まで計算する</td>
+            <td><span class="pill hold">枠が小さい</span></td>
+          </tr>
+          <tr>
             <td class="id">gemini-3.5-flash</td>
+            <td class="num">未計測</td>
             <td class="num">未計測</td>
             <td>中間</td>
             <td><span class="pill off">選べる</span></td>
           </tr>
           <tr>
-            <td class="id">gemini-3.5-flash-lite</td>
-            <td class="num">約2秒</td>
-            <td>方向は正しいが、数字の検算をしない</td>
-            <td><span class="pill off">選べる</span></td>
-          </tr>
-          <tr>
             <td class="id">gemini-3.8-flash</td>
             <td class="num">応答なし</td>
+            <td class="num">未計測</td>
             <td>最新。新しい無料キーでは混み合って返ってこなかった</td>
             <td><span class="pill hold">不安定</span></td>
           </tr>
@@ -768,10 +773,23 @@
     </div>
 
     <p>
-      <strong>3.6を選んだ理由は、速さより検算です。</strong>
-      数字を出せることがMAYAの核なので、2秒で数字の甘い答えより、9秒で検算する答えを取りました。
-      架空の会社で3往復ずつ実際に投げて比べた結果です。
+      もともと3.6を選んだ理由は、速さより検算でした。数字を出せることがMAYAの核なので、
+      2秒で数字の甘い答えより、9秒で検算する答えを取っていました。
+      <strong>それを2026-09-14に手放しました。</strong>
+      3.6の無料枠が1日20回しかなく、数回相談すると止まってしまうためです。
+      毎日使えることを優先した、という判断になります。
     </p>
+
+    <div class="note alert">
+      <span class="tag">この切り替えで失うもの</span>
+      <p>
+        <strong>数字の検算です。</strong>「10%下げるなら何個多く売る必要があるか」のような、
+        踏み込んだ計算の答えは弱くなります。方向としては正しいことを言いますが、数字を確かめません。
+        有料キーを常用するなら3.6に戻す価値があります。
+        中間の <code>gemini-3.5-flash</code> はまだ測っていないので、
+        無料枠と検算を両立させたいなら、そこを測るのが次の一手です。
+      </p>
+    </div>
 
     <div class="note">
       <span class="tag">キーによって使えるモデルが変わる</span>
@@ -790,39 +808,59 @@
     <h2>無料で使える量</h2>
 
     <div class="note alert">
-      <span class="tag">出典について</span>
+      <span class="tag">実際に測った値が、出回っている数字と違った</span>
       <p>
-        <strong>Googleの公式ページ（ai.google.dev）は、この作業環境からは遮断されていて読めませんでした。</strong>
-        以下の数字は検索で拾った二次情報で、私は公式で裏を取れていません。数字そのものは、必ず公式で確かめてください。
+        <strong><code>gemini-3.6-flash</code> の無料枠は、1日20回でした。</strong>
+        社長が実際に使って確認した値です。検索で拾える一般的な解説は「1日1,500回」と
+        書いていましたが、実態は二桁小さいものでした。
+        <strong>出回っている数字は当てにしないでください。</strong>
       </p>
     </div>
 
     <div class="scroll">
       <table>
-        <caption>一般に流通している無料枠の数字（未確認）</caption>
+        <caption>無料枠でどれだけ使えるか</caption>
         <thead>
-          <tr><th>項目</th><th>Flash系</th><th>Flash-Lite</th></tr>
+          <tr><th>モデル</th><th>1日の上限</th><th>出どころ</th></tr>
         </thead>
         <tbody>
-          <tr><td>1分あたりの回数</td><td class="num">15回</td><td class="num">15回</td></tr>
-          <tr><td>1日あたりの回数</td><td class="num">1,500回</td><td class="num">1,000回</td></tr>
-          <tr><td>1分あたりのトークン</td><td class="num">250,000</td><td class="num">250,000</td></tr>
-          <tr><td>リセット</td><td colspan="2">太平洋時間の深夜（日本時間の夕方ごろ）</td></tr>
+          <tr class="current">
+            <td class="id">gemini-3.5-flash-lite</td>
+            <td>余裕がある（回数は未計測）</td>
+            <td>実際に使った感触</td>
+          </tr>
+          <tr>
+            <td class="id">gemini-3.6-flash</td>
+            <td class="num">20回</td>
+            <td>実測（2026-09-14）</td>
+          </tr>
+          <tr>
+            <td class="id">gemini-3.5-flash</td>
+            <td>未計測</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td class="id">gemini-3.8-flash</td>
+            <td>未計測</td>
+            <td>—</td>
+          </tr>
         </tbody>
       </table>
     </div>
 
     <h3>確実に知る方法</h3>
     <p>
-      上限はプロジェクトごとに違い、実際に何が効いているかはGoogle側のダッシュボードにしか出ません。
-      Google AI Studioを開いて、使っているプロジェクトの制限を見るのが唯一確実なやり方です。
-      公式の解説は <a href="https://ai.google.dev/gemini-api/docs/rate-limits">ai.google.dev/gemini-api/docs/rate-limits</a> にあります。
+      上限はモデルごと、プロジェクトごとに違います。実際に何が効いているかはGoogle側の
+      ダッシュボードにしか出ません。Google AI Studioを開いて、使っているプロジェクトの制限を見るのが、
+      唯一確実なやり方です。公式の解説は
+      <a href="https://ai.google.dev/gemini-api/docs/rate-limits">ai.google.dev/gemini-api/docs/rate-limits</a> にあります。
     </p>
 
     <h3>思ったより早く尽きた理由</h3>
     <p>これはこちら側の記録から説明がつきます。3つ重なっています。</p>
     <ul>
-      <li><strong>道具を使う相談は、1回の相談で2回分を消費します。</strong> モデルが道具を呼び、結果を受け取ってから答えるので、往復が2回になります。実測でも、道具を使わない質問の3〜4倍の時間がかかっていました。</li>
+      <li><strong>そもそも上限が1日20回でした。</strong> 想定していた桁が違いました。</li>
+      <li><strong>道具を使う相談は、1回の相談で2回分を消費します。</strong> モデルが道具を呼び、結果を受け取ってから答えるので、往復が2回になります。20回の枠なら、実質10回の相談で尽きます。</li>
       <li><strong>上限は回数だけでなく分あたりのトークンでも効きます。</strong> MAYAは毎回、人格・相談手順・会社情報・実行中の判断・直近14日の記録をまとめて送ります。1回が重いので、回数を使い切る前に分あたりのトークンで止まることがあります。</li>
       <li><strong>上限に達しても有料キーへは切り替わりません。</strong> 自動切替は既定で切ってあります。無料枠が尽きた時点で止まるのは、設定どおりの動きです。</li>
     </ul>
