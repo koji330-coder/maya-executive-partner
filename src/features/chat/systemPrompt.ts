@@ -58,13 +58,6 @@ export interface ActivityContext {
 }
 
 /**
- * The most this section may add to every request, in characters.
- *
- * Fixed so the prompt stays the same size however many entries pile up: a year
- * of journals must not make every consultation slower. Older entries are for a
- * search tool to fetch when needed, not for this section.
- */
-/**
  * How to use the memory search, for requests that offer it (the server's).
  *
  * The limits matter as much as the permission: every search is another round
@@ -79,6 +72,13 @@ export const SEARCH_GUIDE = `過去の記録を探す道具 search_memory を使
 - 見つからなかったら、見つからなかったと言います。記録に無い過去を作らないでください
 - 見つけた記録を読み上げず、覚えている相手として必要な分だけ触れます`;
 
+/**
+ * The most this section may add to every request, in characters.
+ *
+ * Fixed so the prompt stays the same size however many entries pile up: a year
+ * of journals must not make every consultation slower. Older entries are for a
+ * search tool to fetch when needed, not for this section.
+ */
 export const ACTIVITY_BUDGET_CHARS = 2400;
 const LINE_CHARS = 120;
 

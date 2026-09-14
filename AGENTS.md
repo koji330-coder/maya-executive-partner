@@ -52,3 +52,13 @@ Artifact ツールに `url` としてこのアドレスを渡す（この会話�
   （明暗どちらのテーマでも読めるようにするため）
 - 裏の取れていない数字は「未確認」と明記する。埋めない
 - 実測値があるものは実測値を書く。推定と実測を混ぜない
+
+---
+
+## 応答の仕組み: RESPONSE_GUIDE.html の更新ルール
+
+リポジトリ直下の `RESPONSE_GUIDE.html` は、MAYA の応答の仕組み（プロンプトの構成と原文、返事の検証、記憶の検索、検討課題）を社長向けにまとめた資料。
+
+- **プロンプト（`src/features/chat/systemPrompt.ts`）、返事の形、検索、設定値を変えたら、同じコミットで作り直す。** 原文は `python tools/build_response_guide.py` がソースから取り込むので手で写さない。説明文や表は `tools/response_guide.template.html` を直す
+- 検討課題が片付いたら、その節の状態も直す
+- 公開は必ず同じアドレスへ: `https://claude.ai/code/artifact/909e1043-ce03-4298-a411-40410b8f757b`（公開前に `action: "read"` で今の版を読む）
