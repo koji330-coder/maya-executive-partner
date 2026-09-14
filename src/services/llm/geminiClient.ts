@@ -107,6 +107,12 @@ export interface GenerateOptions {
   tools?: ToolDeclaration[];
   /** Runs a call the model made. Its return value goes back to the model as the result. */
   runTool?: (call: ToolCall) => Promise<unknown>;
+  /**
+   * Require a tool call in the first round. For turns the caller already knows
+   * need one: Flash-Lite, left to decide, never called the search even when asked
+   * about last year.
+   */
+  requireToolFirst?: boolean;
 }
 
 export interface GenerateResult {
@@ -210,13 +216,17 @@ ${attachment.data}` });
     // After the last allowed round the tools are withdrawn, so the model has no
     // way left but to answer with what it found.
     const offerTools = canUseTools && round < MAX_TOOL_ROUNDS;
+    const forceTool = offerTools && round === 0 && Boolean(options.requireToolFirst);
     const body = await postGenerate(model, options, {
       systemInstruction: { parts: [{ text: options.systemPrompt }] },
       contents,
       ...(offerTools ? { tools: [{ functionDeclarations: options.tools }] } : {}),
+      ...(forceTool ? { toolConfig: { functionCallingConfig: { mode: 'ANY' } } } : {}),
       generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: MAYA_RESPONSE_SCHEMA,
+        // Gemini refuses forced calling together with a JSON response type
+        // (INVALID_ARGUMENT, measured 2026-09-15). The forced round only has to
+        // produce the call; the round that answers is back on the schema.
+        ...(forceTool ? {} : { responseMimeType: 'application/json', responseSchema: MAYA_RESPONSE_SCHEMA }),
         temperature: 0.8,
         // A consultation answer needs a few hundred tokens. The cap is here so
         // a model that starts repeating itself stops cheaply instead of

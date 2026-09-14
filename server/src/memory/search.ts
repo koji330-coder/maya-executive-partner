@@ -199,3 +199,17 @@ export async function runMemoryTool(db: D1Database, call: ToolCall): Promise<unk
     ...(hits.length === 0 ? { note: '該当する記録はありませんでした。記録に無いことを作らないでください。' } : {}),
   };
 }
+
+/**
+ * Whether the president is pointing at the past.
+ *
+ * Deliberately a word list, not a model's judgement: Flash-Lite, asked whether
+ * to search, never did. A false positive costs one search, about a second; a
+ * miss costs an invented or refused answer about something that is on record.
+ */
+const PAST_MARKERS =
+  /前に|以前|去年|昨年|先月|先週|先日|この前|あの時|あのとき|当時|覚えて|決めてた|決めた(?:っけ|よね|けど)|言ってた|話した|だっけ|っけ|振り返|経緯|いつ(?:から|頃)/;
+
+export function refersToPast(message: string): boolean {
+  return PAST_MARKERS.test(message);
+}

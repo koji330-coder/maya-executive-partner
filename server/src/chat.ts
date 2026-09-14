@@ -20,7 +20,7 @@ import { presidentDate, presidentNow } from './clock';
 import type { Env } from './env';
 import { decisionsForPrompt } from './memory/decisions';
 import { activityForPrompt } from './memory/inbox';
-import { runMemoryTool, SEARCH_MEMORY_TOOL } from './memory/search';
+import { refersToPast, runMemoryTool, SEARCH_MEMORY_TOOL } from './memory/search';
 import { loadCostPolicy } from './memory/settings';
 import { paidLimitReached, recordUsage } from './usage';
 
@@ -131,6 +131,7 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     model: env.MODEL,
     tools: [SEARCH_MEMORY_TOOL],
     runTool: (call) => runMemoryTool(env.MAYA_DB, call),
+    requireToolFirst: refersToPast(request.message),
   };
 
   const run = async (tier: ApiTier, apiKey: string): Promise<ChatReply> => {

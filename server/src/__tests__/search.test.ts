@@ -1,6 +1,6 @@
 import { buildSystemPrompt, SEARCH_GUIDE } from '@/features/chat/systemPrompt';
 
-import { journalText, likePattern, readSearchArgs } from '../memory/search';
+import { journalText, likePattern, readSearchArgs, refersToPast } from '../memory/search';
 
 describe('readSearchArgs', () => {
   it('keeps what is well-formed and drops the rest', () => {
@@ -57,5 +57,19 @@ describe('search guide in the prompt', () => {
     const today = new Date(2026, 8, 14);
     expect(buildSystemPrompt(undefined, [], today)).not.toContain('search_memory');
     expect(buildSystemPrompt(undefined, [], today, undefined, true)).toContain(SEARCH_GUIDE);
+  });
+});
+
+describe('refersToPast', () => {
+  it('catches the ways the president points back', () => {
+    for (const message of ['去年の春、値上げについて何か決めてたっけ？', '前に採用の件で何を決めたか覚えてる？', '先月話した件']) {
+      expect(refersToPast(message)).toBe(true);
+    }
+  });
+
+  it('leaves ordinary consultations alone', () => {
+    for (const message of ['おはよう。今日もよろしく。', '来月の値上げ、どう思う？', '粗利率を計算して']) {
+      expect(refersToPast(message)).toBe(false);
+    }
   });
 });

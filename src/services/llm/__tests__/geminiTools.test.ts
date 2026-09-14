@@ -78,6 +78,20 @@ describe('generateMayaResponse with tools', () => {
     });
   });
 
+  it('forces the first call without JSON mode, then answers on the schema', async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(call(['値上げ'])).mockResolvedValueOnce(final());
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await generateMayaResponse({ ...base, tools: [TOOL], runTool: async () => ({}), requireToolFirst: true });
+
+    const [first, second] = bodies(fetchMock);
+    // Gemini rejects forced calling together with a JSON response type.
+    expect(first.toolConfig.functionCallingConfig.mode).toBe('ANY');
+    expect(first.generationConfig.responseMimeType).toBeUndefined();
+    expect(second.toolConfig).toBeUndefined();
+    expect(second.generationConfig.responseMimeType).toBe('application/json');
+  });
+
   it('sends no tools when none are given, as the app does', async () => {
     const fetchMock = jest.fn().mockResolvedValueOnce(final());
     global.fetch = fetchMock as unknown as typeof fetch;
