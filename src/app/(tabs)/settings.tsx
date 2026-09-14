@@ -3,17 +3,33 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-nati
 
 import { exportTranscript, listConversations } from '@/features/chat/conversationRepository';
 import { ApiKeySection } from '@/features/settings/ApiKeySection';
+import { ConnectionModeSection } from '@/features/settings/ConnectionModeSection';
 import { ServerCostSection } from '@/features/settings/ServerCostSection';
+import { ServerKeysSection } from '@/features/settings/ServerKeysSection';
 import { ServerSection } from '@/features/settings/ServerSection';
-import { apiBaseUrl, appEnv, isApiConfigured } from '@/services/api/config';
+import { appEnv } from '@/services/api/config';
+import { getConnectionMode, setConnectionMode, type ConnectionMode } from '@/services/api/server';
 import { initializeDatabase, LATEST_SCHEMA_VERSION, type DatabaseStatus } from '@/services/storage';
 import { colors, radius, spacing } from '@/theme';
 
-/** Phase 1 settings screen: environment and local-storage diagnostics. */
+/**
+ * Settings, split by route. The switch at the top decides which cards follow, so
+ * what is on screen is what is in effect.
+ */
 export default function SettingsScreen() {
+  const [mode, setMode] = useState<ConnectionMode | null>(null);
   const [status, setStatus] = useState<DatabaseStatus>({ state: 'idle' });
   const [conversationCount, setConversationCount] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    void getConnectionMode().then(setMode);
+  }, []);
+
+  const changeMode = async (next: ConnectionMode) => {
+    await setConnectionMode(next);
+    setMode(next);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -54,9 +70,21 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      {/* First, because it decides whether the key section below is used at all. */}
-      <ServerSection />
-      <ServerCostSection />
+      {mode ? <ConnectionModeSection mode={mode} onChange={(next) => void changeMode(next)} /> : null}
+
+      {/* Keyed by mode so each card reloads against the route now in effect. */}
+      {mode === 'server' ? (
+        <View key="server" style={styles.group}>
+          <ServerSection />
+          <ServerKeysSection />
+          <ServerCostSection />
+        </View>
+      ) : null}
+      {mode === 'direct' ? (
+        <View key="direct" style={styles.group}>
+          <ApiKeySection />
+        </View>
+      ) : null}
 
       <Section title="ローカル保存">
         <Row label="状態" value={describeStatus(status)} />
@@ -83,17 +111,9 @@ export default function SettingsScreen() {
         MAYAの応答が狙いどおりか見直すために、会話の全文を書き出せます。表情とポーズも一緒に出ます。
       </Text>
 
-      <ApiKeySection />
-
-      <Section title="接続先">
+      <Section title="アプリ">
         <Row label="環境" value={appEnv} />
-        <Row label="自前バックエンド" value={isApiConfigured() ? apiBaseUrl : '未使用'} />
       </Section>
-
-      <Text style={styles.note}>
-        アプリにAPIキーは同梱していません。MAYAサーバーを使わないときだけ、上で登録したキーを端末の
-        キーチェーンから読み出し、Googleへ直接送ります。サーバーを使うときは、キーはサーバー側にあります。
-      </Text>
     </ScrollView>
   );
 }
@@ -142,6 +162,9 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: spacing.sm,
+  },
+  group: {
+    gap: spacing.lg,
   },
   sectionTitle: {
     fontSize: 12,

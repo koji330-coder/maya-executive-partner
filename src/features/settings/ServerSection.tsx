@@ -10,8 +10,8 @@ import {
   saveServerUrl,
   ServerError,
   type ServerHealth,
+  BUILT_IN_URL,
 } from '@/services/api/server';
-import { apiBaseUrl } from '@/services/api/config';
 import { colors, radius, spacing } from '@/theme';
 
 type Check =
@@ -28,9 +28,6 @@ type Check =
  * server. Switching does not move existing data. What was saved on the phone
  * stays on the phone and does not appear while the server is in use.
  */
-/** The address built into the app (eas.json). Used whenever none is saved here. */
-const BUILT_IN_URL = apiBaseUrl.trim().replace(/\/+$/, '');
-
 export function ServerSection() {
   const [url, setUrl] = React.useState('');
   const [savedUrl, setSavedUrl] = React.useState<string | null>(null);
@@ -108,10 +105,10 @@ export function ServerSection() {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.title}>MAYAサーバー</Text>
-      <Text style={styles.mode}>
-        {savedUrl ? `サーバー経由で相談しています` : 'このスマホから直接 Gemini を呼んでいます'}
-      </Text>
+      <Text style={styles.title}>サーバーへの接続</Text>
+      {savedUrl ? null : (
+        <Text style={styles.error}>アドレスが入っていないため、相談できません。アドレスを入れてください。</Text>
+      )}
 
       <TextInput
         value={url}
@@ -142,9 +139,9 @@ export function ServerSection() {
         >
           <Text style={styles.secondaryText}>接続を確認</Text>
         </Pressable>
-        {savedUrl && savedUrl !== BUILT_IN_URL ? (
+        {savedUrl && BUILT_IN_URL && savedUrl !== BUILT_IN_URL ? (
           <Pressable accessibilityRole="button" onPress={() => void clear()} style={styles.secondary}>
-            <Text style={styles.secondaryText}>{BUILT_IN_URL ? '既定に戻す' : '使わない'}</Text>
+            <Text style={styles.secondaryText}>既定に戻す</Text>
           </Pressable>
         ) : null}
       </View>
@@ -199,7 +196,7 @@ export function ServerSection() {
       </View>
 
       <Text style={styles.note}>
-        サーバーを使うと、判断・Journal・話題はサーバーに保存されます。これまでスマホに保存したものは、サーバー使用中は表示されません。{BUILT_IN_URL ? 'このアプリには本番サーバーのアドレスが入っています。' : '空にすれば元に戻ります。'}
+        {BUILT_IN_URL ? 'このアプリには本番サーバーのアドレスが最初から入っています。' : 'PC の開発用サーバーなら、PC のアドレスとポートを入れます。'}
       </Text>
     </View>
   );

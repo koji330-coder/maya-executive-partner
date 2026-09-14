@@ -19,6 +19,19 @@ import { apiBaseUrl } from './config';
 const URL_KEY = 'maya.server.url';
 const ACCESS_ID_KEY = 'maya.server.accessClientId';
 const ACCESS_SECRET_KEY = 'maya.server.accessClientSecret';
+const MODE_KEY = 'maya.connection.mode';
+
+/**
+ * Which route consultations and memory take.
+ *
+ * Its own setting, not implied by the address: the preview build carries the
+ * server address, so "clear the address" can no longer mean "call Gemini
+ * directly".
+ */
+export type ConnectionMode = 'server' | 'direct';
+
+/** The address built into the app (eas.json / EAS environment). */
+export const BUILT_IN_URL = apiBaseUrl.trim().replace(/\/+$/, '');
 
 /** A consultation can include a model call and a retry on a busy model. */
 export const SERVER_TIMEOUT_MS = 90_000;
@@ -75,13 +88,14 @@ export async function getServerConfig(): Promise<ServerConfig | null> {
   if (cached !== undefined) {
     return cached;
   }
-  const [stored, accessId, accessSecret] = await Promise.all([
+  const [stored, accessId, accessSecret, mode] = await Promise.all([
     SecureStore.getItemAsync(URL_KEY),
     SecureStore.getItemAsync(ACCESS_ID_KEY),
     SecureStore.getItemAsync(ACCESS_SECRET_KEY),
+    getConnectionMode(),
   ]);
-  const baseUrl = stored?.trim() || apiBaseUrl.trim().replace(/\/+$/, '');
-  if (!baseUrl) {
+  const baseUrl = stored?.trim() || BUILT_IN_URL;
+  if (mode === 'direct' || !baseUrl) {
     cached = null;
     return cached;
   }
@@ -94,6 +108,21 @@ export async function getServerConfig(): Promise<ServerConfig | null> {
   }
   cached = { baseUrl, headers };
   return cached;
+}
+
+/** The saved choice, or the server when the app has an address to use. */
+export async function getConnectionMode(): Promise<ConnectionMode> {
+  const saved = await SecureStore.getItemAsync(MODE_KEY);
+  if (saved === 'server' || saved === 'direct') {
+    return saved;
+  }
+  const url = (await SecureStore.getItemAsync(URL_KEY))?.trim() || BUILT_IN_URL;
+  return url ? 'server' : 'direct';
+}
+
+export async function setConnectionMode(mode: ConnectionMode): Promise<void> {
+  await SecureStore.setItemAsync(MODE_KEY, mode);
+  cached = undefined;
 }
 
 export async function usingServer(): Promise<boolean> {
@@ -268,4 +297,36 @@ export function getServerCostPolicy(): Promise<ServerCostPolicy> {
  */
 export function saveServerCostPolicy(patch: Partial<ServerCostPolicy>): Promise<ServerCostPolicy> {
   return serverRequest<ServerCostPolicy>('/v1/settings/cost', { method: 'PUT', body: patch });
+}
+
+export type ServerKeyTier = 'free' | 'paid';
+
+/** What the server says about a key. Never the key itself. */
+export interface ServerKeyStatus {
+  set: boolean;
+  /** `app`: entered on this screen. `secret`: set on Cloudflare by hand. */
+  source: 'app' | 'secret' | null;
+  last4: string | null;
+}
+
+export type ServerKeyStatuses = Record<ServerKeyTier, ServerKeyStatus>;
+
+export function getServerKeys(): Promise<ServerKeyStatuses> {
+  return serverRequest<ServerKeyStatuses>('/v1/settings/keys');
+}
+
+/**
+ * Sends a key to the server, which tries it against Gemini before storing it
+ * encrypted. The wait covers that check.
+ */
+export function saveServerKey(tier: ServerKeyTier, key: string): Promise<ServerKeyStatuses> {
+  return serverRequest<ServerKeyStatuses>(`/v1/settings/keys/${tier}`, {
+    method: 'PUT',
+    body: { key },
+    timeoutMs: 40_000,
+  });
+}
+
+export function deleteServerKey(tier: ServerKeyTier): Promise<ServerKeyStatuses> {
+  return serverRequest<ServerKeyStatuses>(`/v1/settings/keys/${tier}`, { method: 'DELETE' });
 }
