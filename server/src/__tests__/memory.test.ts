@@ -1,5 +1,5 @@
 import { readDraft } from '../memory/decisions';
-import { deleteTopic } from '../memory/inbox';
+import { deleteJournal, deleteTopic } from '../memory/inbox';
 import { matchProjects, normalizeName, type Project } from '../memory/projects';
 
 function project(id: string, name: string, aliases: string[] = []): Project {
@@ -85,5 +85,35 @@ describe('deleteTopic', () => {
     // being absent is the state the caller wanted.
     const { db } = fakeDb();
     await expect(deleteTopic(db, 'topic-gone')).resolves.toBeUndefined();
+  });
+});
+
+describe('deleteJournal', () => {
+  function fakeDb() {
+    const calls: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare: (sql: string) => ({
+        bind: (...args: unknown[]) => ({
+          run: async () => {
+            calls.push({ sql, args });
+            return { meta: { changes: 0 } };
+          },
+        }),
+      }),
+    } as unknown as D1Database;
+    return { db, calls };
+  }
+
+  it('removes exactly the entry asked for', async () => {
+    const { db, calls } = fakeDb();
+    await deleteJournal(db, 'journal-9');
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.sql).toBe('DELETE FROM journal_entries WHERE id = ?;');
+    expect(calls[0]?.args).toEqual(['journal-9']);
+  });
+
+  it('succeeds for an id that is already gone', async () => {
+    const { db } = fakeDb();
+    await expect(deleteJournal(db, 'journal-gone')).resolves.toBeUndefined();
   });
 });

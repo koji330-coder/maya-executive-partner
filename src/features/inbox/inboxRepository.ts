@@ -182,6 +182,26 @@ export async function saveTopic(pasted: string, note: string): Promise<string> {
 }
 
 /**
+ * Removes one journal entry, on whichever side is holding it.
+ *
+ * Heavier than deleting a topic: MAYA reads recent entries on every
+ * consultation, so this takes the entry out of what she knows as well as out of
+ * the list. The screen says that before asking.
+ */
+export async function deleteJournal(id: string): Promise<void> {
+  if (await usingServer()) {
+    try {
+      await serverRequest(`/v1/journal/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      return;
+    } catch (error) {
+      throw asInboxError(error);
+    }
+  }
+  const db = await openDatabase();
+  await db.runAsync('DELETE FROM cached_journal_entries WHERE id = ?;', id);
+}
+
+/**
  * Removes one saved topic, on whichever side is holding it.
  *
  * The share sheet makes saving the same post twice easy, so the list has to be

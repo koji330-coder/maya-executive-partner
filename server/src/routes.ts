@@ -14,6 +14,7 @@ import {
 import {
   createJournal,
   createTopic,
+  deleteJournal,
   deleteTopic,
   findSameJournal,
   listJournals,
@@ -143,6 +144,14 @@ const ROUTES: Route[] = [
     handle: async ({ request, env, params }) => {
       const body = await readJson(request);
       await setJournalVerdict(env.MAYA_DB, params[0] ?? '', str(body, 'verdict'), str(body, 'reason'));
+      return json({ ok: true });
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: new RegExp(`^/v1/journal/${ID}$`),
+    handle: async ({ env, params }) => {
+      await deleteJournal(env.MAYA_DB, params[0] ?? '');
       return json({ ok: true });
     },
   },

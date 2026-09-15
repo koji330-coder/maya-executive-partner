@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import {
   InboxError,
+  deleteJournal,
   deleteTopic,
   findSameJournal,
   isXLink,
@@ -302,6 +303,32 @@ function JournalReview({
 
 function SavedJournal({ item, onChanged }: { item: StoredJournal; onChanged: () => void }) {
   const { entry } = item;
+  const [deleting, setDeleting] = React.useState(false);
+
+  // Heavier than dropping a topic: MAYA reads recent entries on every
+  // consultation, so the warning says what is actually lost.
+  const remove = () => {
+    Alert.alert(
+      'この記録を消しますか',
+      `「${entry.topic.slice(0, 40)}」を消します。MAYA もこの記録を思い出せなくなります。元には戻せません。`,
+      [
+        { text: 'やめる', style: 'cancel' },
+        {
+          text: '消す',
+          style: 'destructive',
+          onPress: () => {
+            setDeleting(true);
+            deleteJournal(item.id)
+              .then(onChanged)
+              .catch((error: unknown) =>
+                Alert.alert('消せませんでした', errorText(error, 'もう一度お試しください。')),
+              )
+              .finally(() => setDeleting(false));
+          },
+        },
+      ],
+    );
+  };
 
   const exportEntry = () => {
     // Out to wherever it is needed next: content-engine, a note, another chat.
@@ -340,9 +367,14 @@ function SavedJournal({ item, onChanged }: { item: StoredJournal; onChanged: () 
           ))}
         </View>
       ) : null}
-      <Pressable accessibilityRole="button" onPress={exportEntry} hitSlop={8}>
-        <Text style={styles.link}>整えた形で書き出す</Text>
-      </Pressable>
+      <View style={styles.rowFoot}>
+        <Pressable accessibilityRole="button" onPress={exportEntry} hitSlop={8}>
+          <Text style={styles.link}>整えた形で書き出す</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" disabled={deleting} onPress={remove} hitSlop={8}>
+          <Text style={[styles.remove, deleting && styles.removeOff]}>{deleting ? '消しています…' : '消す'}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

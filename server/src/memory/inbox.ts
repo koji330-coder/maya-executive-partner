@@ -161,6 +161,20 @@ export async function listTopics(db: D1Database, limit = 200): Promise<StoredTop
 }
 
 /**
+ * Removes one journal entry.
+ *
+ * A record of what the president did and thought, so it takes more care than a
+ * topic does: MAYA reads recent entries on every consultation, and deleting one
+ * takes it out of what she knows, not just out of the list. The screen says so
+ * before asking.
+ *
+ * Deleting an id that is not there succeeds, for the same reason as topics.
+ */
+export async function deleteJournal(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM journal_entries WHERE id = ?;').bind(id).run();
+}
+
+/**
  * Removes one saved topic.
  *
  * Topics arrive from the share sheet, where saving the same post twice is easy
