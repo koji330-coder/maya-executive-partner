@@ -1,4 +1,5 @@
 import { readDraft } from '../memory/decisions';
+import { deleteTopic } from '../memory/inbox';
 import { matchProjects, normalizeName, type Project } from '../memory/projects';
 
 function project(id: string, name: string, aliases: string[] = []): Project {
@@ -50,5 +51,39 @@ describe('readDraft', () => {
     expect(() => readDraft({ title: '  ' })).toThrow('何を決めたかがありません。');
     expect(() => readDraft({ title: 'x', dueDate: '2026-02-30' })).toThrow('YYYY-MM-DD');
     expect(() => readDraft(null)).toThrow('何を決めたかがありません。');
+  });
+});
+
+describe('deleteTopic', () => {
+  /** Captures the statement and its bindings, the way D1 would receive them. */
+  function fakeDb() {
+    const calls: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare: (sql: string) => ({
+        bind: (...args: unknown[]) => ({
+          run: async () => {
+            calls.push({ sql, args });
+            // D1 reports no rows changed rather than throwing for a missing id.
+            return { meta: { changes: 0 } };
+          },
+        }),
+      }),
+    } as unknown as D1Database;
+    return { db, calls };
+  }
+
+  it('removes exactly the row asked for', async () => {
+    const { db, calls } = fakeDb();
+    await deleteTopic(db, 'topic-123');
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.sql).toBe('DELETE FROM topics WHERE id = ?;');
+    expect(calls[0]?.args).toEqual(['topic-123']);
+  });
+
+  it('succeeds for an id that is already gone', async () => {
+    // A second tap on a slow connection should not read as a failure: the row
+    // being absent is the state the caller wanted.
+    const { db } = fakeDb();
+    await expect(deleteTopic(db, 'topic-gone')).resolves.toBeUndefined();
   });
 });

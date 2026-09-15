@@ -181,6 +181,26 @@ export async function saveTopic(pasted: string, note: string): Promise<string> {
   return id;
 }
 
+/**
+ * Removes one saved topic, on whichever side is holding it.
+ *
+ * The share sheet makes saving the same post twice easy, so the list has to be
+ * prunable. Whether two rows are the same thing is the president's call, not a
+ * URL comparison's, which is why this deletes one row rather than deduplicating.
+ */
+export async function deleteTopic(id: string): Promise<void> {
+  if (await usingServer()) {
+    try {
+      await serverRequest(`/v1/topics/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      return;
+    } catch (error) {
+      throw asInboxError(error);
+    }
+  }
+  const db = await openDatabase();
+  await db.runAsync('DELETE FROM cached_topics WHERE id = ?;', id);
+}
+
 export async function listTopics(limit = 200): Promise<StoredTopic[]> {
   if (await usingServer()) {
     const { topics } = await serverRequest<{ topics: StoredTopic[] }>('/v1/topics');

@@ -5,8 +5,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { ScreenContainer } from '@/components/ScreenContainer';
 import {
-  findSameJournal,
   InboxError,
+  deleteTopic,
+  findSameJournal,
   isXLink,
   linkLabel,
   listJournals,
@@ -408,19 +409,59 @@ function TopicInbox() {
       {topics.length === 0 ? (
         <Text style={styles.empty}>まだありません。</Text>
       ) : (
-        topics.map((topic) => (
-          <View key={topic.id} style={styles.row}>
-            {topic.body ? (
-              <Text style={styles.rowTitle} numberOfLines={3}>
-                {topic.body}
-              </Text>
-            ) : null}
-            {topic.url ? <TopicLink url={topic.url} /> : null}
-            {topic.note ? <Text style={styles.note}>「{topic.note}」</Text> : null}
-            <Text style={styles.meta}>{topic.createdAt.slice(0, 10)}</Text>
-          </View>
-        ))
+        topics.map((topic) => <SavedTopic key={topic.id} topic={topic} onDeleted={reload} />)
       )}
+    </View>
+  );
+}
+
+/**
+ * One saved topic, with a way to drop it.
+ *
+ * Saving the same post twice from the share sheet is easy, and nothing stopped
+ * it, so the list could only grow. Deletion asks first: a topic is a few words
+ * the president chose to keep, and there is no undo.
+ */
+function SavedTopic({ topic, onDeleted }: { topic: StoredTopic; onDeleted: () => void }) {
+  const [deleting, setDeleting] = React.useState(false);
+
+  const remove = () => {
+    // The first line of the body, or the link, so the confirmation names the
+    // row being removed rather than asking about "this item".
+    const label = (topic.body?.split('\n')[0] ?? topic.url ?? '').slice(0, 40);
+    Alert.alert('この話題を消しますか', label ? `「${label}」を消します。元には戻せません。` : '元には戻せません。', [
+      { text: 'やめる', style: 'cancel' },
+      {
+        text: '消す',
+        style: 'destructive',
+        onPress: () => {
+          setDeleting(true);
+          deleteTopic(topic.id)
+            .then(onDeleted)
+            .catch((error: unknown) =>
+              Alert.alert('消せませんでした', errorText(error, 'もう一度お試しください。')),
+            )
+            .finally(() => setDeleting(false));
+        },
+      },
+    ]);
+  };
+
+  return (
+    <View style={styles.row}>
+      {topic.body ? (
+        <Text style={styles.rowTitle} numberOfLines={3}>
+          {topic.body}
+        </Text>
+      ) : null}
+      {topic.url ? <TopicLink url={topic.url} /> : null}
+      {topic.note ? <Text style={styles.note}>「{topic.note}」</Text> : null}
+      <View style={styles.rowFoot}>
+        <Text style={styles.meta}>{topic.createdAt.slice(0, 10)}</Text>
+        <Pressable accessibilityRole="button" disabled={deleting} onPress={remove} hitSlop={8}>
+          <Text style={[styles.remove, deleting && styles.removeOff]}>{deleting ? '消しています…' : '消す'}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -551,4 +592,12 @@ const styles = StyleSheet.create({
   rowVerdict: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   verdictOn: { color: colors.charcoal, fontWeight: '700' },
   note: { fontSize: 13, lineHeight: 19, color: colors.charcoalSoft },
+  rowFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+  },
+  remove: { fontSize: 13, color: colors.danger },
+  removeOff: { color: colors.muted },
 });

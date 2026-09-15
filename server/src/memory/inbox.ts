@@ -161,6 +161,21 @@ export async function listTopics(db: D1Database, limit = 200): Promise<StoredTop
 }
 
 /**
+ * Removes one saved topic.
+ *
+ * Topics arrive from the share sheet, where saving the same post twice is easy
+ * and not worth blocking: the president decides what is a duplicate, not a
+ * matching URL. So the list needs a way out, and this is it.
+ *
+ * Deleting an id that is not there succeeds. A row already gone is the state
+ * the caller wanted, and a second tap on a slow connection should not read as
+ * an error.
+ */
+export async function deleteTopic(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM topics WHERE id = ?;').bind(id).run();
+}
+
+/**
  * The recent journal entries and topics for the system prompt.
  *
  * Bounded twice: by age here, and by size in `formatActivity`. Entries the
