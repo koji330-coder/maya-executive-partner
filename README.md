@@ -30,6 +30,8 @@ The first usable iPhone build must support:
 - decision extraction and storage
 - local persistence for conversations and user settings
 
+v0.1 is complete as of 2026-09-13. What comes after it — a Cloudflare server, data from sales, health records, project logs and GitHub — is designed in `docs/PLATFORM_ARCHITECTURE.md`.
+
 Not in v0.1:
 
 - Gmail / Calendar / Drive integration
@@ -49,6 +51,50 @@ Not in v0.1:
 - Backend API for LLM and server-side memory
 - PostgreSQL/Supabase is acceptable for the first backend
 
+## Development
+
+```bash
+npm install
+npm start          # Expo dev server; press i for the iOS simulator
+npm run ios        # iOS simulator directly
+npm run web        # browser, for fast layout iteration only
+
+npm run check      # typecheck + lint + tests
+```
+
+Copy `.env.example` to `.env` and fill in `EXPO_PUBLIC_API_BASE_URL` once the
+Phase 3 backend exists. Only `EXPO_PUBLIC_*` variables reach the client, and
+they are embedded in the bundle — never put a provider API key there.
+
+## The phone build
+
+The president's iPhone runs a standalone preview build (EAS Build, ad hoc, profile
+`preview`). Two ways to get a change onto it:
+
+- **Update, minutes.** `npm run update:ios` publishes the JavaScript and images to
+  the `preview` channel. The app picks it up on its next launch (open, close,
+  open again). Covers screens, wording, prompts, expressions.
+- **Build, tens of minutes.** `npx eas build --platform ios --profile preview`.
+  Needed for anything native: icon, app name, splash, config plugins, a new
+  native package, an Expo SDK upgrade.
+
+`runtimeVersion` follows the app version. **After a native change, raise
+`version` in `app.json` before building.** Otherwise an update made from the new
+code is also offered to the old build, which lacks the native part and can crash.
+
+The server address and `EXPO_PUBLIC_ENV` come from the EAS `preview` environment
+(`npx eas env:list --environment preview`), for both builds and updates. An
+update published without `--environment preview` would ship with no server
+address and quietly switch the phone back to calling Gemini directly, so use the
+npm script.
+
+Source layout follows `docs/TECH_ARCHITECTURE.md` §2. Routes live in `src/app/`
+(expo-router). The character runtime in `src/features/character/` is isolated
+from chat and business logic and is driven only through the types in
+`mayaTypes.ts`.
+
+Current state of the build is tracked in `PROGRESS.md`.
+
 ## Repo documents
 
 Read in this order:
@@ -61,7 +107,11 @@ Read in this order:
 6. `docs/AI_RESPONSE_CONTRACT.md`
 7. `docs/ASSET_PIPELINE.md`
 8. `docs/IMAGE_GENERATION_GUIDE.md`
-9. `docs/IMPLEMENTATION_PLAN.md`
-10. `docs/ACCEPTANCE_CRITERIA.md`
-11. `CODEX_BOOTSTRAP.md`
-
+9. `docs/REFERENCE_IMAGE_REQUEST.md`
+10. `docs/SCENE_PLATE_REQUEST.md`
+11. `docs/LLM_INTEGRATION.md`
+12. `docs/NANO_BANANA_PIPELINE.md`
+13. `docs/PIPELINE_PORTABILITY.md`
+14. `docs/IMPLEMENTATION_PLAN.md`
+15. `docs/ACCEPTANCE_CRITERIA.md`
+16. `CODEX_BOOTSTRAP.md`

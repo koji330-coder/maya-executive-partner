@@ -6,3 +6,9 @@ dist/
 !.env.example
 .DS_Store
 coverage/
+
+# Python
+__pycache__/
+*.pyc
+
+build/

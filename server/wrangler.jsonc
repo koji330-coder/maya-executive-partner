@@ -1,0 +1,42 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "maya-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  // The workers.dev address is the only way in (decided 2026-09-13: gakky.jp's
+  // DNS is not on Cloudflare, so a Worker cannot sit at maya.gakky.jp). It is
+  // protected twice: Cloudflare Access in front, and src/access.ts inside.
+  "workers_dev": true,
+  // Preview URLs would be a second door, one Access is not configured for.
+  "preview_urls": false,
+  "vars": {
+    // Switched off gemini-3.6-flash on 2026-09-14. Its free-tier daily cap is
+    // 20 requests, measured by the president in real use, and a consultation
+    // that calls a tool spends two of them. Flash-Lite has room to spare.
+    // The cost is arithmetic: 3.6 checked the numbers, Lite is directionally
+    // right but does not (docs/LLM_INTEGRATION.md). Revisit on a paid key.
+    "MODEL": "gemini-3.5-flash-lite",
+    // Starting values only. The settings screen can change all three without a
+    // redeploy; whatever it saves lives in D1 and wins (src/memory/settings.ts).
+    "PREFER_FREE": "true",
+    // On since 2026-09-14: the free tier stops at 20 requests a day, so a
+    // consultation should carry on with the paid key rather than fail. Only a
+    // rate limit triggers it, never an auth error or a network fault.
+    "ALLOW_PAID_FALLBACK": "true",
+    "PAID_DAILY_LIMIT_YEN": "50",
+    // Cloudflare Access. Neither value is a secret. Until ACCESS_AUD is filled
+    // with the Access application's audience tag, the server refuses every
+    // request (src/access.ts), so deploying before Access exists is safe.
+    "ACCESS_TEAM_DOMAIN": "https://morning-block-80c5.cloudflareaccess.com",
+    "ACCESS_AUD": "2377e499cb2f02aca2a30434ebf3c2038f428956f167083637a218ed7d78c668"
+  },
+  "d1_databases": [
+    {
+      "binding": "MAYA_DB",
+      "database_name": "maya",
+      // Created on Cloudflare 2026-09-13 in APAC. An id, not a secret.
+      "database_id": "11ed662b-5540-43ca-80cb-3b6c9654404e",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

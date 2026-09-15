@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "MAYA",
+    "slug": "maya-executive-partner",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/app/icon.png",
+    "scheme": "maya",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "jp.gakky.maya",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
+    },
+    "android": {
+      "package": "jp.gakky.maya",
+      "adaptiveIcon": {
+        "backgroundColor": "#F6F1E9",
+        "foregroundImage": "./assets/app/android-icon-foreground.png",
+        "backgroundImage": "./assets/app/android-icon-background.png",
+        "monochromeImage": "./assets/app/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/app/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/app/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F6F1E9"
+        }
+      ],
+      "expo-secure-store",
+      "expo-sqlite"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "11b45e35-b3eb-4644-9bf3-3eda0fb5b4e3"
+      }
+    },
+    "owner": "gakky330",
+    "updates": {
+      "url": "https://u.expo.dev/11b45e35-b3eb-4644-9bf3-3eda0fb5b4e3"
+    }
+  }
+}

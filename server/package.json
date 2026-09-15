@@ -1,0 +1,17 @@
+{
+  "name": "maya-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "db:migrate:local": "wrangler d1 migrations apply MAYA_DB --local",
+    "typecheck": "tsc --noEmit",
+    "check:api": "node scripts/check-memory-api.mjs",
+    "dev:lan": "wrangler dev --local --ip 0.0.0.0 --port 8787"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.131.1"
+  }
+}

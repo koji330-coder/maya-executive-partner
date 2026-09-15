@@ -1,0 +1,21 @@
+node_modules/
+.expo/
+dist/
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+
+build/
+
+# Not needed to build the app (EAS only). .easignore replaces .gitignore for uploads,
+# so everything above is repeated here.
+assets/reference/
+assets/maya/source/
+server/
+tools/
