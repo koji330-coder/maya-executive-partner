@@ -286,7 +286,7 @@ export function formatConversation(
       lines.push('', `### ${day}`);
     }
     const time = valid ? `${pad(at.getHours())}:${pad(at.getMinutes())} ` : '';
-    const body = message.role === 'user' ? `社長: ${message.text}` : formatMayaMessage(message);
+    const body = message.role === 'user' ? `Gakky: ${message.text}` : formatMayaMessage(message);
     lines.push('', `${time}${body}`);
   }
   return lines.join('\n');

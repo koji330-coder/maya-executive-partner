@@ -99,10 +99,10 @@ describe('formatConversation', () => {
     ]);
 
     expect(text).toContain('### 2026-09-11');
-    expect(text).toContain('22:00 社長: しゃぶ葉行ってきた');
+    expect(text).toContain('22:00 Gakky: しゃぶ葉行ってきた');
     expect(text).toContain('22:01 MAYA [smile / default / casual]: 結局しゃぶ葉ですか');
     expect(text).toContain('### 2026-09-12');
-    expect(text).toContain('08:00 社長: おはようございます');
+    expect(text).toContain('08:00 Gakky: おはようございます');
     expect(text.indexOf('### 2026-09-12')).toBeGreaterThan(text.indexOf('22:01'));
   });
 });

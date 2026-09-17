@@ -18,35 +18,35 @@ export function getTodayGreeting(date: Date = new Date()): TodayGreeting {
 
   if (hour < 5) {
     return {
-      greeting: 'まだ起きてらっしゃるんですね、社長。',
-      prompt: '明日に回せる判断なら、明日にしましょう。今すぐ決めるべきことはありますか？',
+      greeting: 'まだ起きてるんですね、Gakky。',
+      prompt: '夜更かしのお供をしましょうか。それとも、何か気になってることがあります？',
       scene: 'late_night',
     };
   }
   if (hour < 11) {
     return {
-      greeting: 'おはようございます、社長。',
-      prompt: '今日は何を決めます？',
+      greeting: 'おはようございます、Gakky。',
+      prompt: '今日は何から始めます？',
       scene: 'morning',
     };
   }
   if (hour < 17) {
     return {
-      greeting: 'お疲れさまです、社長。',
-      prompt: '午前中に動いた案件で、判断が止まっているものはありますか？',
+      greeting: 'お疲れさまです、Gakky。',
+      prompt: '午前中はどうでした？ 話したいことがあれば聞きますよ。',
       scene: 'work',
     };
   }
   if (hour < 22) {
     return {
-      greeting: '社長、今日はいかがでしたか。',
-      prompt: '今日決めたことと、決めきれなかったことを整理しましょう。',
+      greeting: 'Gakky、今日はどんな一日でした？',
+      prompt: '進んだこと、引っかかっていること、どっちからでもどうぞ。',
       scene: 'strategy',
     };
   }
   return {
-    greeting: 'こんばんは、社長。',
-    prompt: '疲れているときの決断は、だいたい後で見直すことになりますよ。',
+    greeting: 'こんばんは、Gakky。',
+    prompt: '大きな決断は明日の朝に回して、今夜はゆるく話しましょうか。',
     scene: 'late_night',
   };
 }

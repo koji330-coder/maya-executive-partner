@@ -30,7 +30,7 @@ describe('formatActivity', () => {
     });
     expect(text).toContain('決めたこと: 決めた1');
     expect(text).not.toContain('決めた3');
-    expect(text).toContain('社長の考え: 考え1');
+    expect(text).toContain('Gakky の考え: 考え1');
     expect(text).toContain('（メモ: あとで読む）');
   });
 });

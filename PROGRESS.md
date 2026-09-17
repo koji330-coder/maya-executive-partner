@@ -338,3 +338,6 @@ was relaxed instead of the hairstyle.
 ## Pending
 
 - **Attachments are forgotten after the turn they were sent (decided 2026-09-14: option 3).** History carries text only, not even the fact an image was attached (`src/features/chat/useConversation.ts` history build). Plan: on a turn with attachments, the response JSON gains an attachment note (facts, numbers, labels worth keeping); save it with the user message (migration), put it into later history as 〔添付 name：note〕, and tell MAYA to ask for the image again when the note lacks a detail. Server redeploy + `npm run update:ios`; no rebuild.
+
+- **Closeness level (idea, 2026-09-17).** Gakky floated a dating-sim style affinity: the more they talk, the closer MAYA gets and the looser her register. Not designed yet; ties to the goal that a growing memory makes Gakky want to talk to her.
+- **Fixed voice clips still say 社長.** The prompt and screens call the user Gakky since 2026-09-17; the six OmniVoice clips need re-rendering.

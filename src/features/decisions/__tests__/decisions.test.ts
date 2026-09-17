@@ -154,11 +154,11 @@ describe('formatDecisions', () => {
 
 describe('buildSystemPrompt', () => {
   it('always carries a decisions section, even with none saved', () => {
-    expect(buildSystemPrompt(undefined, [], TODAY)).toContain('社長が記録した過去の判断はまだありません');
+    expect(buildSystemPrompt(undefined, [], TODAY)).toContain('Gakky が記録した過去の判断はまだありません');
   });
 
   it('puts the decisions before the protocol that asks her to check them', () => {
     const prompt = buildSystemPrompt(undefined, [priceHold], TODAY);
-    expect(prompt.indexOf('競合の10%値下げ')).toBeLessThan(prompt.indexOf('過去の判断と矛盾しないか'));
+    expect(prompt.indexOf('競合の10%値下げ')).toBeLessThan(prompt.indexOf('記録した判断と、同じ分野で矛盾しないか'));
   });
 });

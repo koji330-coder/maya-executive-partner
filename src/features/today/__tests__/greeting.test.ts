@@ -19,9 +19,9 @@ describe('getTodayGreeting', () => {
     expect(getTodayGreeting(at(19)).scene).toBe('strategy');
   });
 
-  it('always addresses the user as 社長', () => {
+  it('always addresses the user as Gakky', () => {
     for (const hour of [0, 6, 12, 18, 22]) {
-      expect(getTodayGreeting(at(hour)).greeting).toContain('社長');
+      expect(getTodayGreeting(at(hour)).greeting).toContain('Gakky');
     }
   });
 });

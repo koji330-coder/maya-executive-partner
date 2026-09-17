@@ -47,7 +47,7 @@ describe('journalText', () => {
       extra: {},
     });
     expect(text).toContain('決めたこと: 5月から10%上げる');
-    expect(text).toContain('社長の考え: 客離れより赤字が怖い');
+    expect(text).toContain('Gakky の考え: 客離れより赤字が怖い');
     expect(text).not.toContain('AIの読み');
   });
 });

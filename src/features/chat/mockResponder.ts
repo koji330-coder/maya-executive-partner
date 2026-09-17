@@ -50,7 +50,7 @@ export const MOCK_SCRIPTS: MockScript[] = [
     match: /値下げ|価格|安く|競合/,
     payload: {
       message:
-        '社長、その値下げは私は反対です。競合に合わせる前に、粗利とCVRへの影響を分けて見ましょう。いま下げると、戻すときに理由を説明できなくなります。',
+        'Gakky、その値下げは私は反対です。競合に合わせる前に、粗利とCVRへの影響を分けて見ましょう。いま下げると、戻すときに理由を説明できなくなります。',
       summary: '値下げには反対。まず粗利とCVRを分けて試算する。',
       emotion: 'challenge',
       pose: 'lean_forward',
@@ -94,7 +94,7 @@ export const MOCK_SCRIPTS: MockScript[] = [
     match: /また|やっぱり|もう一度|先月/,
     payload: {
       message:
-        '……社長。それ、先月も同じ結論で止まっていますよ。前提が変わっていないなら、今日も同じところで止まります。',
+        '……Gakky。それ、先月も同じ結論で止まっていますよ。前提が変わっていないなら、今日も同じところで止まります。',
       emotion: 'annoyed',
       pose: 'default',
       scene: 'work',

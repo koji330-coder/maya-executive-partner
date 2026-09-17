@@ -12,7 +12,7 @@ import type { ToolCall, ToolDeclaration } from '@/services/llm/geminiClient';
 export const SEARCH_MEMORY_TOOL: ToolDeclaration = {
   name: 'search_memory',
   description:
-    '社長の過去の記録を探します。Journal（活動と、そのとき決めたこと・考え）、保存した話題、記録した判断が対象です。' +
+    'Gakky の過去の記録を探します。Journal（活動と、そのとき決めたこと・考え）、保存した話題、記録した判断が対象です。' +
     'プロンプトにある最近の分より前のこと、または最近の分に無い細部が相談に必要なときだけ使います。',
   parameters: {
     type: 'object',
@@ -89,7 +89,7 @@ export function journalText(entry: JournalEntry): string {
   const lines = [entry.topic];
   if (entry.context?.length) lines.push(`状況: ${entry.context.join(' / ')}`);
   if (entry.decisions?.length) lines.push(`決めたこと: ${entry.decisions.join(' / ')}`);
-  if (entry.userPerspective?.length) lines.push(`社長の考え: ${entry.userPerspective.join(' / ')}`);
+  if (entry.userPerspective?.length) lines.push(`Gakky の考え: ${entry.userPerspective.join(' / ')}`);
   if (entry.relatedProjects?.length) lines.push(`関連: ${entry.relatedProjects.join(', ')}`);
   return clip(lines.join('\n'));
 }
