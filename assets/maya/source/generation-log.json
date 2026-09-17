@@ -1,0 +1,270 @@
+{
+  "rounds": [
+    {
+      "round": "reference",
+      "purpose": "Rebuild the identity reference before production generation.",
+      "assets": [
+        {
+          "asset": "neutral-a-01.png",
+          "target": "A — front neutral master",
+          "status": "revision_requested",
+          "size": [
+            1086,
+            1448
+          ],
+          "scores": {
+            "face_identity": 9,
+            "hair_consistency": 9,
+            "age_consistency": 9,
+            "eye_consistency": 9,
+            "visual_style": 8,
+            "brand_fit": 8,
+            "anatomy_quality": 9,
+            "ios_usability": 7
+          },
+          "passed": [
+            "Single cut, not a contact sheet.",
+            "Background measured at 139,139,138 and uniform across every sampled patch.",
+            "Mouth safe zone clear: mouth closed, no hair, no hand, no hard shadow.",
+            "Both eyes fully open.",
+            "Hands out of frame.",
+            "No text anywhere.",
+            "Detail outside the safe zones matches the design sheet."
+          ],
+          "failed": [
+            "Eye safe zone: a bang crosses the viewer-left eyebrow and reaches the upper lid. The brow is fully occluded. The viewer-right brow is correct."
+          ],
+          "matte_test": {
+            "method": "Alpha from distance to the flat background colour, threshold 34, unpremultiplied to de-spill, composited over a warm cream plate.",
+            "result": "pass",
+            "notes": "Flyaway strands survive matting without a grey halo. The earlier concern about fine strands is resolved by the flat background. Hair needs no change. This validates the cut-out plus scene-plate composition model on real output."
+          },
+          "open_questions": [
+            "Neckline is more open than the buttoned blouse in the wardrobe reference. Decide whether to align the wardrobe.",
+            "Rendering reads slightly more photoreal and glossier than the 2.5D design sheet."
+          ],
+          "next": "Localised fix of the left bang only. Full regeneration is a fallback, not the preference."
+        },
+        {
+          "asset": "neutral-a-02.png",
+          "target": "A — front neutral master",
+          "status": "accepted",
+          "size": [
+            1086,
+            1448
+          ],
+          "promoted_to": "assets/reference/maya-face-reference.png",
+          "scores": {
+            "face_identity": 9,
+            "hair_consistency": 9,
+            "age_consistency": 9,
+            "eye_consistency": 9,
+            "visual_style": 8,
+            "brand_fit": 8,
+            "anatomy_quality": 9,
+            "ios_usability": 9
+          },
+          "passed": [
+            "Tier 1 eye zones: both eyes measured clear of hair, including the lid travel space between brow and lash line.",
+            "Tier 1 mouth zone: closed, no hair, no hand, no hard shadow.",
+            "Background uniform at 138-140 across every sampled patch.",
+            "Both eyes fully open, hands out of frame, no text.",
+            "Matte test passes over a warm plate with no grey halo.",
+            "Detail outside the zones matches the design sheet."
+          ],
+          "tolerated": [
+            "A bang crosses the viewer-left eyebrow. Accepted under the Tier 2 rule: a blink does not move the eyebrow, and the brow stays readable."
+          ],
+          "decision": "Accepted as the identity reference. The spec was revised rather than the hairstyle: the eyebrow moved from the absolute tier to a legibility-only tier. Asking for a brow fully clear of hair would have forced a change to MAYA's bangs, which are part of her identity, for no animation benefit.",
+          "open_questions": [
+            "Neckline is more open than the buttoned blouse in the wardrobe reference. Decide before the expression round.",
+            "Rendering reads slightly more photoreal than the 2.5D design sheet. Consistency across the set matters more than the absolute level."
+          ]
+        }
+      ]
+    },
+    {
+      "round": "expressions",
+      "purpose": "Prove that an expression swap holds registration. Blink and mouth ride under a mask; an expression replaces the whole cut-out, so drift reaches the screen.",
+      "assets": [
+        {
+          "asset": "challenge-01.png",
+          "target": "challenge — signature expression, used as the probe for all nine",
+          "status": "revision_requested",
+          "size": [
+            1086,
+            1448
+          ],
+          "passed": [
+            "Same person. Identity holds.",
+            "Canvas matches the master at 1086x1448.",
+            "Background still a uniform grey."
+          ],
+          "failed": [
+            "Not a locked-parent edit. Best fit needs scale 0.90 and dy +68px: the head is about 11% larger and sits lower. Residual in the face box is 42.4 unaligned, 21.7 after translation, 13.1 after translation and scale. The blink variant was near zero with no movement at all.",
+            "Eyebrows became thicker and darker. That is a change to the features, not the expression.",
+            "The bang no longer crosses the brow. The hairstyle changed.",
+            "The expression did not land: brows stayed symmetric and the mouth kept the master's even smile. challenge needs one raised brow and a one-sided knowing smile."
+          ],
+          "why_it_matters": "Masked compositing hides drift for blink and mouth. Expressions swap the whole cut-out, so this drift would make MAYA shift down and grow each time the emotion changes.",
+          "next": "Rewrite the prompt at the granularity the proven pipeline uses: name head size, position, framing, hairline, bangs over the brow, collar, earrings, lighting and background as fixed, then change only brow angle and mouth shape. Re-measure scale and offset before judging the expression.",
+          "revised_verdict": "Position and scale were withdrawn as a rejection reason on 2026-09-11. Expressions carry their own master, so registration against the neutral master is not required. A blink generated from this image as its own parent passed the gate (scale 1.00, dx 0, dy +3) and composited cleanly; see assets/reference/pipeline-test/. It is still sent back, but only because the expression is not challenge, the eyebrows thickened, and the bangs moved off the eyebrow."
+        }
+      ],
+      "fallback_test": {
+        "question": "Can alignment plus a face mask absorb expression drift the way the ellipse masks absorb blink and mouth drift?",
+        "result": "no",
+        "method": "Best similarity fit of challenge-01 onto the master, then the face composited through a heavily feathered ellipse.",
+        "why": "The face's proportions changed. The eye band fits at scale 0.91 with no vertical offset; the mouth band wants scale 0.93 and 15px lower. No single similarity transform registers both, so the composite doubles the nose and mouth.",
+        "consequence": "There is no compositing safety net for expressions. The prompt has to hold the geometry.",
+        "evidence": "assets/reference/candidates/challenge-01-mask-fallback.png",
+        "gate": "tools/measure_drift.py, validated: master/blink passes, master/mouth_open passes, master/challenge-01 fails all three checks."
+      }
+    },
+    {
+      "round": "expressions-challenge-02",
+      "purpose": "Re-run challenge after the first attempt changed the brows and the hairstyle instead of the expression. Also the first end-to-end proof at flash/2K.",
+      "assets": [
+        {
+          "asset": "challenge-02.png",
+          "target": "challenge — signature expression",
+          "status": "accepted",
+          "model": "flash",
+          "size": [
+            1792,
+            2400
+          ],
+          "passed": [
+            "Eyebrow weight and darkness unchanged from the master. This was the first attempt's main failure.",
+            "Bangs still cross the eyebrow, as the safe zone allows.",
+            "One mouth corner lifted into a closed half-smile, no teeth.",
+            "Composition holds: measure_drift reports scale 1.00, dx 0, dy 0 against the master on face, eye band and mouth band alike."
+          ],
+          "failed": [
+            "The raised eyebrow did not happen. The prompt named her left brow, which is the one the bangs hide, so the instruction could not show even if followed."
+          ],
+          "accepted_anyway": "The user judged the half-smile enough for what the expression is for: telling the president he is wrong.",
+          "derived": {
+            "eyes_closed": "challenge-02-eyes-closed.png",
+            "mouth_open": "challenge-02-mouth-open.png",
+            "drift": "scale 1.00, dx 0, dy 0 on both",
+            "note": "Both frames redraw the hair, so a whole-canvas diff looks alarming. It is outside the mask and never reaches the screen; the mouth band measured 0 changed pixels after eye compositing."
+          },
+          "matte": {
+            "background": [
+              140,
+              138,
+              140
+            ],
+            "opaque_fraction": 0.728,
+            "note": "Sample the background from the two TOP corners only. The bottom corners are hair and blouse, and averaging them in leaves the whole frame opaque."
+          }
+        }
+      ]
+    },
+    {
+      "round": "expressions-remaining-seven",
+      "purpose": "The seven expressions with no artwork, plus their blink and mouth-open frames.",
+      "model": "flash",
+      "size": [
+        1792,
+        2400
+      ],
+      "calls": {
+        "masters": 7,
+        "blink": 7,
+        "mouth_open": 2,
+        "retries": 0
+      },
+      "prompt_changes_from_challenge_failure": [
+        "Eyebrow weight and darkness pinned; only angle and height may change. The first challenge attempt thickened and darkened them, which is anatomy, not expression.",
+        "Bangs over the eyebrow declared correct and required to stay. The first attempt changed the hairstyle.",
+        "Asymmetry asks for 'the eyebrow NOT covered by the bangs' instead of naming a side. Naming a side risks naming the hidden one, and the earlier claim about which side that is was never verified.",
+        "No mouth-open instruction in any master. happy in particular must keep the lips closed, or MouthState 'closed' would show teeth and contradict its own name."
+      ],
+      "result": "All seven passed on the first attempt. No retries.",
+      "assets": [
+        {
+          "asset": "smile-01.png",
+          "status": "accepted",
+          "drift": "scale 0.99, dx -6, dy -3"
+        },
+        {
+          "asset": "thinking-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3"
+        },
+        {
+          "asset": "serious-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3"
+        },
+        {
+          "asset": "annoyed-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3",
+          "concern": "Hard to tell apart from serious. The intended eyebrow asymmetry did not appear. Raised twice; the user chose to proceed. annoyed is a signature expression and the prompt names 'また/やっぱり/前にも' to select it, so if it reads as serious that work does not reach the screen. Revisit when the app can be watched in use."
+        },
+        {
+          "asset": "happy-01.png",
+          "status": "accepted",
+          "drift": "FAILS against the neutral master: eye band and mouth band disagree by 24px (tolerance 14px)",
+          "why_accepted": "Raising the cheeks genuinely moves the mouth relative to the eyes, so this is the expression working, not drift. What compositing needs is agreement between happy's own master and its own frames, and that measured clean."
+        },
+        {
+          "asset": "concerned-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3"
+        },
+        {
+          "asset": "relaxed-01.png",
+          "status": "accepted",
+          "drift": "scale 1.00, dy +3"
+        }
+      ],
+      "frames": {
+        "built_by": "tools/build_expression_frames.py",
+        "count": 36,
+        "bytes": "7.9MB",
+        "opaque_fraction": "0.728-0.729 across all nine, which is what a consistent matte looks like",
+        "mouth_open_only_for": [
+          "neutral",
+          "smile",
+          "serious",
+          "challenge"
+        ],
+        "note": "The other five get the master's mouth in their open frames. Those expressions never play a clip, so the frame is never shown."
+      }
+    },
+    {
+      "round": "reaction-poses",
+      "purpose": "Stop MAYA standing stiffly. Five expressions get a body posture baked into their cut-out.",
+      "model": "flash",
+      "size": [
+        1792,
+        2400
+      ],
+      "calls": {
+        "masters": 5,
+        "blink": 5,
+        "mouth_open": 0,
+        "retries": 0
+      },
+      "decision": "The pose versions REPLACE the standing sets for these five emotions. Considered keeping both and using the pose only during the reaction spotlight; the user chose replacement.",
+      "poses": {
+        "serious": "upright, hands lightly clasped at waist",
+        "annoyed": "arms folded firmly across the chest",
+        "thinking": "one arm supports the other elbow, index finger at the chin, gaze off",
+        "challenge": "shoulders forward, one hand on the hip",
+        "happy": "shoulders lifted, hands together at the collarbone"
+      },
+      "prompt_changes": [
+        "The asset backlog had assigned crossed arms to both serious and annoyed, the pair the pose was meant to separate. serious was changed to clasped hands.",
+        "Head position, size and angle pinned. The blink ellipses sit at fixed canvas coordinates, so a moving head would misplace them. challenge carries its lean in the shoulders, not the head.",
+        "Hand anatomy spelled out, and hands kept clear of the eyes and mouth. A hand inside an ellipse cannot be rescued by masking the way drift can."
+      ],
+      "drift": "scale 1.00, dx 0, dy 0 on face and eye band for all five masters against their parents, and all five blink frames against their masters.",
+      "consequence": "serious and challenge lost the mouth-open frames they had as standing sets. Voice is postponed, so nothing is shown wrong now. When voice returns, serious, challenge and happy each need a mouth-open frame drawn from the pose master."
+    }
+  ]
+}

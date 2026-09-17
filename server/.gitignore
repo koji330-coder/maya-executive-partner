@@ -1,0 +1,4 @@
+node_modules/
+.wrangler/
+# Secrets for local development. Never committed.
+.dev.vars

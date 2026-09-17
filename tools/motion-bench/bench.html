@@ -1,0 +1,903 @@
+<title>MAYA モーションベンチ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* Light palette. Every token is declared here first so the un-stamped
+     (system-default) document always resolves a complete set. */
+  :root {
+    --ground: #EBEBE7;
+    --surface: #F8F8F6;
+    --surface-2: #E2E2DC;
+    --ink: #201F1B;
+    --ink-dim: #6A695F;
+    --ink-faint: #93928A;
+    --line: #D6D6CE;
+    --line-strong: #BBBAB1;
+    --accent: #8A6220;
+    --attention: #A2512E;
+    --stage-shadow: 0 1px 0 rgba(0,0,0,.05), 0 18px 34px -26px rgba(0,0,0,.5);
+    --focus: #8A6220;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131315;
+      --surface: #1C1C20;
+      --surface-2: #26262B;
+      --ink: #ECEBE5;
+      --ink-dim: #9B9A91;
+      --ink-faint: #6F6E67;
+      --line: #2C2C31;
+      --line-strong: #3D3D44;
+      --accent: #CFA55E;
+      --attention: #D28C68;
+      --stage-shadow: 0 1px 0 rgba(255,255,255,.04), 0 20px 40px -26px rgba(0,0,0,.9);
+      --focus: #CFA55E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #131315;
+    --surface: #1C1C20;
+    --surface-2: #26262B;
+    --ink: #ECEBE5;
+    --ink-dim: #9B9A91;
+    --ink-faint: #6F6E67;
+    --line: #2C2C31;
+    --line-strong: #3D3D44;
+    --accent: #CFA55E;
+    --attention: #D28C68;
+    --stage-shadow: 0 1px 0 rgba(255,255,255,.04), 0 20px 40px -26px rgba(0,0,0,.9);
+    --focus: #CFA55E;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Zen Kaku Gothic New", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 32px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  h1 {
+    font-size: clamp(26px, 6vw, 38px);
+    font-weight: 900;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+    text-wrap: balance;
+    margin: 6px 0 0;
+  }
+
+  h2 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; margin: 0; }
+
+  .lede { max-width: 60ch; color: var(--ink-dim); margin: 10px 0 0; }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+
+  .sec-head { display: flex; flex-direction: column; gap: 2px; }
+  .sec-head p { margin: 0; color: var(--ink-dim); font-size: 14px; max-width: 62ch; }
+
+  /* ---- bench ---- */
+
+  .bench {
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 760px) { .bench { grid-template-columns: 1fr; gap: 20px; } }
+
+  .stage-col { display: flex; flex-direction: column; gap: 10px; }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1086 / 1448;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: 3px;
+    border: 1px solid var(--line-strong);
+    box-shadow: var(--stage-shadow);
+    background-color: #8B8B8A;
+  }
+  .stage.bg-scene { background-color: #EFE3D0; }
+  .stage.bg-night { background-color: #241F1B; }
+  .stage.bg-checker {
+    background-color: #CFCFCA;
+    background-image:
+      linear-gradient(45deg, #A8A8A2 25%, transparent 25%, transparent 75%, #A8A8A2 75%),
+      linear-gradient(45deg, #A8A8A2 25%, transparent 25%, transparent 75%, #A8A8A2 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 11px 11px;
+  }
+
+  .stage img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  .readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .readout b { color: var(--ink); font-weight: 600; }
+
+  /* ---- controls ---- */
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 7px; }
+
+  .field > label, .field-label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .segs { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .seg {
+    font: inherit;
+    font-size: 13px;
+    padding: 7px 13px;
+    border-radius: 2px;
+    border: 1px solid var(--line-strong);
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: background-color .12s, color .12s, border-color .12s;
+  }
+  .seg:hover { color: var(--ink); border-color: var(--ink-faint); }
+  .seg[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--ground);
+    font-weight: 500;
+  }
+  .seg:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .slider-val {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    min-width: 4.5em;
+    text-align: right;
+  }
+
+  select {
+    font: inherit;
+    font-size: 13px;
+    padding: 7px 9px;
+    border-radius: 2px;
+    border: 1px solid var(--line-strong);
+    background: var(--ground);
+    color: var(--ink);
+    width: 100%;
+  }
+
+  .check { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--ink-dim); cursor: pointer; }
+  .check input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+  /* ---- state matrix ---- */
+
+  .matrix { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 560px) { .matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  .cell {
+    font: inherit;
+    text-align: left;
+    padding: 0;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 3px;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    transition: border-color .12s;
+  }
+  .cell:hover { border-color: var(--ink-faint); }
+  .cell[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .cell .thumb {
+    aspect-ratio: 1 / 1;
+    background-color: #8B8B8A;
+    background-repeat: no-repeat;
+    background-size: 265%;
+    background-position: 50% 19%;
+  }
+  .cell figcaption { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 1px; }
+  .cell .cap-main { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .cell .cap-sub {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    color: var(--ink-faint);
+    overflow-wrap: anywhere;
+  }
+
+  /* ---- tables ---- */
+
+  .table-scroll { overflow-x: auto; }
+
+  table { border-collapse: collapse; width: 100%; min-width: 460px; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); }
+  th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-bottom-color: var(--line-strong);
+  }
+  td.num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-dim);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: baseline; }
+
+  /* ---- decisions ---- */
+
+  .decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+
+  .decision {
+    border-left: 2px solid var(--attention);
+    padding: 2px 0 2px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .decision h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .decision p { margin: 0; font-size: 13px; color: var(--ink-dim); }
+
+  /* ---- howto ---- */
+
+  pre {
+    margin: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 14px;
+    overflow-x: auto;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  ol.steps { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; color: var(--ink-dim); font-size: 14px; }
+  ol.steps b { color: var(--ink); font-weight: 500; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 18px;
+    font-size: 12px;
+    color: var(--ink-faint);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .92em;
+    color: var(--accent);
+    overflow-wrap: anywhere;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Nano Banana / 差分フレーム検証</div>
+    <h1>MAYA モーションベンチ</h1>
+    <p class="lede">
+      採用済みマスターから生成した4フレームを、実装と同じまばたき間隔と
+      リップシンク判定で動かします。音声クリップの振幅エンベロープも
+      <code>clipManifest.ts</code> と同じ式で生成しているので、アプリでの見え方が
+      そのまま出ます。
+    </p>
+  </header>
+
+  <section class="bench">
+    <div class="stage-col">
+      <div class="stage" id="stage">
+        <svg id="masks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" hidden></svg>
+      </div>
+      <div class="readout">
+        <span>目 <b id="r-eye">開</b> ／ 口 <b id="r-mouth">閉</b></span>
+        <span id="r-file"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="field" id="pose-field" hidden>
+        <label for="pose">ポーズ</label>
+        <select id="pose"></select>
+      </div>
+
+      <div class="field">
+        <span class="field-label">再生</span>
+        <div class="segs" id="mode" role="group" aria-label="再生モード">
+          <button type="button" class="seg" data-mode="idle" aria-pressed="true">まばたきのみ</button>
+          <button type="button" class="seg" data-mode="speak" aria-pressed="false">発話</button>
+          <button type="button" class="seg" data-mode="manual" aria-pressed="false">手動</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="segs">
+          <button type="button" class="seg" id="playpause" aria-pressed="true">一時停止</button>
+        </div>
+      </div>
+
+      <div class="field" id="clip-field">
+        <label for="clip">セリフ</label>
+        <select id="clip"></select>
+      </div>
+
+      <div class="field" id="thr-field">
+        <label for="thr">口を開くしきい値</label>
+        <div class="slider-row">
+          <input type="range" id="thr" min="0.05" max="0.55" step="0.01" value="0.18">
+          <span class="slider-val" id="thr-val">0.18</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="speed">速度</label>
+        <div class="slider-row">
+          <input type="range" id="speed" min="0.25" max="2" step="0.05" value="1">
+          <span class="slider-val" id="speed-val">1.00×</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">背景</span>
+        <div class="segs" id="bg" role="group" aria-label="ステージ背景">
+          <button type="button" class="seg" data-bg="" aria-pressed="true">生成グレー</button>
+          <button type="button" class="seg" data-bg="bg-scene" aria-pressed="false">シーン</button>
+          <button type="button" class="seg" data-bg="bg-night" aria-pressed="false">深夜</button>
+          <button type="button" class="seg" data-bg="bg-checker" aria-pressed="false">市松</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="check" for="maskon">
+          <input type="checkbox" id="maskon">
+          合成マスクを重ねる
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>4つの状態</h2>
+      <p>押すと手動モードでその状態に固定します。パイプラインが持つのは目2値・口2値で、<code>half</code> と <code>small</code> の素材はまだありません。</p>
+    </div>
+    <div class="matrix" id="matrix"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>合成マスクの実測値</h2>
+      <p>closed と open のピクセル差分から重心と広がりを測り、半径に1.5倍の余裕を持たせた値です。キャンバス比なので解像度が変わっても使えます。</p>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>部位</th><th>重心 X</th><th>重心 Y</th><th>実測の広がり</th><th>採用半径</th></tr>
+        </thead>
+        <tbody id="mask-rows"></tbody>
+      </table>
+    </div>
+    <p style="margin:0;font-size:13px;color:var(--ink-dim);max-width:62ch">
+      同じ口でも、ニュートラルは重心 39.8%、挑発的は 44.1% です。胸上の構図で顔が
+      上寄りにあるうえ、ポーズが変われば顔の位置も変わります。先生と生徒の動画では
+      61〜68% でした。運用記録にある「マスクは流用できない」がそのまま当てはまって
+      います。ポーズを足すたびに測り直してください。
+    </p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>本番前に残っている判断</h2>
+    </div>
+    <div class="decisions">
+      <div class="decision">
+        <h3>生成背景をどちらにするか</h3>
+        <p>採用済みマスターは中間グレーで、単純なキーイングで抜けることを実測済みです。一方パイプラインは純白と <code>rembg/isnet-anime</code> で運用されてきました。<code>isnet-anime</code> はアニメ調向けなので、この画風で同じ品質が出るかは未検証です。</p>
+      </div>
+      <div class="decision">
+        <h3>解像度が2つのポーズで揃っていない</h3>
+        <p>挑発的は 2K 生成（1792×2400）から作り、アプリ同梱は 1086×1448 です。ニュートラルは <code>lite</code> の 1K 生成のままで、同梱は 720×960 しかありません。アプリは同じ枠に伸ばすので動きますが、ニュートラルのほうが甘く出ます。残りの表情に進む前に、ニュートラルを作り直すか同梱解像度を揃えるかを決めたいところです。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>ポーズを増やすとき</h2>
+      <p>このページはマニフェスト1つで動いています。ポーズを足すと、上のセレクタも状態マトリクスもマスク表も自動で増えます。手順は <code>tools/motion-bench/README.md</code> にあります。下は実際に追加した挑発的の記述です。</p>
+    </div>
+    <ol class="steps">
+      <li><b>2枚生成する。</b>採用したポーズ画像を親として <code>edit</code> に渡し、まばたき版と口を開けた版を作ります。同時版は合成で作れるので生成不要です。</li>
+      <li><b>マスクを測る。</b>closed と open の差分から重心と広がりを出し、半径を1.5倍にします。ポーズごとに必ず測り直します。</li>
+      <li><b>フレームを書き出してマニフェストに足す。</b><code>prepare_frames.py</code> で切り抜きと圧縮をして、<code>POSES</code> に下の形で1つ追加します。</li>
+    </ol>
+    <pre>{
+  id: 'challenge',
+  label: '挑発的',
+  dir: 'frames/challenge',
+  masks: {
+    eyes: [
+      { label: '左目（向かって左）', cx: 37.9, cy: 32.3,
+        rx: 7.4, ry: 4.5, spread: '4.9 / 3.0' },
+      { label: '右目（向かって右）', cx: 58.9, cy: 29.7,
+        rx: 7.6, ry: 4.1, spread: '5.1 / 2.7' },
+    ],
+    mouth: [
+      { label: '口', cx: 51.1, cy: 44.1,
+        rx: 8.3, ry: 1.6, spread: '5.6 / 1.1' },
+    ],
+  },
+}</pre>
+  </section>
+
+  <footer>
+    <div>まばたきは3〜7秒のランダム間隔で、約18%の確率で二度まばたきになります。実装の <code>BlinkController</code> と同じ設定です。</div>
+    <div>リップシンクは選んだクリップのエンベロープを50msごとに読み、しきい値と60msのホールドで口の状態を決めています。</div>
+  </footer>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ==================================================================
+     マニフェスト。ポーズを足すときに触るのはここだけ。
+     dir は公開されるフレームのフォルダ。prepare_frames.py の出力先と
+     合わせる。masks はポーズごとに測り直した値を入れる。
+     ================================================================== */
+  const POSES = [{
+    id: 'neutral',
+    label: 'ニュートラル',
+    dir: 'frames/neutral',
+    masks: {
+      eyes: [
+        { label: '左目（向かって左）', cx: 38.9, cy: 29.1, rx: 7.0, ry: 3.6, spread: '4.6 / 2.3' },
+        { label: '右目（向かって右）', cx: 58.2, cy: 27.1, rx: 7.6, ry: 3.9, spread: '5.2 / 2.5' },
+      ],
+      mouth: [
+        { label: '口', cx: 51.6, cy: 39.8, rx: 14.5, ry: 3.5, spread: '9.7 / 2.3' },
+      ],
+    },
+  }, {
+    id: 'challenge',
+    label: '挑発的',
+    dir: 'frames/challenge',
+    masks: {
+      eyes: [
+        { label: '左目（向かって左）', cx: 37.9, cy: 32.3, rx: 7.4, ry: 4.5, spread: '4.9 / 3.0' },
+        { label: '右目（向かって右）', cx: 58.9, cy: 29.7, rx: 7.6, ry: 4.1, spread: '5.1 / 2.7' },
+      ],
+      mouth: [
+        { label: '口', cx: 51.1, cy: 44.1, rx: 8.3, ry: 1.6, spread: '5.6 / 1.1' },
+      ],
+    },
+  }];
+
+  /* 4状態。ファイル名は prepare_frames.py が出すものと同じ。 */
+  const STATES = [
+    { key: 'open|closed',   file: 'eyes_open__mouth_closed',   main: '目 開 ／ 口 閉', note: 'マスター' },
+    { key: 'closed|closed', file: 'eyes_closed__mouth_closed', main: '目 閉 ／ 口 閉', note: 'まばたき' },
+    { key: 'open|open',     file: 'eyes_open__mouth_open',     main: '目 開 ／ 口 開', note: '口を開く' },
+    { key: 'closed|open',   file: 'eyes_closed__mouth_open',   main: '目 閉 ／ 口 開', note: '同時' },
+  ];
+
+  /* 音声マニフェストの固定クリップ。text と durationMs は clipManifest.ts と同じ。 */
+  const CLIPS = [
+    { key: 'strong_disagree_01',  text: '社長、それは私は反対です。',   ms: 2600 },
+    { key: 'greeting_morning_01', text: 'おはようございます、社長。',   ms: 2200 },
+    { key: 'greeting_general_01', text: 'お疲れさまです、社長。',       ms: 2000 },
+    { key: 'wait_01',             text: 'ちょっと待ってください。',     ms: 1800 },
+    { key: 'numbers_01',          text: '数字を見てみましょう。',       ms: 2000 },
+    { key: 'praise_01',           text: 'いい判断だと思います。',       ms: 2200 },
+  ];
+
+  const FRAME_MS = 50;
+  const HOLD_MS = 60;
+  const NS = 'http://www.w3.org/2000/svg';
+  const $ = (id) => document.getElementById(id);
+
+  /* clipManifest.ts の synthesizeEnvelope と同じ式。ズレたら見え方が変わる。 */
+  function envelope(durationMs, seed) {
+    const n = Math.max(1, Math.round(durationMs / FRAME_MS));
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 9973;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const p = i / n;
+      const fade = Math.min(1, Math.sin(Math.PI * p) * 1.6);
+      const syl = 0.5 + 0.5 * Math.sin((i / 3.1) * Math.PI + h);
+      const jit = 0.5 + 0.5 * Math.sin((i / 1.7) * Math.PI + h * 0.37);
+      out.push(Math.max(0, fade * (0.25 + 0.55 * syl * jit)));
+    }
+    return out;
+  }
+
+  const state = {
+    pose: POSES[0],
+    mode: 'idle',
+    playing: true,
+    speed: 1,
+    threshold: 0.18,
+    clip: CLIPS[0],
+    manual: 'open|closed',
+    eye: null,
+    mouth: null,
+  };
+
+  let env = envelope(state.clip.ms, state.clip.key);
+  let frameEls = {};
+  let matrixButtons = [];
+
+  /* ---- ポーズごとの再構築 ---- */
+
+  function buildPose(pose) {
+    const stage = $('stage');
+    const svg = $('masks');
+
+    for (const el of stage.querySelectorAll('img')) el.remove();
+    frameEls = {};
+    for (const s of STATES) {
+      const img = document.createElement('img');
+      img.src = pose.dir + '/' + s.file + '.webp';
+      img.alt = pose.label + '：' + s.main;
+      img.hidden = true;
+      stage.insertBefore(img, svg);
+      frameEls[s.key] = img;
+    }
+
+    const matrix = $('matrix');
+    matrix.textContent = '';
+    matrixButtons = [];
+    for (const s of STATES) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cell';
+      b.dataset.key = s.key;
+      b.setAttribute('aria-pressed', 'false');
+      b.innerHTML =
+        '<div class="thumb" role="img" aria-label="' + s.main + '" ' +
+        'style="background-image:url(' + pose.dir + '/' + s.file + '.webp)"></div>' +
+        '<figcaption><span class="cap-main">' + s.main + '</span>' +
+        '<span class="cap-sub">' + s.note + '</span></figcaption>';
+      b.addEventListener('click', () => {
+        state.manual = s.key;
+        setMode('manual');
+      });
+      matrix.appendChild(b);
+      matrixButtons.push(b);
+    }
+
+    svg.textContent = '';
+    const rows = $('mask-rows');
+    rows.textContent = '';
+    const groups = [
+      { items: pose.masks.eyes, color: 'var(--accent)' },
+      { items: pose.masks.mouth, color: 'var(--attention)' },
+    ];
+    for (const g of groups) {
+      for (const m of g.items) {
+        const e = document.createElementNS(NS, 'ellipse');
+        e.setAttribute('cx', m.cx);
+        e.setAttribute('cy', m.cy);
+        e.setAttribute('rx', m.rx);
+        e.setAttribute('ry', m.ry);
+        e.setAttribute('fill', g.color);
+        e.setAttribute('fill-opacity', '0.18');
+        e.setAttribute('stroke', g.color);
+        e.setAttribute('stroke-width', '0.35');
+        e.setAttribute('vector-effect', 'non-scaling-stroke');
+        svg.appendChild(e);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><span class="swatch" style="background:' + g.color + '"></span>' + m.label + '</td>' +
+          '<td class="num">' + m.cx.toFixed(1) + '%</td>' +
+          '<td class="num">' + m.cy.toFixed(1) + '%</td>' +
+          '<td class="num">' + m.spread + '</td>' +
+          '<td class="num">' + m.rx.toFixed(1) + ' / ' + m.ry.toFixed(1) + '</td>';
+        rows.appendChild(tr);
+      }
+    }
+
+    state.eye = null;
+    state.mouth = null;
+    paint('open', 'closed');
+  }
+
+  function paint(eye, mouth) {
+    if (eye === state.eye && mouth === state.mouth) return;
+    state.eye = eye;
+    state.mouth = mouth;
+    const key = eye + '|' + mouth;
+    for (const [k, el] of Object.entries(frameEls)) el.hidden = k !== key;
+    $('r-eye').textContent = eye === 'open' ? '開' : '閉';
+    $('r-mouth').textContent = mouth === 'open' ? '開' : '閉';
+    const s = STATES.find((x) => x.key === key);
+    $('r-file').textContent = state.pose.dir + '/' + s.file;
+    for (const b of matrixButtons) b.setAttribute('aria-pressed', String(b.dataset.key === key));
+  }
+
+  /* ---- まばたきのスケジュール（BlinkController と同じ間隔） ---- */
+
+  let nextBlinkAt = 3000 + Math.random() * 4000;
+  let blinkUntil = -1;
+  let pendingDouble = false;
+
+  function stepBlink(t) {
+    if (t >= nextBlinkAt && t > blinkUntil) {
+      blinkUntil = t + 110;
+      if (pendingDouble) {
+        pendingDouble = false;
+        nextBlinkAt = blinkUntil + 3000 + Math.random() * 4000;
+      } else if (Math.random() < 0.18) {
+        pendingDouble = true;
+        nextBlinkAt = blinkUntil + 140;
+      } else {
+        nextBlinkAt = blinkUntil + 3000 + Math.random() * 4000;
+      }
+    }
+    return t < blinkUntil ? 'closed' : 'open';
+  }
+
+  /* ---- リップシンク（LipSyncController と同じホールド） ---- */
+
+  let speechStart = 0;
+  let lastMouth = 'closed';
+  let lastMouthChange = -1e6;
+
+  function stepMouth(t) {
+    const total = env.length * FRAME_MS + 700; // クリップ間の間合い
+    const elapsed = t - speechStart;
+    const local = ((elapsed % total) + total) % total;
+    if (local >= env.length * FRAME_MS) {
+      lastMouth = 'closed';
+      return 'closed';
+    }
+    const a = Math.min(1, Math.max(0, env[Math.floor(local / FRAME_MS)] ?? 0));
+    const target = a >= state.threshold ? 'open' : 'closed';
+    if (target !== lastMouth && t - lastMouthChange >= HOLD_MS) {
+      lastMouth = target;
+      lastMouthChange = t;
+    }
+    return lastMouth;
+  }
+
+  /* ---- ループ ---- */
+
+  let vt = 0;
+  let last = null;
+
+  function tick(now) {
+    if (last === null) last = now;
+    const dt = Math.min(120, now - last);
+    last = now;
+    if (state.playing && state.mode !== 'manual') {
+      vt += dt * state.speed;
+      paint(stepBlink(vt), state.mode === 'speak' ? stepMouth(vt) : 'closed');
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ---- コントロール ---- */
+
+  function setPressed(groupEl, attr, value) {
+    for (const b of groupEl.querySelectorAll('.seg')) {
+      b.setAttribute('aria-pressed', String(b.dataset[attr] === value));
+    }
+  }
+
+  function setMode(mode) {
+    state.mode = mode;
+    setPressed($('mode'), 'mode', mode);
+    $('clip-field').hidden = mode !== 'speak';
+    $('thr-field').hidden = mode !== 'speak';
+    $('playpause').hidden = mode === 'manual';
+    if (mode === 'speak') {
+      speechStart = vt;
+      lastMouth = 'closed';
+      lastMouthChange = -1e6;
+    }
+    if (mode === 'manual') {
+      const [e, m] = state.manual.split('|');
+      paint(e, m);
+    } else if (mode === 'idle') {
+      paint(state.eye ?? 'open', 'closed');
+    }
+    save();
+  }
+
+  $('mode').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.seg');
+    if (b) setMode(b.dataset.mode);
+  });
+
+  $('playpause').addEventListener('click', () => {
+    state.playing = !state.playing;
+    $('playpause').textContent = state.playing ? '一時停止' : '再生';
+    $('playpause').setAttribute('aria-pressed', String(state.playing));
+  });
+
+  $('bg').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.seg');
+    if (!b) return;
+    $('stage').className = 'stage' + (b.dataset.bg ? ' ' + b.dataset.bg : '');
+    setPressed($('bg'), 'bg', b.dataset.bg);
+    save();
+  });
+
+  const poseSel = $('pose');
+  for (const p of POSES) {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.label;
+    poseSel.appendChild(o);
+  }
+  $('pose-field').hidden = POSES.length < 2;
+  poseSel.addEventListener('change', () => {
+    state.pose = POSES.find((p) => p.id === poseSel.value) || POSES[0];
+    buildPose(state.pose);
+    if (state.mode === 'manual') {
+      const [e, m] = state.manual.split('|');
+      paint(e, m);
+    }
+    save();
+  });
+
+  const clipSel = $('clip');
+  for (const c of CLIPS) {
+    const o = document.createElement('option');
+    o.value = c.key;
+    o.textContent = c.text;
+    clipSel.appendChild(o);
+  }
+  clipSel.addEventListener('change', () => {
+    state.clip = CLIPS.find((c) => c.key === clipSel.value) || CLIPS[0];
+    env = envelope(state.clip.ms, state.clip.key);
+    speechStart = vt;
+    save();
+  });
+
+  $('thr').addEventListener('input', (ev) => {
+    state.threshold = Number(ev.target.value);
+    $('thr-val').textContent = state.threshold.toFixed(2);
+    save();
+  });
+
+  $('speed').addEventListener('input', (ev) => {
+    state.speed = Number(ev.target.value);
+    $('speed-val').textContent = state.speed.toFixed(2) + '×';
+    save();
+  });
+
+  $('maskon').addEventListener('change', (ev) => {
+    $('masks').hidden = !ev.target.checked;
+    save();
+  });
+
+  /* 表示の好みだけ端末に残す。素材の判断は残さない。 */
+  function save() {
+    try {
+      localStorage.setItem('maya-bench', JSON.stringify({
+        pose: state.pose.id,
+        mode: state.mode,
+        bg: $('stage').className.replace('stage', '').trim(),
+        thr: state.threshold,
+        speed: state.speed,
+        clip: state.clip.key,
+        mask: $('maskon').checked,
+      }));
+    } catch (_) { /* プライベートウィンドウなどでは保存できない */ }
+  }
+
+  function restore() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem('maya-bench') || 'null'); } catch (_) { s = null; }
+    if (!s) return;
+    if (s.pose) {
+      const p = POSES.find((x) => x.id === s.pose);
+      if (p) { state.pose = p; poseSel.value = p.id; }
+    }
+    if (s.bg !== undefined) {
+      $('stage').className = 'stage' + (s.bg ? ' ' + s.bg : '');
+      setPressed($('bg'), 'bg', s.bg || '');
+    }
+    if (typeof s.thr === 'number') {
+      state.threshold = s.thr; $('thr').value = s.thr; $('thr-val').textContent = s.thr.toFixed(2);
+    }
+    if (typeof s.speed === 'number') {
+      state.speed = s.speed; $('speed').value = s.speed; $('speed-val').textContent = s.speed.toFixed(2) + '×';
+    }
+    if (s.clip) {
+      const c = CLIPS.find((x) => x.key === s.clip);
+      if (c) { state.clip = c; clipSel.value = c.key; env = envelope(c.ms, c.key); }
+    }
+    if (s.mask) { $('maskon').checked = true; $('masks').hidden = false; }
+    if (s.mode) state.mode = s.mode;
+  }
+
+  restore();
+  buildPose(state.pose);
+  setMode(state.mode);
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    state.playing = false;
+    $('playpause').textContent = '再生';
+    $('playpause').setAttribute('aria-pressed', 'false');
+  }
+
+  requestAnimationFrame(tick);
+})();
+</script>

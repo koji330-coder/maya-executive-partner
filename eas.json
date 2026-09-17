@@ -1,0 +1,17 @@
+{
+  "cli": {
+    "version": ">= 23.2.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "default"
+      },
+      "autoIncrement": true,
+      "channel": "preview",
+      "environment": "preview"
+    }
+  }
+}

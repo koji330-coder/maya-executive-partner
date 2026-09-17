@@ -1,82 +1,258 @@
 # Asset Pipeline
 
-## 1. Image generation source
+Confirmed for v0.1. This document defines structure, naming and formats.
+`docs/IMAGE_GENERATION_GUIDE.md` defines the art direction and the prompts.
 
-Canonical character assets are generated with GPT image generation.
+## 1. Composition model
 
-MAYA A is the approved base character.
+**MAYA is generated as a transparent cut-out. Scenes are separate background plates.**
 
-Every generated asset must preserve:
+The character runtime treats emotion, pose, scene, eyelid frame and mouth frame
+as independent axes (`MayaVisualState` in `src/features/character/mayaTypes.ts`).
+Baking a background into each expression image would make emotion and scene a
+cross product, and no single image would exist for a `challenge` + `late_night`
+response. Layering keeps the asset count additive.
 
-- face identity
-- hair color and shape
-- eye style
-- body proportions
-- overall 2.5D rendering style
+`docs/MAYA_CHARACTER_BIBLE.md` §6 warns against "a floating transparent PNG in a
+chat app". A cut-out composited over a real scene plate satisfies that: the
+warning is against having no environment, not against layering.
 
-## 2. Asset preparation
+## 2. Reference images
 
-The user will prepare blink and lip-sync material manually.
+| File | Role | Feed to the generator? |
+| --- | --- | --- |
+| `assets/reference/maya-character-bible.png` | Approved design sheet | **No.** Japanese copy, a logo and labels are baked in, and they bleed into generations. |
+| `assets/reference/maya-face-reference.png` | Identity reference | Yes. Text-free crop of the hero portrait. |
+| `assets/reference/maya-expression-reference.png` | Expression direction | Yes, when the target expression needs it. |
+| `assets/reference/maya-wardrobe-reference.png` | Wardrobe and proportions only | Optional. Low resolution; never use it for facial identity. |
 
-Recommended target structure:
+The three crops are cut from the design sheet and are low resolution: the face
+is 287x412 and each expression panel is about 130px wide. They are a stopgap.
+`docs/REFERENCE_IMAGE_REQUEST.md` is the request for a purpose-built replacement
+set, and is the intended first step before production generation.
+
+Once `emotion_neutral` is accepted it becomes the second reference and takes
+priority for facial identity. The face reference remains the design baseline.
+
+## 3. Directory structure
 
 ```text
-assets/maya/
-├ base/
-│  ├ body.webp
-│  ├ hair_back.webp
-│  ├ hair_front.webp
-│  └ face.webp
-├ eyes/
-│  ├ open.webp
-│  ├ half.webp
-│  └ closed.webp
-├ mouth/
-│  ├ closed.webp
-│  ├ small.webp
-│  └ open.webp
-├ expressions/
-├ poses/
-└ scenes/
+assets/
+├ reference/                       # design + identity references (above)
+├ maya/
+│  ├ source/                       # generation masters, PNG, not bundled
+│  │  ├ emotion_neutral.png
+│  │  ├ scene_work.png
+│  │  └ generation-log.json
+│  ├ expressions/                  # bundled cut-outs, WebP with alpha
+│  │  ├ emotion_neutral.webp
+│  │  ├ emotion_smile.webp
+│  │  ├ emotion_thinking.webp
+│  │  ├ emotion_serious.webp
+│  │  ├ emotion_challenge.webp
+│  │  ├ emotion_annoyed.webp
+│  │  ├ emotion_happy.webp
+│  │  ├ emotion_concerned.webp
+│  │  └ emotion_relaxed.webp
+│  ├ eyes/                         # derived per expression
+│  │  ├ neutral_open.webp
+│  │  ├ neutral_half.webp
+│  │  ├ neutral_closed.webp
+│  │  └ …one set per expression
+│  ├ mouth/                        # derived, core expressions only
+│  │  ├ neutral_closed.webp
+│  │  ├ neutral_small.webp
+│  │  ├ neutral_open.webp
+│  │  └ …smile, serious, challenge
+│  └ scenes/                       # bundled background plates, WebP
+│     ├ scene_morning.webp
+│     ├ scene_work.webp
+│     ├ scene_strategy.webp
+│     ├ scene_casual.webp
+│     └ scene_late_night.webp
+└ audio/fixed/                     # see §7
 ```
 
-Prefer WebP where quality and alpha support are acceptable.
+## 4. Required asset set
 
-## 3. First required asset set
+### Expressions — 9 generated cut-outs
 
-Must-have before integration:
+`neutral`, `smile`, `thinking`, `serious`, `challenge`, `annoyed`, `happy`,
+`concerned`, `relaxed`.
 
-### Eyes
-- open
-- half
-- closed
+`wink` is the tenth value of `MayaEmotion` but needs **no generated image**. The
+renderer produces it by holding one eye open and one closed from the existing eye
+frames, which `PlaceholderMaya` already does.
 
-### Mouth
-- closed
-- small
-- open
+### Eyes — every expression
 
-### Expressions
-- neutral
-- smile
-- thinking
-- serious
-- challenge
-- annoyed
-- happy
-- concerned
+One blink variant per expression. `docs/ACCEPTANCE_CRITERIA.md` requires blinking
+whenever MAYA is on screen, and any expression can persist on screen, so none can
+be missing.
 
-### Poses
-- default
-- thinking
-- lean_forward
-- relaxed
+`EyeState` keeps `open | half | closed`, but v0.1 ships only the two states the
+proven pipeline has. The asset resolver maps `half` to the nearest available
+frame. A mid frame is one extra generation per expression if it turns out to be
+needed.
 
-## 4. Audio assets
+### Mouth — core expressions only
 
-Offline render with OmniVoice Studio.
+One open variant for `neutral`, `smile`, `serious` and `challenge`.
 
-Store as:
+`docs/MAYA_CHARACTER_BIBLE.md` §5 uses voice selectively: greetings, strong
+warnings, strong disagreement and meaningful praise. Those land on the four
+expressions above. The remaining five never play a clip, so they only need the
+resting mouth already in the expression image.
+
+`MouthState` keeps `closed | small | open`, and the resolver maps `small` the same
+way. With two states, `LipSyncController` runs on a single threshold: set
+`smallThreshold` equal to `openThreshold`.
+
+### Scenes — 5 background plates
+
+`morning`, `work`, `strategy`, `casual`, `late_night`. No character in the plate.
+
+### Poses — `default` only in v0.1
+
+`MayaPose` keeps all seven values and the backend may return any of them, but
+only `default` has generated artwork. The asset resolver falls back to `default`
+for the rest. `PlaceholderMaya` continues to support all seven, so nothing in the
+type system or the response contract changes.
+
+Where a pose reads as part of an expression (a hand near the chin for `thinking`),
+bake it into that expression's cut-out. That is a deliberate collapse of the pose
+axis for v0.1, not an oversight.
+
+## 5. Derivation rules
+
+Eye and mouth frames are derived from their own expression image, never from a
+different one. Separate generations shift the head position, angle and scale, so
+frames cut from `emotion_neutral` will not register against `emotion_smile`.
+
+Every derived frame must be pixel-aligned with its source cut-out: same canvas
+size, same character position, only the eye or mouth region differs.
+
+### One master per expression
+
+Every expression and pose is its own master image. Its blink and open-mouth
+frames are generated from that master and composited through masks measured on
+that pair. A master does not have to register against any other master, and is
+never rejected for failing to.
+
+Cross-master drift matters in exactly one place: the moment the emotion changes
+on screen. The stage scales the character to a fixed height and anchors it at the
+bottom, so a head that is 11% larger in its own canvas pops by 11% at the switch.
+That is absorbed by storing a per-master alignment transform, measured once with
+`tools/measure_drift.py`, and applied by the renderer. The prompt also asks for
+consistent framing; the stored transform takes up the slack.
+
+A master is sent back for what it looks like, not for where it sits: a face that
+reads as someone else, a changed hairstyle, altered eyebrow weight, or an
+expression that does not land.
+
+### How frames are actually produced
+
+The method is settled by an existing, proven pipeline, not by this document.
+`docs/NANO_BANANA_PIPELINE.md` records its interface and its operating lessons.
+
+Frames are **generated, not derived geometrically**. Each variant is produced by
+feeding the accepted expression image back to the image model as a locked parent
+with an instruction to change one thing and nothing else: "change ONLY both eyes
+into a natural blink", or "change ONLY the mouth to open".
+
+Registration does not come from pixel alignment of the whole frame. It comes from
+compositing: the closed image stays on screen as the base, and the variant is
+painted in through a small elliptical mask over the eyes or the mouth. Anything
+the model drifted on outside that ellipse never reaches the screen.
+
+- Lip sync: `closed_base_with_masked_open_mouth_overlay`
+- Blink: `closed_base_with_two_masked_eye_overlays`
+
+### Safe zones
+
+The zones are the mask ellipses, and they are per state, in percent of canvas:
+`centerX`, `centerY`, `radiusX`, `radiusY`.
+
+**Masks must be measured, never assumed.** Compute the centroid and extent of the
+pixel difference between the closed and open images and derive the ellipse from
+that. The teacher/student project shipped an assumed value and it was wrong by
+several percent, which read as "the mouth never opens".
+
+**The radius must exceed the measured extent.** If the ellipse is the same size as
+the mouth, the closed mouth's outline shows outside it and the overlay looks
+pasted on.
+
+Within a mask, nothing may appear that must not move with the lid or the lip: no
+hair crossing it, no hand, no hard shadow edge, no depth-of-field blur.
+
+Outside the masks the artwork keeps its full richness: bangs that end above the
+brow, hair volume and flow, blush and skin texture, earrings, wardrobe detail, a
+hand below the jaw. Eyebrows sit outside the eye masks, so hair across a brow
+never fights the animation; the brow only has to stay readable, because it is
+what carries `challenge`, `annoyed` and `concerned`.
+
+This is what lets MAYA keep her bangs. The hairstyle is part of her identity and
+is not negotiable.
+
+`assets/reference/maya-safe-zone-diagram.png` marks the zones on the current
+reference.
+
+Nothing is derived geometrically, so every frame below is a generation except the
+fourth state of each expression, which is composited from the other three.
+
+| Set | Count | 残り |
+| --- | --- | --- |
+| Expression cut-outs | 9 | 8（`neutral` は採用済み） |
+| Blink variants | 9 | 9 |
+| Mouth-open variants | 4 | 4 |
+| Scene plates | 5 | 5 |
+| Composited, not generated | 9 | — |
+
+`neutral` already has a blink and an open mouth, but they were generated with
+`lite` at 896x1200. They are regenerated with the rest at production settings.
+
+## 6. Format and framing
+
+- **Generation masters**: PNG, on a flat neutral background that contrasts with
+  dark brown hair, so the matte can be pulled cleanly. Long hair edges are the
+  hard part of this pipeline.
+- **Bundled assets**: WebP with alpha. Keep the total bundle small enough for a
+  TestFlight build.
+- **Aspect**: portrait, 3:4 to 4:5. The character box in `CharacterStage` is
+  0.78 wide to tall, so both fit.
+- **Framing**: one crop only, chest to waist, character centred. The Talk stage
+  is 35% of screen height and the Today stage is taller; the app scales and
+  bottom-anchors the same asset rather than shipping two crops.
+- The character must be centred, not offset. The Talk screen puts text below the
+  stage, not beside it.
+- No text of any kind baked into an image. All copy is rendered by React Native.
+
+## 7. Naming rules
+
+Stable semantic names, never names tied to a generated image ID.
+
+Good: `emotion_challenge.webp`, `scene_late_night.webp`, `neutral_closed.webp`
+Bad: `maya_final2_new.webp`, `late-night.webp`
+
+Scene file names use the underscore spelling of `MayaScene`, so `late_night`,
+not `late-night`.
+
+## 8. Audio assets
+
+Offline render with OmniVoice Studio, `MAYA v2` clone profile `58d6907b`,
+`num_step=32`. Start the backend headless rather than through the GUI:
+
+```
+cd %LOCALAPPDATA%\com.debpalash.omnivoice-studio\projectackend
+..\.venv\Scripts\python.exe main.py
+```
+
+It loads the model on startup. Calling `/v1/audio/speech` while the model is
+unloaded trips a lock bug in 0.4.2 that hangs every later request, so the GUI
+path exists only to avoid that cold start — headless avoids it outright, and
+leaves the 6GB card's VRAM to the engine.
+
+`tools/measure_envelope.py <clip.wav>` prints the manifest fields for a render.
 
 ```text
 assets/audio/fixed/
@@ -88,27 +264,6 @@ assets/audio/fixed/
 └ praise_01.m4a
 ```
 
-Maintain an asset manifest:
-
-```json
-{
-  "strong_disagree_01": {
-    "text": "社長、それは私は反対です。",
-    "style": "calm_serious",
-    "file": "strong_disagree_01.m4a"
-  }
-}
-```
-
-## 5. Naming rules
-
-Use stable semantic names, not names tied to a specific generated image ID.
-
-Good:
-
-- `emotion_challenge.webp`
-- `pose_lean_forward.webp`
-
-Bad:
-
-- `maya_final2_new.webp`
+`src/services/audio/clipManifest.ts` is the manifest. Each clip ships with the
+amplitude envelope measured from its render, because lip sync reads the envelope
+rather than the live audio stream.
