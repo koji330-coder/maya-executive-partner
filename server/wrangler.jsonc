@@ -24,6 +24,12 @@
     // rate limit triggers it, never an auth error or a network fault.
     "ALLOW_PAID_FALLBACK": "true",
     "PAID_DAILY_LIMIT_YEN": "50",
+    // HAKSAI Central の読み取り専用MCP（別のWorker、別のAccessアプリ）。住所は
+    // 秘密ではない。入るためのサービストークンだけが秘密で、
+    // `wrangler secret put HAKSAI_MCP_CLIENT_ID` / `..._SECRET` に置く。電話に
+    // 置かないのは、アプリは開けられるが Worker の秘密は開けられないため。
+    // 三つが揃うまで、在庫の道具は相談に出てこない（src/haksai.ts）。
+    "HAKSAI_MCP_URL": "https://haksai-mcp.koji330.workers.dev/mcp",
     // Cloudflare Access. Neither value is a secret. Until ACCESS_AUD is filled
     // with the Access application's audience tag, the server refuses every
     // request (src/access.ts), so deploying before Access exists is safe.

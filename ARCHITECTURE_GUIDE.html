@@ -363,9 +363,9 @@
       何がどこにあって、相談したときに何が起きるのかを、一枚にまとめています。
     </p>
     <div class="meta">
-      <span>28コミット</span>
+      <span>91コミット</span>
       <span>110ファイル</span>
-      <span>テスト 175件 通過</span>
+      <span>テスト 195件 通過</span>
     </div>
   </div>
 </header>
@@ -462,7 +462,7 @@
 
   <div class="wide">
     <figure>
-      <svg viewBox="0 0 880 470" role="img" aria-label="スマホはCloudflare Accessの認証を通ってMAYAサーバーに相談を送り、サーバーがGeminiに問い合わせD1データベースを読み書きする。売上とfit-logとGitHubをD1へ写す同期ジョブはまだ作られていない">
+      <svg viewBox="0 0 880 470" role="img" aria-label="スマホはCloudflare Accessの認証を通ってMAYAサーバーに相談を送り、サーバーがGeminiに問い合わせD1データベースを読み書きする。サーバーはサービストークンでHAKSAIの在庫も読む。fit-logとGitHubをD1へ写す同期ジョブはまだ作られていない">
         <defs>
           <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
@@ -509,6 +509,15 @@
         <rect x="678" y="104" width="120" height="62" rx="12" fill="none" stroke="currentColor" stroke-width="1.5"/>
         <text x="738" y="141" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Gemini</text>
 
+        <!-- HAKSAI: the Amazon numbers, read where they already live -->
+        <path d="M 462 168 h 74 v 76 h 96" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="632" y1="244" x2="650" y2="244" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar2)"/>
+        <text x="452" y="236" font-size="10.5" fill="currentColor" opacity=".75">サービストークン</text>
+        <rect x="654" y="212" width="154" height="66" rx="12" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="731" y="238" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">HAKSAI</text>
+        <text x="731" y="256" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">Amazonの在庫（読むだけ）</text>
+        <text x="731" y="271" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">別のWorker・別のAccess</text>
+
         <!-- ===== planned: sync jobs (dashed) ===== -->
         <text x="16" y="306" font-size="12" font-weight="700" fill="currentColor" opacity=".55">これから作る部分</text>
         <line x1="16" y1="316" x2="688" y2="316" stroke="currentColor" stroke-width="1" opacity=".18"/>
@@ -536,7 +545,9 @@
         </g>
       </svg>
       <figcaption>
-        実線は動いているもの、点線はまだ作っていないものです。金色は、今回の工事で新しく増えた経路を指しています。
+        実線は動いているもの、点線はまだ作っていないものです。金色は、サーバーを挟む工事で新しく増えた経路を指しています。
+        右下のHAKSAIは、Amazonの数字が<strong>すでに置いてある場所をそのまま読む</strong>経路です。写して溜め直さないので、点線の同期ジョブには含まれません。
+        つなぐ仕組みはできていて、あとはサービストークンをサーバーに入れるだけです。
       </figcaption>
     </figure>
   </div>
@@ -584,6 +595,7 @@
       <li><b>サーバーが記憶を読む。</b> D1から、実行中の判断と直近14日の記録を読み出します。アプリに送らせないので、どの入口から相談しても同じことを覚えています。</li>
       <li><b>プロンプトを組んで、道具を添えてGeminiに渡す。</b> 人格、相談手順、会社情報、今日の日付と時刻、読み出した記憶が一つにまとまります。</li>
       <li><b>過去を指す相談なら、記録を探す。</b> 「前に」「去年」「覚えてる？」のような言葉があると、サーバーがGeminiに探す道具を必ず使わせ、見つけた記録を渡してから答えさせます。<strong>このとき往復が2回になり、1秒ほど遅くなります。</strong>それ以外の相談では探しません。</li>
+      <li><b>在庫や発注の相談なら、HAKSAIに聞く。</b> 商品名で探し、サイズ・色ごとの在庫・日販・発注期限・推奨発注数を読んで渡します。読むだけで、発注はできません。<strong>売れている順に15種類までしか見ません。</strong>数十種類あるバリエーションを全部聞くと、相談の待ち時間が延びるからです。</li>
       <li><b>サーバーが答えを検証して返す。</b> 形が崩れていないか確かめ、判断が含まれていればD1に保存します。</li>
       <li><b>アプリが表情とポーズを動かして表示する。</b></li>
     </ol>
@@ -627,6 +639,15 @@
         <dd>スマホのキーチェーン。設定画面から入れます。保存すると入力欄からは消え、末尾しか表示されません。</dd>
       </div>
       <div>
+        <dt>HAKSAIのサービストークン</dt>
+        <dd>
+          MAYAサーバーの秘密に2つ（IDと合鍵）。Amazonの在庫を読むための、機械用の鍵です。
+          <strong>アプリには入れません。</strong>アプリは開ければ中身が読めますが、サーバーの秘密は読めないからです。
+          この鍵ではHAKSAIの画面にも、書き込みにも入れません。読み取り専用の入口だけに通じています。
+          2つが揃うまで、在庫の道具はMAYAに渡されません。
+        </dd>
+      </div>
+      <div>
         <dt>サーバーのアドレス</dt>
         <dd>ビルドに入っています。設定画面で確認できます。秘密ではありません。</dd>
       </div>
@@ -662,7 +683,7 @@
 
     <div class="scroll">
       <table>
-        <caption>2026-09-15 時点</caption>
+        <caption>2026-09-21 時点</caption>
         <thead>
           <tr><th>仕組み</th><th>状態</th><th>ひとこと</th></tr>
         </thead>
@@ -728,9 +749,14 @@
             <td>直し方は決めてある（案3）。まだ着手していない</td>
           </tr>
           <tr>
+            <td>Amazonの在庫・発注を読む</td>
+            <td><span class="pill hold">鍵待ち</span></td>
+            <td>HAKSAIから直接読む。実データで確認済み（36種類から15種類、2.8秒）。サービストークンをサーバーに入れれば効く</td>
+          </tr>
+          <tr>
             <td>売上を読む</td>
             <td><span class="pill off">これから</span></td>
-            <td>D1から読むと決定。取り込む仕組みは未着手</td>
+            <td>在庫と同じくHAKSAIから読める見込み。MAYAのD1へ写す案は、写さずに済むぶん見直し</td>
           </tr>
           <tr>
             <td>食事・筋トレ・体重を読む</td>

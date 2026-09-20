@@ -18,6 +18,7 @@ import {
 
 import { presidentDate, presidentNow } from './clock';
 import type { Env } from './env';
+import { haksaiConfigured, HAKSAI_INVENTORY_TOOL, runHaksaiInventoryTool } from './haksai';
 import { decisionsForPrompt } from './memory/decisions';
 import { activityForPrompt } from './memory/inbox';
 import { refersToPast, runMemoryTool, SEARCH_MEMORY_TOOL } from './memory/search';
@@ -38,7 +39,7 @@ export interface ChatReply {
   response: unknown;
   warnings: string[];
   source: ApiTier;
-  /** The memory searches made for this answer. For checking how often she looks. */
+  /** The tool calls made for this answer (memory, Amazon stock). For checking how often she looks. */
   searches: number;
 }
 
@@ -130,8 +131,13 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     message: request.message,
     attachments: request.attachments,
     model: env.MODEL,
-    tools: [SEARCH_MEMORY_TOOL],
-    runTool: (call) => runMemoryTool(env.MAYA_DB, call),
+    // Amazon の在庫は、つながっているときだけ差し出す。設定のないツールを
+    // 見せると、モデルは呼べないものを呼んで、その回を無駄にする。
+    tools: haksaiConfigured(env) ? [SEARCH_MEMORY_TOOL, HAKSAI_INVENTORY_TOOL] : [SEARCH_MEMORY_TOOL],
+    runTool: (call) =>
+      call.name === HAKSAI_INVENTORY_TOOL.name
+        ? runHaksaiInventoryTool(env, call)
+        : runMemoryTool(env.MAYA_DB, call),
     requireToolFirst: refersToPast(request.message),
   };
 
