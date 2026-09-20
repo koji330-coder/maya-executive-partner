@@ -6,6 +6,7 @@ import {
   haksaiConfigured,
   HaksaiError,
   readInventoryArgs,
+  refersToAmazon,
   readSalesArgs,
   runHaksaiSalesTool,
   summarizeMonth,
@@ -256,4 +257,20 @@ describe('runHaksaiSalesTool', () => {
       error: expect.stringContaining('HAKSAI に接続できませんでした'),
     });
   });
+});
+
+describe('refersToAmazon', () => {
+  it.each(['パジャマの在庫、発注はどれが急ぎ?', '9月の売上を教えて', '今月の粗利は?', 'ACOSが高い商品は', 'Amazonの売れ筋を知りたい', '欠品しそうなのは?'])(
+    'catches "%s"',
+    (message) => {
+      expect(refersToAmazon(message)).toBe(true);
+    },
+  );
+
+  it.each(['おはよう', '今日の晩御飯どうしよう', '前に決めた値上げの話を覚えてる?', '筋トレのメニューを考えて'])(
+    'leaves "%s" alone, so an ordinary chat is not made to wait',
+    (message) => {
+      expect(refersToAmazon(message)).toBe(false);
+    },
+  );
 });

@@ -43,6 +43,20 @@ export const HAKSAI_INVENTORY_TOOL: ToolDeclaration = {
   },
 };
 
+/**
+ * Whether the president is asking about the Amazon numbers.
+ *
+ * A word list, like the past-tense one for memory search (memory/search.ts), for
+ * the same measured reason: Flash-Lite, left to decide, does not call a tool. It
+ * answers that it cannot see the data and asks to be shown the screen. A wrong
+ * guess costs one call, about a second; a miss costs that refusal.
+ */
+const AMAZON_MARKERS = /在庫|発注|補充|欠品|仕入れ|売上|売り上げ|粗利|広告費|ACOS|Amazon|アマゾン|セラー|FBA|ASIN|売れ筋|売れて|売れた|売れ行き/i;
+
+export function refersToAmazon(message: string): boolean {
+  return AMAZON_MARKERS.test(message);
+}
+
 /** Whether the token is in place. Without it the tool is not offered at all. */
 export function haksaiConfigured(env: Env): boolean {
   return Boolean(env.HAKSAI_MCP_URL && env.HAKSAI_MCP_CLIENT_ID && env.HAKSAI_MCP_CLIENT_SECRET);

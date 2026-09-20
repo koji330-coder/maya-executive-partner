@@ -23,6 +23,7 @@ import {
   HAKSAI_INVENTORY_TOOL,
   HAKSAI_SALES_TOOL,
   runHaksaiInventoryTool,
+  refersToAmazon,
   runHaksaiSalesTool,
 } from './haksai';
 import { decisionsForPrompt } from './memory/decisions';
@@ -131,23 +132,30 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     loadCostPolicy(env.MAYA_DB, env),
   ]);
 
+  const amazonReady = haksaiConfigured(env);
+  const askingAboutAmazon = amazonReady && refersToAmazon(request.message);
+
   const base: Omit<GenerateOptions, 'apiKey'> = {
-    systemPrompt: buildSystemPrompt(request.company, decisions, now, activity, true),
+    systemPrompt: buildSystemPrompt(request.company, decisions, now, activity, true, amazonReady),
     history: request.history,
     message: request.message,
     attachments: request.attachments,
     model: env.MODEL,
-    // Amazon の在庫は、つながっているときだけ差し出す。設定のないツールを
+    // Amazon の道具は、つながっているときだけ差し出す。設定のないツールを
     // 見せると、モデルは呼べないものを呼んで、その回を無駄にする。
-    tools: haksaiConfigured(env)
-      ? [SEARCH_MEMORY_TOOL, HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL]
-      : [SEARCH_MEMORY_TOOL],
+    // Amazon の話のときは、Amazon の道具だけにする。強制の呼び出しは、
+    // 差し出された中から選ぶので、記憶の検索が混ざると、そちらを選びうる。
+    tools: !amazonReady
+      ? [SEARCH_MEMORY_TOOL]
+      : askingAboutAmazon && !refersToPast(request.message)
+        ? [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL]
+        : [SEARCH_MEMORY_TOOL, HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL],
     runTool: (call) => {
       if (call.name === HAKSAI_INVENTORY_TOOL.name) return runHaksaiInventoryTool(env, call);
       if (call.name === HAKSAI_SALES_TOOL.name) return runHaksaiSalesTool(env, call, presidentDate());
       return runMemoryTool(env.MAYA_DB, call);
     },
-    requireToolFirst: refersToPast(request.message),
+    requireToolFirst: refersToPast(request.message) || askingAboutAmazon,
   };
 
   const run = async (tier: ApiTier, apiKey: string): Promise<ChatReply> => {

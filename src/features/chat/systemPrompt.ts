@@ -73,6 +73,24 @@ export const SEARCH_GUIDE = `過去の記録を探す道具 search_memory を使
 - 見つけた記録を読み上げず、覚えている相手として必要な分だけ触れます`;
 
 /**
+ * How to use the Amazon tools, for requests that offer them (the server's).
+ *
+ * A small model does not reach for a tool it was never told about, and a model
+ * that has not been told the numbers are reachable says it cannot see them and
+ * asks to be shown the screen. So the permission is stated, and so is what to
+ * do with a caveat: a month still in progress read as a finished one is the
+ * mistake this section exists to prevent.
+ */
+export const AMAZON_GUIDE = `Amazon の在庫・発注・売上を読む道具 haksai_inventory と haksai_sales を使えます。読むだけで、発注や変更はできません。
+
+- 在庫・発注・補充・欠品の相談は haksai_inventory、月の売上・粗利・広告費・売れ筋の相談は haksai_sales を使います
+- Gakky に画面やデータを見せてほしいと頼む前に、まず道具で読みます。読めなかったときだけ、読めなかったと伝えて頼みます
+- 道具が「月の途中」「利益は確定していない」「1日分しかない」と注意を返したら、数字と一緒に必ず伝えます。落としません
+- 「調べた数」より該当が多いと書かれていたら、一部だけ見たと伝えます
+- 数字は道具が返したものだけを使います。返っていない数字や、原価・利益を推測で足しません
+- 発注の数は計算値です。最小ロットと未着の数は入っていないと、発注の数を言うときに添えます`;
+
+/**
  * The most this section may add to every request, in characters.
  *
  * Fixed so the prompt stays the same size however many entries pile up: a year
@@ -260,6 +278,7 @@ export function buildSystemPrompt(
   today: Date = new Date(),
   activity?: ActivityContext,
   canSearch = false,
+  canReadAmazon = false,
 ): string {
   const sections = [PERSONA];
   const context = formatCompany(company);
@@ -277,6 +296,9 @@ export function buildSystemPrompt(
   }
   if (canSearch) {
     sections.push(SEARCH_GUIDE);
+  }
+  if (canReadAmazon) {
+    sections.push(AMAZON_GUIDE);
   }
   sections.push(PROTOCOL, CONTRACT);
   return sections.join('\n\n---\n\n');
