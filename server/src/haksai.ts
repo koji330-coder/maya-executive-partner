@@ -114,6 +114,10 @@ export async function callMcp(env: Env, name: string, args: Record<string, unkno
   }
   const response = await fetch(env.HAKSAI_MCP_URL!, {
     method: 'POST',
+    // A Worker's fetch follows a redirect by default, and the Access login page it
+    // lands on answers 200. Following would turn a refused token into "200 but not
+    // JSON", which says nothing. The refusal itself is the answer.
+    redirect: 'manual',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json, text/event-stream',
@@ -125,7 +129,10 @@ export async function callMcp(env: Env, name: string, args: Record<string, unkno
   // Access turns away a bad token with a redirect to its login page, so anything
   // that is not a clean 200 means the token, not the question, is the problem.
   if (response.status !== 200) {
-    throw new HaksaiError(`HAKSAI に接続できませんでした（${response.status}）。サービストークンの設定を確認してください。`);
+    const status = response.status;
+    // The number says where it was refused, so it is spelled out for whoever reads the log.
+    console.warn(JSON.stringify({ evt: 'haksai_refused', status, tool: name, redirectsToLogin: status >= 300 && status < 400 }));
+    throw new HaksaiError(`HAKSAI に接続できませんでした（${status}）。${refusalHint(status)}`);
   }
   const body = (await response.json()) as {
     error?: { message?: string };
@@ -139,6 +146,17 @@ export async function callMcp(env: Env, name: string, args: Record<string, unkno
     throw new HaksaiError('HAKSAI の応答を読み取れませんでした。');
   }
   return JSON.parse(text) as Envelope;
+}
+
+/** What a refusal at this number usually means. Guesses at the cause, labelled as such. */
+export function refusalHint(status: number): string {
+  if (status >= 300 && status < 400) {
+    return 'Access がログイン画面へ転送しました。サービストークンの ID か Secret が違うか、そのトークンが HAKSAI の Access ポリシーに入っていない可能性があります。';
+  }
+  if (status === 401) return '合鍵は Access を通りましたが、HAKSAI サーバーが署名を受け付けませんでした。HAKSAI 側の ACCESS_AUD を確認してください。';
+  if (status === 403) return 'HAKSAI サーバーが、この合鍵を許可していません。HAKSAI 側の許可するクライアント（ACCESS_ALLOWED_CLIENT_IDS）を確認してください。';
+  if (status === 503) return 'HAKSAI サーバーの認証設定が未完了です。';
+  return 'サービストークンの設定を確認してください。';
 }
 
 interface Variation {

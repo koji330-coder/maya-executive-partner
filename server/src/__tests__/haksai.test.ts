@@ -7,6 +7,7 @@ import {
   haksaiConfigured,
   HaksaiError,
   readInventoryArgs,
+  refusalHint,
   refersToAmazon,
   readSalesArgs,
   runHaksaiSalesTool,
@@ -118,6 +119,13 @@ describe('callMcp', () => {
   it('blames the token when Access redirects instead of answering', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 302 }));
     await expect(callMcp(env(), 'x', {})).rejects.toThrow(/サービストークン/);
+  });
+
+  it('does not follow the redirect, and says the number', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 403 }));
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await expect(callMcp(env(), 'x', {})).rejects.toThrow(/（403）/);
+    expect((fetchMock.mock.calls[0]![1] as RequestInit).redirect).toBe('manual');
   });
 });
 
@@ -297,5 +305,15 @@ describe('cleanCredential', () => {
     const headers = (fetchMock.mock.calls[0]![1] as RequestInit).headers as Record<string, string>;
     expect(headers['CF-Access-Client-Id']).toBe('id.access');
     expect(headers['CF-Access-Client-Secret']).toBe('shh');
+  });
+});
+
+describe('refusalHint', () => {
+  it('points a different way for each kind of refusal', () => {
+    expect(refusalHint(302)).toContain('ポリシー');
+    expect(refusalHint(401)).toContain('ACCESS_AUD');
+    expect(refusalHint(403)).toContain('ACCESS_ALLOWED_CLIENT_IDS');
+    expect(refusalHint(503)).toContain('未完了');
+    expect(refusalHint(500)).toContain('サービストークン');
   });
 });
