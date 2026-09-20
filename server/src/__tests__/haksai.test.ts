@@ -1,6 +1,7 @@
 import type { Env } from '../env';
 import {
   callMcp,
+  cleanCredential,
   commonTitle,
   DEFAULT_LIMIT,
   haksaiConfigured,
@@ -273,4 +274,28 @@ describe('refersToAmazon', () => {
       expect(refersToAmazon(message)).toBe(false);
     },
   );
+});
+
+describe('cleanCredential', () => {
+  it('drops the header name when the whole line was pasted', () => {
+    expect(cleanCredential('CF-Access-Client-Secret: abc123')).toBe('abc123');
+    expect(cleanCredential('cf-access-client-id:abc.access')).toBe('abc.access');
+  });
+
+  it('leaves a bare value alone, and trims the space a paste brings along', () => {
+    expect(cleanCredential('abc.access')).toBe('abc.access');
+    expect(cleanCredential('  abc123 ')).toBe('abc123');
+  });
+
+  it('is applied to what is sent, so a pasted line still gets through', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply({ data: {} }));
+    await callMcp(
+      env({ HAKSAI_MCP_CLIENT_ID: 'CF-Access-Client-Id: id.access', HAKSAI_MCP_CLIENT_SECRET: 'CF-Access-Client-Secret: shh' }),
+      'haksai_get_inventory',
+      {},
+    );
+    const headers = (fetchMock.mock.calls[0]![1] as RequestInit).headers as Record<string, string>;
+    expect(headers['CF-Access-Client-Id']).toBe('id.access');
+    expect(headers['CF-Access-Client-Secret']).toBe('shh');
+  });
 });

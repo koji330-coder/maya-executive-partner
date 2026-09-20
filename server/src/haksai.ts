@@ -91,6 +91,18 @@ interface Envelope {
 export class HaksaiError extends Error {}
 
 /**
+ * The value, without the header name Cloudflare shows beside it.
+ *
+ * The dashboard prints `CF-Access-Client-Id: <value>`, and copying the whole
+ * line is the natural thing to do. It went wrong twice in one day, and both times
+ * the only symptom was a redirect to a login page. A value can never begin with a
+ * header name, so stripping one loses nothing and removes the mistake.
+ */
+export function cleanCredential(value: string): string {
+  return value.trim().replace(/^CF-Access-Client-(?:Id|Secret)\s*:\s*/i, '').trim();
+}
+
+/**
  * One MCP call, over plain JSON-RPC.
  *
  * The MCP server answers a single POST without a session handshake, so the SDK
@@ -105,8 +117,8 @@ export async function callMcp(env: Env, name: string, args: Record<string, unkno
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json, text/event-stream',
-      'CF-Access-Client-Id': env.HAKSAI_MCP_CLIENT_ID!,
-      'CF-Access-Client-Secret': env.HAKSAI_MCP_CLIENT_SECRET!,
+      'CF-Access-Client-Id': cleanCredential(env.HAKSAI_MCP_CLIENT_ID!),
+      'CF-Access-Client-Secret': cleanCredential(env.HAKSAI_MCP_CLIENT_SECRET!),
     },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
   });
