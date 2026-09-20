@@ -1,3 +1,5 @@
+import { CONNECTED_TOOLS, READY_TOOLS } from '@/features/tools/catalog';
+
 import type { Env } from '../env';
 import {
   callMcp,
@@ -6,6 +8,8 @@ import {
   DEFAULT_LIMIT,
   haksaiConfigured,
   HaksaiError,
+  HAKSAI_INVENTORY_TOOL,
+  HAKSAI_SALES_TOOL,
   readInventoryArgs,
   refusalHint,
   refersToAmazon,
@@ -315,5 +319,21 @@ describe('refusalHint', () => {
     expect(refusalHint(403)).toContain('ACCESS_ALLOWED_CLIENT_IDS');
     expect(refusalHint(503)).toContain('未完了');
     expect(refusalHint(500)).toContain('サービストークン');
+  });
+});
+
+describe('the tool manual in the app', () => {
+  it('names only tools the server really offers, and offers none it does not describe', () => {
+    const offered = [HAKSAI_INVENTORY_TOOL.name, HAKSAI_SALES_TOOL.name].sort();
+    expect(READY_TOOLS.map((tool) => tool.serverTool).sort()).toEqual(offered);
+    expect(CONNECTED_TOOLS.filter((tool) => tool.serverTool !== null)).toHaveLength(offered.length);
+  });
+
+  it('only suggests questions the server turns into a tool call', () => {
+    for (const tool of READY_TOOLS) {
+      for (const question of tool.ask) {
+        expect({ question, triggers: refersToAmazon(question) }).toEqual({ question, triggers: true });
+      }
+    }
   });
 });

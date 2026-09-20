@@ -5,6 +5,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { exportTranscript } from '@/features/chat/conversationRepository';
+import { CONNECTED_TOOLS } from '@/features/tools/catalog';
+import { ConnectedToolCard } from '@/features/tools/ConnectedToolCard';
 import { colors, radius, spacing } from '@/theme';
 
 /**
@@ -70,14 +72,6 @@ const TOOLS: Tool[] = [
     icon: 'grid-outline',
     status: 'planned',
     note: 'いまは相談画面の添付から渡せます。ここからまとめて読ませる形はこれからです。',
-  },
-  {
-    label: '売上ダッシュボード',
-    icon: 'stats-chart-outline',
-    status: 'planned',
-    // Reads the sales lab's D1 copy, never the spreadsheet or GAS directly.
-    // See docs/SALES_DATA.md before wiring this: the endpoint has no auth yet.
-    note: '売上ラボのD1から読む予定です。接続の前に、読み出し口の認証を決めます。',
   },
   {
     label: '資料を要約する',
@@ -160,6 +154,18 @@ export default function ToolsScreen() {
   return (
     <ScreenContainer scroll>
       <Text style={styles.title}>ツール</Text>
+
+      <Text style={styles.sectionHeading}>Mayaが相談で使える道具</Text>
+      <Text style={styles.lede}>
+        相談でこう聞くと、Mayaが自分で読みに行きます。開くと、できることと、聞き方が出ます。
+      </Text>
+      <View style={styles.connected}>
+        {CONNECTED_TOOLS.map((tool) => (
+          <ConnectedToolCard key={tool.id} tool={tool} />
+        ))}
+      </View>
+
+      <Text style={styles.sectionHeading}>そのほか</Text>
       <Text style={styles.lede}>
         相談以外にできることです。灰色のものはまだ中身がありません。
       </Text>
@@ -205,6 +211,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: colors.charcoalSoft,
+  },
+  sectionHeading: {
+    marginTop: spacing.md,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.charcoal,
+  },
+  connected: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   grid: {
     flexDirection: 'row',
