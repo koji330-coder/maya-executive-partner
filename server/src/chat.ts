@@ -18,7 +18,13 @@ import {
 
 import { presidentDate, presidentNow } from './clock';
 import type { Env } from './env';
-import { haksaiConfigured, HAKSAI_INVENTORY_TOOL, runHaksaiInventoryTool } from './haksai';
+import {
+  haksaiConfigured,
+  HAKSAI_INVENTORY_TOOL,
+  HAKSAI_SALES_TOOL,
+  runHaksaiInventoryTool,
+  runHaksaiSalesTool,
+} from './haksai';
 import { decisionsForPrompt } from './memory/decisions';
 import { activityForPrompt } from './memory/inbox';
 import { refersToPast, runMemoryTool, SEARCH_MEMORY_TOOL } from './memory/search';
@@ -133,11 +139,14 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     model: env.MODEL,
     // Amazon の在庫は、つながっているときだけ差し出す。設定のないツールを
     // 見せると、モデルは呼べないものを呼んで、その回を無駄にする。
-    tools: haksaiConfigured(env) ? [SEARCH_MEMORY_TOOL, HAKSAI_INVENTORY_TOOL] : [SEARCH_MEMORY_TOOL],
-    runTool: (call) =>
-      call.name === HAKSAI_INVENTORY_TOOL.name
-        ? runHaksaiInventoryTool(env, call)
-        : runMemoryTool(env.MAYA_DB, call),
+    tools: haksaiConfigured(env)
+      ? [SEARCH_MEMORY_TOOL, HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL]
+      : [SEARCH_MEMORY_TOOL],
+    runTool: (call) => {
+      if (call.name === HAKSAI_INVENTORY_TOOL.name) return runHaksaiInventoryTool(env, call);
+      if (call.name === HAKSAI_SALES_TOOL.name) return runHaksaiSalesTool(env, call, presidentDate());
+      return runMemoryTool(env.MAYA_DB, call);
+    },
     requireToolFirst: refersToPast(request.message),
   };
 

@@ -6,6 +6,9 @@ import {
   haksaiConfigured,
   HaksaiError,
   readInventoryArgs,
+  readSalesArgs,
+  runHaksaiSalesTool,
+  summarizeMonth,
   readVariations,
   runHaksaiInventoryTool,
   variationLabels,
@@ -182,5 +185,75 @@ describe('runHaksaiInventoryTool', () => {
 
   it('will not run without a query', async () => {
     expect(await runHaksaiInventoryTool(env(), { name: 'haksai_inventory', args: {} })).toEqual({ error: '商品名を指定してください。' });
+  });
+});
+
+describe('readSalesArgs', () => {
+  it('means this month, in the calendar of the president, when no month is given or it is malformed', () => {
+    expect(readSalesArgs({}, '2026-09-21').month).toBe('2026-09');
+    expect(readSalesArgs({ month: '9月' }, '2026-09-21').month).toBe('2026-09');
+    expect(readSalesArgs({ month: '2026-13' }, '2026-09-21').month).toBe('2026-09');
+    expect(readSalesArgs({ month: ' 2026-08 ' }, '2026-09-21').month).toBe('2026-08');
+  });
+
+  it('clamps the count and refuses an unknown ordering', () => {
+    expect(readSalesArgs({ top: 99 }, '2026-09-21').top).toBe(15);
+    expect(readSalesArgs({ top: 0 }, '2026-09-21').top).toBe(1);
+    expect(readSalesArgs({}, '2026-09-21')).toMatchObject({ top: 5, sortBy: 'sales' });
+    expect(readSalesArgs({ sort_by: 'DROP TABLE' }, '2026-09-21').sortBy).toBe('sales');
+    expect(readSalesArgs({ sort_by: 'gross_profit' }, '2026-09-21').sortBy).toBe('gross_profit');
+  });
+});
+
+const monthEnvelope = {
+  data: {
+    month: '2026-09',
+    lastSaleDate: '2026-09-19',
+    isPartialMonth: true,
+    profitStatus: 'partial',
+    totals: { salesTaxIn: 1703263, netAfterAmazonFees: 991537, grossProfit: 344507, operatingProfit: 154668, fixedCosts: -189839, units: 1568, returnUnits: 26, adSpend: 86581, adSales: 488151, acosPct: 17.7, productsWithSales: 112 },
+    ranking: { products: [{ title: '卓上ベル', asin: 'B0FXTQPGSB', units: 423, salesTaxIn: 311484, grossProfit: 76819, adSpend: 20000 }] },
+  },
+  meta: { warnings: ['この月のデータは 2026-09-19 までです。'] },
+};
+
+describe('summarizeMonth', () => {
+  it('carries the caveats with the numbers: a month still in progress, an unconfirmed profit', () => {
+    const out = summarizeMonth(monthEnvelope) as Record<string, any>;
+    expect(out.月の途中).toBe(true);
+    expect(out.データの最終日).toBe('2026-09-19');
+    expect(out.利益の状態).toBe('partial');
+    expect(out.合計.売上税込).toBe(1703263);
+    expect(out.上位).toEqual([{ 商品: '卓上ベル', ASIN: 'B0FXTQPGSB', 販売数: 423, 売上税込: 311484, 粗利: 76819, 広告費: 20000 }]);
+    expect(out.注意).toContain('この月のデータは 2026-09-19 までです。');
+  });
+
+  it('leaves a missing number null rather than zero', () => {
+    const out = summarizeMonth({ data: { month: '2026-09', totals: {} }, meta: {} }) as Record<string, any>;
+    expect(out.合計.粗利).toBeNull();
+  });
+});
+
+describe('runHaksaiSalesTool', () => {
+  it('asks for the month in the calendar of the president when none is named', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply(monthEnvelope));
+    const out = (await runHaksaiSalesTool(env(), { name: 'haksai_sales', args: {} }, '2026-09-21')) as Record<string, any>;
+    const sent = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string).params;
+    expect(sent).toMatchObject({ name: 'haksai_get_month_summary', arguments: { month: '2026-09', top: 5, sort_by: 'sales' } });
+    expect(out.合計.売上税込).toBe(1703263);
+  });
+
+  it('passes the reason along when the source has no data for the month', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply({ data: null, error: '2020-01 の売上データが、D1にありません。' }));
+    const out = (await runHaksaiSalesTool(env(), { name: 'haksai_sales', args: { month: '2020-01' } }, '2026-09-21')) as { error: string };
+    expect(out.error).toContain('売上を読めませんでした');
+    expect(out.error).toContain('D1にありません');
+  });
+
+  it('says a connection failed instead of returning an empty answer', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 302 }));
+    expect(await runHaksaiSalesTool(env(), { name: 'haksai_sales', args: {} }, '2026-09-21')).toEqual({
+      error: expect.stringContaining('HAKSAI に接続できませんでした'),
+    });
   });
 });

@@ -312,3 +312,102 @@ export async function runHaksaiInventoryTool(env: Env, call: ToolCall): Promise<
     return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の在庫を読めませんでした。' };
   }
 }
+
+export const HAKSAI_SALES_TOOL: ToolDeclaration = {
+  name: 'haksai_sales',
+  description:
+    'Amazon（HAKSAI Central）の、1か月ぶんの売上・粗利・広告費の合計と、売れている上位の商品を調べます。' +
+    '「9月の売上は？」「今月どれが売れている？」のように、商品を決めない売上の相談で使います。' +
+    '特定の商品の在庫・発注は haksai_inventory を使います。読み取りだけです。',
+  parameters: {
+    type: 'object',
+    properties: {
+      month: { type: 'string', description: '月（YYYY-MM）。省略すると今月。' },
+      top: { type: 'number', description: '上位の商品の数。既定5、最大15。' },
+      sort_by: {
+        type: 'string',
+        enum: ['sales', 'units', 'gross_profit', 'ad_spend'],
+        description: '上位の並び順。既定は sales（売上）。',
+      },
+    },
+  },
+};
+
+export interface SalesArgs {
+  month: string;
+  top: number;
+  sortBy: string;
+}
+
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const SORTS = ['sales', 'units', 'gross_profit', 'ad_spend'];
+
+/** Reads the model's arguments defensively. A missing or malformed month means "this month", in the president's time zone. */
+export function readSalesArgs(args: Record<string, unknown>, today: string): SalesArgs {
+  const month = typeof args.month === 'string' && MONTH.test(args.month.trim()) ? args.month.trim() : today.slice(0, 7);
+  const asked = Number(args.top);
+  const top = Number.isFinite(asked) ? Math.min(Math.max(Math.trunc(asked), 1), 15) : 5;
+  const sortBy = typeof args.sort_by === 'string' && SORTS.includes(args.sort_by) ? args.sort_by : 'sales';
+  return { month, top, sortBy };
+}
+
+const yen = (value: unknown): number | null => num(value);
+
+/**
+ * Keeps what a decision needs and drops the rest.
+ *
+ * The month's totals and the few products that carry it. A caveat the source
+ * raised — a month still in progress, an unconfirmed profit — travels with the
+ * numbers, because "September sales" said without it reads as a finished month.
+ */
+export function summarizeMonth(envelope: Envelope): Record<string, unknown> {
+  const data = (envelope.data ?? {}) as Record<string, unknown>;
+  const totals = (data.totals ?? {}) as Record<string, unknown>;
+  const ranking = ((data.ranking as { products?: unknown } | undefined)?.products ?? []) as Record<string, unknown>[];
+  const warnings = Array.isArray(envelope.meta?.warnings)
+    ? (envelope.meta.warnings as unknown[]).filter((item): item is string => typeof item === 'string')
+    : [];
+  return {
+    月: str(data.month),
+    データの最終日: str(data.lastSaleDate),
+    月の途中: data.isPartialMonth === true,
+    利益の状態: str(data.profitStatus),
+    合計: {
+      売上税込: yen(totals.salesTaxIn),
+      Amazon手取: yen(totals.netAfterAmazonFees),
+      粗利: yen(totals.grossProfit),
+      営業利益: yen(totals.operatingProfit),
+      固定費: yen(totals.fixedCosts),
+      販売数: yen(totals.units),
+      返品数: yen(totals.returnUnits),
+      広告費: yen(totals.adSpend),
+      広告経由の売上: yen(totals.adSales),
+      ACOS百分率: yen(totals.acosPct),
+      売れた商品数: yen(totals.productsWithSales),
+    },
+    上位: ranking.map((item) => ({
+      商品: str(item.title),
+      ASIN: str(item.asin),
+      販売数: yen(item.units),
+      売上税込: yen(item.salesTaxIn),
+      粗利: yen(item.grossProfit),
+      広告費: yen(item.adSpend),
+    })),
+    注意: [...warnings, '利益の数字は、原価が確定した商品だけの計算です。'],
+    出所: 'HAKSAI Central（売上レポートの手動取込。画面と同じ計算）',
+  };
+}
+
+export async function runHaksaiSalesTool(env: Env, call: ToolCall, today: string): Promise<unknown> {
+  const { month, top, sortBy } = readSalesArgs(call.args, today);
+  try {
+    const envelope = await callMcp(env, 'haksai_get_month_summary', { month, top, sort_by: sortBy });
+    if (envelope.data == null) {
+      const reason = typeof envelope.error === 'string' ? envelope.error : typeof envelope.message === 'string' ? envelope.message : '';
+      return { error: `${month} の売上を読めませんでした。${reason}`.trim(), 月: month };
+    }
+    return summarizeMonth(envelope);
+  } catch (error) {
+    return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の売上を読めませんでした。' };
+  }
+}
