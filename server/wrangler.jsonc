@@ -3,6 +3,11 @@
   "name": "maya-server",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
+  // A Worker's fetch to another Worker in the same account (HAKSAI's, on
+  // workers.dev) is refused with a 404 (error 1042) unless the request is sent
+  // as if from the public internet. That path also keeps Access in front of
+  // HAKSAI, which is what we want: the service token is still checked there.
+  "compatibility_flags": ["global_fetch_strictly_public"],
   // The workers.dev address is the only way in (decided 2026-09-13: gakky.jp's
   // DNS is not on Cloudflare, so a Worker cannot sit at maya.gakky.jp). It is
   // protected twice: Cloudflare Access in front, and src/access.ts inside.
