@@ -15,12 +15,16 @@
   // Preview URLs would be a second door, one Access is not configured for.
   "preview_urls": false,
   "vars": {
-    // Switched off gemini-3.6-flash on 2026-09-14. Its free-tier daily cap is
-    // 20 requests, measured by the president in real use, and a consultation
-    // that calls a tool spends two of them. Flash-Lite has room to spare.
-    // The cost is arithmetic: 3.6 checked the numbers, Lite is directionally
-    // right but does not (docs/LLM_INTEGRATION.md). Revisit on a paid key.
-    "MODEL": "gemini-3.5-flash-lite",
+    // gemini-3.8-flash since 2026-09-21, on the paid key only. The free key is not
+    // set (the machinery stays, so it can come back): the free tier caps Flash at
+    // 20 requests a day, and the "free" key that was here turned out to sit in a
+    // project with billing attached, so it was charging all along.
+    // Price per 1M tokens, checked 2026-09-21 on ai.google.dev/gemini-api/docs/pricing:
+    // $0.75 in / $3.75 out through 2026-12-31, then $1.50 / $7.50 from 2027-01-01.
+    // 3.5-flash-lite is $0.30 / $2.50. Thinking tokens bill as output.
+    // Falls back to 3.5-flash-lite by changing this one line if 3.8 misbehaves
+    // with tool calls (not measured on this server yet).
+    "MODEL": "gemini-3.8-flash",
     // Starting values only. The settings screen can change all three without a
     // redeploy; whatever it saves lives in D1 and wins (src/memory/settings.ts).
     "PREFER_FREE": "true",
