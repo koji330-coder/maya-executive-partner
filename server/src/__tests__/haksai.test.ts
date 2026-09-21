@@ -7,6 +7,8 @@ import {
   commonTitle,
   DEFAULT_LIMIT,
   haksaiConfigured,
+  historyNeeds,
+  keepaFetchConfigured,
   HaksaiError,
   HAKSAI_INVENTORY_TOOL,
   HAKSAI_MARKET_TOOL,
@@ -498,5 +500,88 @@ describe('runHaksaiMarketTool', () => {
     expect(await runHaksaiMarketTool(env(), { name: 'haksai_market', args: {} })).toEqual({ error: expect.stringContaining('指定してください') });
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 302 }));
     expect(await runHaksaiMarketTool(env(), { name: 'haksai_market', args: { query: 'B0FXTQPGSB' } })).toEqual({ error: expect.stringContaining('接続できませんでした') });
+  });
+});
+
+const notStored = (asin: string) => ({ data: { history: { asin, stored: false }, competitor: null, recentEvents: [] }, meta: { warnings: [] } });
+const keepaEnv = () => env({ HAKSAI_KEEPA_URL: 'https://keepa.example/mcp' });
+const fetchReply = (data: unknown, warnings: string[] = []) => mcpReply({ data, meta: { warnings } });
+
+describe('historyNeeds', () => {
+  it('asks for a history that is missing or three days old, for the product and its competitor', () => {
+    expect(historyNeeds(marketEnvelope)).toEqual([]);
+    expect(historyNeeds(notStored('B0X'))).toEqual(['B0X']);
+    const old = { data: { history: { ...stored('B0FXTQPGSB', 748), ageDays: 3 }, competitor: { asin: 'B07ZV6Y8SY', history: { asin: 'B07ZV6Y8SY', stored: false } } } };
+    expect(historyNeeds(old)).toEqual(['B0FXTQPGSB', 'B07ZV6Y8SY']);
+  });
+});
+
+describe('keepaFetchConfigured', () => {
+  it('needs the address, and uses the read-only token unless a separate one is set', () => {
+    expect(keepaFetchConfigured(env())).toBe(false);
+    expect(keepaFetchConfigured(keepaEnv())).toBe(true);
+    expect(keepaFetchConfigured(env({ HAKSAI_KEEPA_URL: 'https://k', HAKSAI_MCP_CLIENT_ID: undefined }))).toBe(false);
+  });
+});
+
+describe('runHaksaiMarketTool: fetching what is missing', () => {
+  const route = (handlers: Record<string, () => Response>) =>
+    jest.spyOn(globalThis, 'fetch').mockImplementation((url, init) => {
+      const name = JSON.parse((init as RequestInit).body as string).params.name;
+      const key = name === 'haksai_fetch_keepa' ? 'fetch' : name;
+      return Promise.resolve(handlers[key]!());
+    });
+
+  it('fetches once when the history is missing, then reads again and reports what it spent', async () => {
+    let reads = 0;
+    const fetchMock = route({
+      haksai_get_market_history: () => mcpReply(reads++ === 0 ? notStored('B0FXTQPGSB') : marketEnvelope),
+      fetch: () => fetchReply({ status: 'ok', fetched: ['B0FXTQPGSB'], cached: [], notFound: [], consumed: 4, tokensLeft: 43, dailyUsed: 4, dailyCap: 300 }),
+      haksai_get_product: () => mcpReply(productEnvelope),
+    });
+    const out = (await runHaksaiMarketTool(keepaEnv(), { name: 'haksai_market', args: { query: 'B0FXTQPGSB' } })) as Record<string, any>;
+    const calls = fetchMock.mock.calls.map((call) => [call[0], JSON.parse((call[1] as RequestInit).body as string).params.name]);
+    expect(calls.map((call) => call[1])).toEqual(['haksai_get_market_history', 'haksai_fetch_keepa', 'haksai_get_market_history', 'haksai_get_product']);
+    expect(calls[1]![0]).toBe('https://keepa.example/mcp');
+    expect(out.Keepa取得).toMatchObject({ 取得した: ['B0FXTQPGSB'], 使ったトークン: 4, 残りトークン: 43, 今日の使用: '4/300トークン' });
+    expect(out.出所).toContain('今回、Keepa から取って保存');
+  });
+
+  it('does not fetch when the stored history is fresh', async () => {
+    const fetchMock = route({ haksai_get_market_history: () => mcpReply(marketEnvelope), haksai_get_product: () => mcpReply(productEnvelope) });
+    const out = (await runHaksaiMarketTool(keepaEnv(), { name: 'haksai_market', args: { query: 'B0FXTQPGSB' } })) as Record<string, any>;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(out.Keepa取得).toBeNull();
+  });
+
+  it('says so, and still answers from what is stored, when the door is not set up', async () => {
+    const fetchMock = route({ haksai_get_market_history: () => mcpReply(notStored('B0X0000000')), haksai_get_product: () => mcpReply(productEnvelope) });
+    const out = (await runHaksaiMarketTool(env(), { name: 'haksai_market', args: { query: 'B0X0000000' } })) as Record<string, any>;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(out.自社).toEqual({ ASIN: 'B0X0000000', 状態: '未取得' });
+    expect(out.Keepa取得.取れなかった理由).toContain('設定されていません');
+  });
+
+  it('passes a refusal along (few tokens, the daily cap) instead of hiding it', async () => {
+    route({
+      haksai_get_market_history: () => mcpReply(notStored('B0X0000000')),
+      fetch: () => fetchReply({ status: 'refused', reason: 'Keepaのトークンの残りが少ないため、取りませんでした（残り20。約4分後に取れます）。', fetched: [], cached: [], notFound: [], consumed: 0, tokensLeft: 20, dailyUsed: 0, dailyCap: 300 }),
+      haksai_get_product: () => mcpReply(productEnvelope),
+    });
+    const out = (await runHaksaiMarketTool(keepaEnv(), { name: 'haksai_market', args: { query: 'B0X0000000' } })) as Record<string, any>;
+    expect(out.Keepa取得.取れなかった理由).toContain('残りが少ない');
+    expect(out.Keepa取得.取得した).toEqual([]);
+    expect(out.自社.状態).toBe('未取得');
+  });
+
+  it('keeps answering when the fetch door itself refuses the connection', async () => {
+    route({
+      haksai_get_market_history: () => mcpReply(notStored('B0X0000000')),
+      fetch: () => new Response('', { status: 503 }),
+      haksai_get_product: () => mcpReply(productEnvelope),
+    });
+    const out = (await runHaksaiMarketTool(keepaEnv(), { name: 'haksai_market', args: { query: 'B0X0000000' } })) as Record<string, any>;
+    expect(out.Keepa取得.取れなかった理由).toContain('接続できませんでした');
+    expect(out.error).toBeUndefined();
   });
 });

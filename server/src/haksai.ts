@@ -113,7 +113,30 @@ export async function callMcp(env: Env, name: string, args: Record<string, unkno
   if (!haksaiConfigured(env)) {
     throw new HaksaiError('HAKSAI の接続が設定されていません。');
   }
-  const response = await fetch(env.HAKSAI_MCP_URL!, {
+  return postMcp(env.HAKSAI_MCP_URL!, env.HAKSAI_MCP_CLIENT_ID!, env.HAKSAI_MCP_CLIENT_SECRET!, name, args);
+}
+
+/** Whether the on-demand Keepa door is set. Its token defaults to the read-only one. */
+export function keepaFetchConfigured(env: Env): boolean {
+  return Boolean(env.HAKSAI_KEEPA_URL && (env.HAKSAI_KEEPA_CLIENT_ID ?? env.HAKSAI_MCP_CLIENT_ID) && (env.HAKSAI_KEEPA_CLIENT_SECRET ?? env.HAKSAI_MCP_CLIENT_SECRET));
+}
+
+/** Asks haksai-keepa to fetch and store. What it may spend is decided there, not here. */
+export async function callKeepaFetch(env: Env, asins: string[]): Promise<Envelope> {
+  if (!keepaFetchConfigured(env)) {
+    throw new HaksaiError('Keepa を取る入口が設定されていません。');
+  }
+  return postMcp(
+    env.HAKSAI_KEEPA_URL!,
+    (env.HAKSAI_KEEPA_CLIENT_ID ?? env.HAKSAI_MCP_CLIENT_ID)!,
+    (env.HAKSAI_KEEPA_CLIENT_SECRET ?? env.HAKSAI_MCP_CLIENT_SECRET)!,
+    'haksai_fetch_keepa',
+    { asins },
+  );
+}
+
+async function postMcp(url: string, clientId: string, clientSecret: string, name: string, args: Record<string, unknown>): Promise<Envelope> {
+  const response = await fetch(url, {
     method: 'POST',
     // A Worker's fetch follows a redirect by default, and the Access login page it
     // lands on answers 200. Following would turn a refused token into "200 but not
@@ -122,8 +145,8 @@ export async function callMcp(env: Env, name: string, args: Record<string, unkno
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json, text/event-stream',
-      'CF-Access-Client-Id': cleanCredential(env.HAKSAI_MCP_CLIENT_ID!),
-      'CF-Access-Client-Secret': cleanCredential(env.HAKSAI_MCP_CLIENT_SECRET!),
+      'CF-Access-Client-Id': cleanCredential(clientId),
+      'CF-Access-Client-Secret': cleanCredential(clientSecret),
     },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
   });
@@ -503,7 +526,7 @@ export const HAKSAI_MARKET_TOOL: ToolDeclaration = {
   description:
     'Amazon（HAKSAI Central）に保存された Keepa の履歴から、商品の価格とランキングの動き、設定してある競合の変化、原価と手数料を調べます。' +
     '「競合が値下げしているけど追随すべき？」「ランキングは動いてる？」の相談で使います。new_price を渡すと、その価格にしたときの1個あたりの粗利と、同じ粗利を保つのに必要な販売数の増え方も返します。' +
-    '読み取りだけで、Keepa は呼びません。履歴が未取得の商品は、未取得と返ります。',
+    '履歴が未取得、または3日以上前のときは、道具が Keepa から取って保存します（1商品4トークン。上限は道具の側で決まっています）。',
   parameters: {
     type: 'object',
     properties: {
@@ -598,7 +621,7 @@ export function priceTrial(now: UnitProfit, next: UnitProfit): Record<string, un
  * Shapes the stored history, the competitor's changes and the unit economics for a small model.
  * Whatever is missing is named as missing; a fee or cost that is not there is never filled in.
  */
-export function summarizeMarket(history: Envelope, product: Envelope, newPrice: number | null): Record<string, unknown> {
+export function summarizeMarket(history: Envelope, product: Envelope, newPrice: number | null, fetched: KeepaFetchReport | null = null): Record<string, unknown> {
   const data = obj(history.data);
   const own = readHistory(data.history);
   const competitor = obj(data.competitor);
@@ -645,8 +668,67 @@ export function summarizeMarket(history: Envelope, product: Envelope, newPrice: 
       'ランキングは販売数ではありません。競合の値下げと売上の減りが同じ時期でも、原因とは言い切れません。',
       '履歴は直近90日の間引きで、日ごとの細かい動きは分かりません。',
     ],
-    出所: 'HAKSAI Central（Keepaの履歴は保存済みのもの。今回は Keepa を呼んでいません）',
+    Keepa取得: fetched,
+    出所: fetched?.取得した.length
+      ? 'HAKSAI Central（今回、Keepa から取って保存した履歴）'
+      : 'HAKSAI Central（Keepaの履歴は保存済みのもの。今回は Keepa を取っていません）',
   };
+}
+
+/** A history that has to be fetched: not stored, or older than the source's own warning line. */
+const STALE_DAYS = 3;
+
+export interface KeepaFetchReport {
+  取得した: string[];
+  すでに新しい: string[];
+  見つからない: string[];
+  使ったトークン: number;
+  残りトークン: number | null;
+  今日の使用: string | null;
+  取れなかった理由: string | null;
+}
+
+/** The ASINs whose stored history is missing or old: the product, and its competitor when one is set. */
+export function historyNeeds(history: Envelope): string[] {
+  const data = obj(history.data);
+  const need = (value: unknown): string | null => {
+    const item = obj(value);
+    const asin = str(item.asin);
+    if (!asin) return null;
+    return item.stored !== true || (num(item.ageDays) ?? 0) >= STALE_DAYS ? asin : null;
+  };
+  return [need(data.history), need(obj(data.competitor).history)].filter((asin): asin is string => asin !== null);
+}
+
+/**
+ * Fetches what is missing, once, and says what happened.
+ * A refusal (too few tokens, the day's cap, the door not set up) is reported, not thrown: the stored history is still worth answering from.
+ */
+async function fetchMissing(env: Env, asins: string[]): Promise<KeepaFetchReport> {
+  const report: KeepaFetchReport = { 取得した: [], すでに新しい: [], 見つからない: [], 使ったトークン: 0, 残りトークン: null, 今日の使用: null, 取れなかった理由: null };
+  if (!keepaFetchConfigured(env)) {
+    report.取れなかった理由 = 'Keepa をその場で取る入口が、まだ設定されていません。';
+    return report;
+  }
+  try {
+    const result = await callKeepaFetch(env, asins);
+    const data = obj(result.data);
+    if (result.data == null) {
+      const warnings = list(result.meta?.warnings).filter((item): item is string => typeof item === 'string');
+      report.取れなかった理由 = warnings[0] ?? 'Keepa から取れませんでした。';
+      return report;
+    }
+    report.取得した = list(data.fetched).filter((item): item is string => typeof item === 'string');
+    report.すでに新しい = list(data.cached).filter((item): item is string => typeof item === 'string');
+    report.見つからない = list(data.notFound).filter((item): item is string => typeof item === 'string');
+    report.使ったトークン = num(data.consumed) ?? 0;
+    report.残りトークン = num(data.tokensLeft);
+    if (num(data.dailyUsed) !== null && num(data.dailyCap) !== null) report.今日の使用 = `${num(data.dailyUsed)}/${num(data.dailyCap)}トークン`;
+    if (data.status !== 'ok') report.取れなかった理由 = str(data.reason) ?? 'Keepa から取れませんでした。';
+  } catch (error) {
+    report.取れなかった理由 = error instanceof HaksaiError ? error.message : 'Keepa から取れませんでした。';
+  }
+  return report;
 }
 
 export async function runHaksaiMarketTool(env: Env, call: ToolCall): Promise<unknown> {
@@ -667,14 +749,20 @@ export async function runHaksaiMarketTool(env: Env, call: ToolCall): Promise<unk
       asin = first.asin;
       title = commonTitle([first]);
     }
-    const [history, product] = await Promise.all([
-      callMcp(env, 'haksai_get_market_history', { asin }),
-      callMcp(env, 'haksai_get_product', { asin }),
-    ]);
+    let history = await callMcp(env, 'haksai_get_market_history', { asin });
     if (history.data == null) {
       return { error: `${asin} の市場の履歴を読めませんでした。`, ASIN: asin };
     }
-    return { 商品: title, ASIN: asin, ...summarizeMarket(history, product, newPrice) };
+    // 取っていない、または古い履歴だけ、その場で取る。取れなかったときも、保存済みのもので答える。
+    const needs = historyNeeds(history);
+    let report: KeepaFetchReport | null = null;
+    if (needs.length > 0) {
+      report = await fetchMissing(env, needs);
+      if (report.取得した.length > 0) history = await callMcp(env, 'haksai_get_market_history', { asin });
+    }
+    // 取ったあとで読む。基本情報（手数料）も、取得で更新されるため。
+    const product = await callMcp(env, 'haksai_get_product', { asin });
+    return { 商品: title, ASIN: asin, ...summarizeMarket(history, product, newPrice, report) };
   } catch (error) {
     return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の市場の履歴を読めませんでした。' };
   }

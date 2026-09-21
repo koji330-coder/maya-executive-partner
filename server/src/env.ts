@@ -12,6 +12,14 @@ export interface Env extends AccessEnv {
   /** Access のサービストークン。秘密。電話には決して置かない（haksai.ts）。 */
   HAKSAI_MCP_CLIENT_ID?: string;
   HAKSAI_MCP_CLIENT_SECRET?: string;
+  /**
+   * Keepa をその場で取る入口（haksai-keepa。別のWorker、別のAccessアプリ）。URL は秘密ではない。
+   * 未設定なら、取らずに「未取得」と答える。トークンは、読み取り用と同じものを使える。
+   * 別のトークンにするときだけ、下の2つを `wrangler secret put` で置く。
+   */
+  HAKSAI_KEEPA_URL?: string;
+  HAKSAI_KEEPA_CLIENT_ID?: string;
+  HAKSAI_KEEPA_CLIENT_SECRET?: string;
   MODEL: string;
   /** How much one model round may write. A string because wrangler vars are; unset or invalid means the default. */
   MAX_OUTPUT_TOKENS?: string;
