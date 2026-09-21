@@ -19,6 +19,7 @@
 
 import type { ToolCall, ToolDeclaration } from '@/services/llm/geminiClient';
 
+import { presidentDate } from './clock';
 import type { Env } from './env';
 
 export const HAKSAI_INVENTORY_TOOL: ToolDeclaration = {
@@ -261,8 +262,9 @@ function readMeasured(label: string, asin: string, envelope: Envelope): Measured
  * Only the rows that need a decision are spelled out. The rest are counted and
  * named, because "nothing to do here" is worth saying but not worth a table.
  */
-export function summarize(items: Measured[], title: string, snapshotDate: string | null, warnings: string[]) {
+export function summarize(items: Measured[], title: string, snapshotDate: string | null, warnings: string[], today: string = presidentDate()) {
   const order: string[] = [];
+  const lines: string[] = [];
   const fine: string[] = [];
   const idle: string[] = [];
   const none: string[] = [];
@@ -273,6 +275,11 @@ export function summarize(items: Measured[], title: string, snapshotDate: string
     const qty = num(item.plan.recommendedOrderQty) ?? 0;
     if (state === 'urgent' || state === 'order') {
       recommended += qty;
+      const by = str(item.plan.orderBy);
+      lines.push(
+        `${item.label}：在庫${item.stock}、日販${Math.round((num(item.plan.sellingPacePerDay) ?? 0) * 100) / 100}、` +
+          `在庫${num(item.plan.coverTotalDays) ?? '?'}日分、発注期限${by ?? '不明'}${by && by < today ? '（期限を過ぎています）' : ''}、推奨${qty}個`,
+      );
       order.push(
         JSON.stringify({
           種類: item.label,
@@ -300,6 +307,8 @@ export function summarize(items: Measured[], title: string, snapshotDate: string
     基準日: snapshotDate,
     調べた数: items.length,
     すぐ発注: order.map((row) => JSON.parse(row) as Record<string, unknown>),
+    // 完成した一覧。モデルは、これを書き写す。組み立て直すと、行を落とす。
+    すぐ発注の一覧: lines,
     推奨合計: recommended,
     余裕あり: fine,
     動きなし: idle,
@@ -398,6 +407,21 @@ export function readSalesArgs(args: Record<string, unknown>, today: string): Sal
 const yen = (value: unknown): number | null => num(value);
 
 /**
+ * A yen amount as it should be spoken: 1,790,028 becomes "179.0万円".
+ *
+ * The model was left to convert, and wrote 1,79万円 for a figure that is 179万円.
+ * A small model drops or shifts a digit when it divides by ten thousand, so the
+ * division is done here, once, and the model only repeats the string.
+ */
+export function yenLabel(value: unknown): string | null {
+  const n = num(value);
+  if (n === null) return null;
+  const sign = n < 0 ? '−' : '';
+  const abs = Math.abs(n);
+  return abs >= 10_000 ? `${sign}${(abs / 10_000).toFixed(1)}万円` : `${sign}${Math.round(abs).toLocaleString('en-US')}円`;
+}
+
+/**
  * Keeps what a decision needs and drops the rest.
  *
  * The month's totals and the few products that carry it. A caveat the source
@@ -416,6 +440,15 @@ export function summarizeMonth(envelope: Envelope): Record<string, unknown> {
     データの最終日: str(data.lastSaleDate),
     月の途中: data.isPartialMonth === true,
     利益の状態: str(data.profitStatus),
+    // 声に出す書き方。金額は、この文字をそのまま使う。
+    表示: {
+      売上税込: yenLabel(totals.salesTaxIn),
+      Amazon手取: yenLabel(totals.netAfterAmazonFees),
+      粗利: yenLabel(totals.grossProfit),
+      営業利益: yenLabel(totals.operatingProfit),
+      広告費: yenLabel(totals.adSpend),
+      販売数: yen(totals.units) === null ? null : `${yen(totals.units)}個`,
+    },
     合計: {
       売上税込: yen(totals.salesTaxIn),
       Amazon手取: yen(totals.netAfterAmazonFees),
@@ -434,6 +467,7 @@ export function summarizeMonth(envelope: Envelope): Record<string, unknown> {
       ASIN: str(item.asin),
       販売数: yen(item.units),
       売上税込: yen(item.salesTaxIn),
+      売上表示: yenLabel(item.salesTaxIn),
       粗利: yen(item.grossProfit),
       広告費: yen(item.adSpend),
     })),

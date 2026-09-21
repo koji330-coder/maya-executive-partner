@@ -15,6 +15,7 @@ import {
   refersToAmazon,
   readSalesArgs,
   runHaksaiSalesTool,
+  yenLabel,
   summarizeMonth,
   readVariations,
   runHaksaiInventoryTool,
@@ -238,7 +239,7 @@ describe('summarizeMonth', () => {
     expect(out.データの最終日).toBe('2026-09-19');
     expect(out.利益の状態).toBe('partial');
     expect(out.合計.売上税込).toBe(1703263);
-    expect(out.上位).toEqual([{ 商品: '卓上ベル', ASIN: 'B0FXTQPGSB', 販売数: 423, 売上税込: 311484, 粗利: 76819, 広告費: 20000 }]);
+    expect(out.上位).toEqual([{ 商品: '卓上ベル', ASIN: 'B0FXTQPGSB', 販売数: 423, 売上税込: 311484, 売上表示: '31.1万円', 粗利: 76819, 広告費: 20000 }]);
     expect(out.注意).toContain('この月のデータは 2026-09-19 までです。');
   });
 
@@ -335,5 +336,42 @@ describe('the tool manual in the app', () => {
         expect({ question, triggers: refersToAmazon(question) }).toEqual({ question, triggers: true });
       }
     }
+  });
+});
+
+describe('yenLabel', () => {
+  it('turns yen into the way it is said, dividing once here rather than in the model', () => {
+    expect(yenLabel(1790028)).toBe('179.0万円');
+    expect(yenLabel(364976)).toBe('36.5万円');
+    expect(yenLabel(9999)).toBe('9,999円');
+    expect(yenLabel(-189839)).toBe('−19.0万円');
+  });
+
+  it('says nothing for a number that is not there', () => {
+    expect(yenLabel(null)).toBeNull();
+    expect(yenLabel('x')).toBeNull();
+  });
+});
+
+describe('the finished list', () => {
+  it('writes each urgent row as a sentence, flagging the ones past their deadline', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+      const body = JSON.parse((init as RequestInit).body as string);
+      if (body.params.name === 'haksai_search_products') {
+        return Promise.resolve(mcpReply({ data: { groups: [{ variations: [variation('B0A', 'M', 'A03', 32), variation('B0B', 'L', 'A08', 22)] }] } }));
+      }
+      return Promise.resolve(mcpReply(inventory('urgent', 1, 26)));
+    });
+    const result = (await runHaksaiInventoryTool(env(), { name: 'haksai_inventory', args: { query: 'パジャマ' } })) as Record<string, any>;
+    expect(result.すぐ発注の一覧).toHaveLength(2);
+    expect(result.すぐ発注の一覧[0]).toContain('M A03：在庫1、日販0.35、在庫3日分、発注期限2026-08-24（期限を過ぎています）、推奨26個');
+  });
+
+  it('shows the month in spoken yen beside the raw numbers', () => {
+    const out = summarizeMonth(monthEnvelope) as Record<string, any>;
+    expect(out.表示.売上税込).toBe('170.3万円');
+    expect(out.表示.販売数).toBe('1568個');
+    expect(out.合計.売上税込).toBe(1703263);
+    expect(out.上位[0].売上表示).toBe('31.1万円');
   });
 });

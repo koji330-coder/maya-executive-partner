@@ -12,6 +12,13 @@ describe('the Amazon guide in the prompt', () => {
     expect(AMAZON_GUIDE).toContain('画面やデータを見せてほしいと頼む前に、まず道具で読みます');
   });
 
+  it('says to write the list itself, not announce it, and not to convert yen by hand', () => {
+    expect(AMAZON_GUIDE).toContain('一覧まで書きます');
+    expect(AMAZON_GUIDE).toContain('書き写します');
+    expect(AMAZON_GUIDE).toContain('換算を、自分でしません');
+    expect(AMAZON_GUIDE).toContain('続けて呼びません');
+  });
+
   it('makes the caveat travel with the number, and forbids filling a gap', () => {
     expect(AMAZON_GUIDE).toContain('月の途中');
     expect(AMAZON_GUIDE).toContain('推測で足しません');
