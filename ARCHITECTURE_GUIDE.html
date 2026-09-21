@@ -356,7 +356,7 @@
 
 <header class="top">
   <div class="wrap">
-    <p class="eyebrow">2026-09-15 / v0.2</p>
+    <p class="eyebrow">2026-09-21 / v0.2</p>
     <h1>MAYAサーバーの仕組み</h1>
     <p class="standfirst">
       MAYAは、スマホの中だけで動くアプリから、Cloudflare上の専用サーバーを持つ形に変わりました。
@@ -364,8 +364,8 @@
     </p>
     <div class="meta">
       <span>93コミット</span>
-      <span>110ファイル</span>
-      <span>テスト 202件 通過</span>
+      <span>291ファイル</span>
+      <span>テスト 245件 通過</span>
     </div>
   </div>
 </header>
@@ -515,7 +515,7 @@
         <text x="452" y="236" font-size="10.5" fill="currentColor" opacity=".75">サービストークン</text>
         <rect x="654" y="212" width="154" height="66" rx="12" fill="none" stroke="currentColor" stroke-width="1.5"/>
         <text x="731" y="238" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">HAKSAI</text>
-        <text x="731" y="256" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">Amazonの在庫・売上（読むだけ）</text>
+        <text x="731" y="256" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">在庫・売上・競合の価格（読むだけ）</text>
         <text x="731" y="271" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">別のWorker・別のAccess</text>
 
         <!-- ===== planned: sync jobs (dashed) ===== -->
@@ -595,7 +595,7 @@
       <li><b>サーバーが記憶を読む。</b> D1から、実行中の判断と直近14日の記録を読み出します。アプリに送らせないので、どの入口から相談しても同じことを覚えています。</li>
       <li><b>プロンプトを組んで、道具を添えてGeminiに渡す。</b> 人格、相談手順、会社情報、今日の日付と時刻、読み出した記憶が一つにまとまります。</li>
       <li><b>過去を指す相談なら、記録を探す。</b> 「前に」「去年」「覚えてる？」のような言葉があると、サーバーがGeminiに探す道具を必ず使わせ、見つけた記録を渡してから答えさせます。<strong>このとき往復が2回になり、1秒ほど遅くなります。</strong>それ以外の相談では探しません。</li>
-      <li><b>在庫・発注・売上の相談なら、HAKSAIに聞く。</b> 在庫は、商品名で探し、サイズ・色ごとの在庫・日販・発注期限・推奨発注数を読んで渡します。<strong>売れている順に15種類までしか見ません。</strong>数十種類あるバリエーションを全部聞くと、相談の待ち時間が延びるからです。売上は、月ごとの合計と上位の商品を渡します。<strong>月の途中なら「途中」、利益が未確定なら「未確定」と、数字と一緒に渡します。</strong>どちらも読むだけで、発注などはできません。<strong>「在庫」「売上」「粗利」などの言葉が出たら、サーバーが道具を必ず使わせます。</strong>小さいモデルは、任せると道具を使わず「画面を見せてください」と返すことが、実機で分かったためです。</li>
+      <li><b>在庫・発注・売上の相談なら、HAKSAIに聞く。</b> 在庫は、商品名で探し、サイズ・色ごとの在庫・日販・発注期限・推奨発注数を読んで渡します。<strong>売れている順に15種類までしか見ません。</strong>数十種類あるバリエーションを全部聞くと、相談の待ち時間が延びるからです。競合と価格の相談なら、HAKSAIに<strong>保存してあるKeepaの履歴</strong>を読み、自社と競合の価格・ランキングの動きと、原価・手数料から出した1個あたりの粗利を渡します。値下げしたときの粗利と、同じ粗利を保つのに必要な販売数の増え方は、<strong>サーバーが計算して渡します</strong>（小さいモデルは割り算で桁を落とすため）。履歴が無い商品は「未取得」と答え、想像で埋めません。売上は、月ごとの合計と上位の商品を渡します。<strong>月の途中なら「途中」、利益が未確定なら「未確定」と、数字と一緒に渡します。</strong>どちらも読むだけで、発注などはできません。<strong>「在庫」「売上」「粗利」などの言葉が出たら、サーバーが道具を必ず使わせます。</strong>小さいモデルは、任せると道具を使わず「画面を見せてください」と返すことが、実機で分かったためです。</li>
       <li><b>サーバーが答えを検証して返す。</b> 形が崩れていないか確かめ、判断が含まれていればD1に保存します。</li>
       <li><b>アプリが表情とポーズを動かして表示する。</b></li>
     </ol>
@@ -679,7 +679,7 @@
 <section id="status">
   <div class="wrap">
     <h2>できたこと・これから</h2>
-    <p class="lede">設計は全体像まで描けていますが、動いているのはまだ真ん中の部分だけです。</p>
+    <p class="lede">設計は全体像まで描けていますが、動いているのはまだ真ん中の部分と、HAKSAIを読む経路です。</p>
 
     <div class="scroll">
       <table>
@@ -755,8 +755,13 @@
           </tr>
           <tr>
             <td>Amazonの月の売上を読む</td>
-            <td><span class="pill hold">出し直し待ち</span></td>
-            <td>月の合計と上位の商品。HAKSAI側の新しい道具を出し直すと効く。MAYAのD1へ写す案は、写さずに済むので取りやめ</td>
+            <td><span class="pill hold">確認待ち</span></td>
+            <td>月の合計と上位の商品。HAKSAI側の新しい道具は出し直し済み。実データでの確認はこれから。MAYAのD1へ写す案は、写さずに済むので取りやめ</td>
+          </tr>
+          <tr>
+            <td>競合の価格・ランキングと、値下げの粗利を読む</td>
+            <td><span class="pill hold">確認待ち</span></td>
+            <td>HAKSAIに保存済みのKeepa履歴を読む（Keepaは呼ばない）。出し直し済み、実機での確認はこれから。履歴が取ってあるのは、競合を設定した商品だけ（未確認: 全83商品のうち履歴は数件）。Keepaをその場で取る道具は、これから</td>
           </tr>
           <tr>
             <td>食事・筋トレ・体重を読む</td>
@@ -784,10 +789,11 @@
   <div class="wrap">
     <h2>モデル一覧</h2>
     <p class="lede">
-      いまMAYAが使っているのは <code>gemini-3.5-flash-lite</code> です。
-      無料キーでも有料キーでも同じです。サーバーの設定ファイルに直接書いてあり、変えるにはサーバーを出し直します。
-      2026-09-14 に <code>gemini-3.6-flash</code> から切り替え、2026-09-15 に本番へ出しました。
-      スマホから直接呼ぶときの既定も同じモデルです。
+      いまMAYAサーバーが使っているのは <code>gemini-3.8-flash</code> です（2026-09-21 から）。
+      <strong>有料キーだけで動かしています。</strong>無料キーは設定していません（無料枠がなくなったのではなく、いまは使わない設定です。仕組みは残してあります）。
+      サーバーの設定ファイルに直接書いてあり、変えるにはサーバーを出し直します。
+      料金は、100万トークンあたり入力 $0.75・出力 $3.75（2026-12-31 まで。2027-01-01 から $1.50・$7.50）。考える分のトークンも出力として数えます。
+      スマホから直接呼ぶときの既定は、この手引きでは確認していません。
     </p>
 
     <div class="scroll">
@@ -797,12 +803,12 @@
           <tr><th>モデル</th><th>応答</th><th>無料枠の1日</th><th>性格（実測）</th><th>いまの扱い</th></tr>
         </thead>
         <tbody>
-          <tr class="current">
+          <tr>
             <td class="id">gemini-3.5-flash-lite</td>
             <td class="num">約2秒</td>
             <td class="num">余裕あり</td>
-            <td>方向は正しいが、数字の検算をしない</td>
-            <td><span class="pill on">使用中</span></td>
+            <td>方向は正しいが、数字の検算をしない。3.8 に問題が出たとき、設定の1行を変えて戻す先</td>
+            <td><span class="pill off">予備</span></td>
           </tr>
           <tr>
             <td class="id">gemini-3.6-flash</td>
@@ -818,12 +824,12 @@
             <td>中間</td>
             <td><span class="pill off">選べる</span></td>
           </tr>
-          <tr>
+          <tr class="current">
             <td class="id">gemini-3.8-flash</td>
-            <td class="num">応答なし</td>
-            <td class="num">未計測</td>
-            <td>最新。新しい無料キーでは混み合って返ってこなかった</td>
-            <td><span class="pill hold">不安定</span></td>
+            <td class="num">在庫の一覧で、考える分が約800トークン（実測）</td>
+            <td class="num">使わない（有料キーのみ）</td>
+            <td>考える分も出力の上限に入るので、上限を 4096 に上げた。道具を呼ぶ相談での動きは、このサーバーではまだ十分に測っていない</td>
+            <td><span class="pill on">使用中</span></td>
           </tr>
         </tbody>
       </table>
