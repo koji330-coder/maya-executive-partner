@@ -52,7 +52,7 @@ export const HAKSAI_INVENTORY_TOOL: ToolDeclaration = {
  * answers that it cannot see the data and asks to be shown the screen. A wrong
  * guess costs one call, about a second; a miss costs that refusal.
  */
-const AMAZON_MARKERS = /在庫|発注|補充|欠品|仕入れ|売上|売り上げ|粗利|広告費|ACOS|Amazon|アマゾン|セラー|FBA|ASIN|売れ筋|売れて|売れた|売れ行き/i;
+const AMAZON_MARKERS = /在庫|発注|補充|欠品|仕入れ|売上|売り上げ|粗利|広告費|ACOS|Amazon|アマゾン|セラー|FBA|ASIN|売れ筋|売れて|売れた|売れ行き|競合|ライバル|Keepa|ランキング|値下げ|セール/i;
 
 export function refersToAmazon(message: string): boolean {
   return AMAZON_MARKERS.test(message);
@@ -495,5 +495,187 @@ export async function runHaksaiSalesTool(env: Env, call: ToolCall, today: string
     return summarizeMonth(envelope);
   } catch (error) {
     return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の売上を読めませんでした。' };
+  }
+}
+
+export const HAKSAI_MARKET_TOOL: ToolDeclaration = {
+  name: 'haksai_market',
+  description:
+    'Amazon（HAKSAI Central）に保存された Keepa の履歴から、商品の価格とランキングの動き、設定してある競合の変化、原価と手数料を調べます。' +
+    '「競合が値下げしているけど追随すべき？」「ランキングは動いてる？」の相談で使います。new_price を渡すと、その価格にしたときの1個あたりの粗利と、同じ粗利を保つのに必要な販売数の増え方も返します。' +
+    '読み取りだけで、Keepa は呼びません。履歴が未取得の商品は、未取得と返ります。',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: '商品名の一部（「卓上ベル」など）、または ASIN。' },
+      new_price: { type: 'number', description: '試算したい販売価格（円）。値下げに追随するかの相談のときに渡します。' },
+    },
+    required: ['query'],
+  },
+};
+
+export interface MarketArgs {
+  query: string;
+  newPrice: number | null;
+}
+
+/** Reads the model's arguments defensively. A price that is not a plain positive yen amount is dropped rather than guessed at. */
+export function readMarketArgs(args: Record<string, unknown>): MarketArgs {
+  const query = typeof args.query === 'string' ? args.query.trim() : '';
+  const price = Number(args.new_price);
+  return { query, newPrice: Number.isFinite(price) && price > 0 && price < 1_000_000 ? Math.round(price) : null };
+}
+
+const obj = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' ? (value as Record<string, unknown>) : {});
+const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+const shortDate = (iso: string | null): string => (iso ? `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}` : '?');
+
+/** One product's stored history, as a few lines a model can repeat without recomputing. */
+function readHistory(value: unknown): Record<string, unknown> {
+  const history = obj(value);
+  const asin = str(history.asin);
+  if (history.stored !== true) return { ASIN: asin, 状態: '未取得' };
+  const price = history.price ? obj(history.price) : null;
+  const rank = history.rank ? obj(history.rank) : null;
+  const changes = price ? list(price.changes).map(obj) : [];
+  return {
+    ASIN: asin,
+    取得日: str(history.fetchedAt)?.slice(0, 10) ?? null,
+    経過日数: num(history.ageDays),
+    価格: price
+      ? {
+          現在: num(price.latestYen),
+          最安: num(price.minYen),
+          最高: num(price.maxYen),
+          // 直近の変更だけ。日付は月/日。
+          変更: changes.slice(-5).map((item) => `${shortDate(str(item.date))} ${num(item.fromYen)}円→${num(item.toYen)}円`),
+          変更の回数: num(price.changeCount),
+        }
+      : '履歴なし',
+    ランキング: rank
+      ? {
+          現在: num(rank.latest),
+          最高: num(rank.best),
+          最低: num(rank.worst),
+          週平均: list(rank.weekly)
+            .map(obj)
+            .slice(-4)
+            .map((item) => `${shortDate(str(item.weekStart))}の週 ${num(item.avgRank)}位`),
+        }
+      : '履歴なし',
+  };
+}
+
+interface UnitProfit {
+  価格: number;
+  粗利: number;
+  内訳: { FBA手数料: number; 紹介料: number; 原価: number };
+}
+
+/** What one unit leaves at a price: price, less the referral fee, the FBA fee and the landed cost. Ads, returns and tax are not in it. */
+export function unitProfit(price: number, landed: number, fba: number, referralPct: number): UnitProfit {
+  const referral = Math.round((price * referralPct) / 100);
+  return { 価格: price, 粗利: Math.round(price - referral - fba - landed), 内訳: { FBA手数料: fba, 紹介料: referral, 原価: landed } };
+}
+
+/**
+ * The break-even for a price change, worked out here so the model only repeats it.
+ * A small model drops a digit when it divides, and this is the number a decision hangs on.
+ */
+export function priceTrial(now: UnitProfit, next: UnitProfit): Record<string, unknown> {
+  const out: Record<string, unknown> = { 今: now, 変更後: next };
+  if (next.粗利 <= 0) {
+    out.判断材料 = `変更後は1個売るごとに${next.粗利}円で、売るほど赤字か、利益が出ません。`;
+  } else if (now.粗利 > 0) {
+    const need = Math.max(Math.round((now.粗利 / next.粗利 - 1) * 100), 0);
+    out.同じ粗利に必要な販売数の増加百分率 = need;
+    out.判断材料 = `1個あたりの粗利が${now.粗利}円から${next.粗利}円になります。今と同じ粗利を出すには、販売数が${need}%増える必要があります。`;
+  }
+  return out;
+}
+
+/**
+ * Shapes the stored history, the competitor's changes and the unit economics for a small model.
+ * Whatever is missing is named as missing; a fee or cost that is not there is never filled in.
+ */
+export function summarizeMarket(history: Envelope, product: Envelope, newPrice: number | null): Record<string, unknown> {
+  const data = obj(history.data);
+  const own = readHistory(data.history);
+  const competitor = obj(data.competitor);
+  const master = obj(obj(product.data).master);
+  const keepa = obj(obj(product.data).keepa);
+
+  const ownHistory = obj(data.history);
+  const ownPrice = ownHistory.stored === true && ownHistory.price ? num(obj(ownHistory.price).latestYen) : null;
+  const price = ownPrice ?? num(keepa.priceYen);
+  const landed = num(master.currentLandedCostYen);
+  const fba = num(keepa.fbaFeeYen);
+  const pct = num(keepa.referralPct);
+
+  let unit: Record<string, unknown>;
+  if (price === null || landed === null || landed <= 0 || fba === null || pct === null) {
+    const missing = [
+      price === null ? '現在の販売価格' : null,
+      landed === null || landed <= 0 ? '原価（着地原価）' : null,
+      fba === null ? 'FBA手数料' : null,
+      pct === null ? '紹介料率' : null,
+    ].filter((item): item is string => item !== null);
+    unit = { 試算できません: `${missing.join('・')}が入っていません。推測で補いません。` };
+  } else {
+    const now = unitProfit(price, landed, fba, pct);
+    unit = newPrice === null ? { 今: now } : priceTrial(now, unitProfit(newPrice, landed, fba, pct));
+    unit.前提 = '1個あたりの粗利の概算です。広告費・返品・消費税は入っていません。販売数がどう変わるかは、予測していません。';
+  }
+
+  const warnings = list(history.meta?.warnings).filter((item): item is string => typeof item === 'string');
+
+  return {
+    自社: own,
+    競合: competitor.asin
+      ? { ...readHistory(competitor.history), 追跡中: competitor.watching === true, 最終確認: str(competitor.lastCheckedAt)?.slice(0, 10) ?? null }
+      : '設定されていません',
+    競合の変化: list(data.recentEvents)
+      .map(obj)
+      .slice(0, 5)
+      .map((item) => `${shortDate(str(item.date))} ${str(item.label) ?? str(item.kind) ?? ''}`),
+    '1個あたりの粗利': unit,
+    注意: [
+      ...new Set(warnings),
+      '価格は Keepa の新品価格です。Buy Box の価格ではなく、クーポン・ポイントの値引きは入っていません。',
+      'ランキングは販売数ではありません。競合の値下げと売上の減りが同じ時期でも、原因とは言い切れません。',
+      '履歴は直近90日の間引きで、日ごとの細かい動きは分かりません。',
+    ],
+    出所: 'HAKSAI Central（Keepaの履歴は保存済みのもの。今回は Keepa を呼んでいません）',
+  };
+}
+
+export async function runHaksaiMarketTool(env: Env, call: ToolCall): Promise<unknown> {
+  const { query, newPrice } = readMarketArgs(call.args);
+  if (!query) {
+    return { error: '商品名か ASIN を指定してください。' };
+  }
+  try {
+    let asin = query.toUpperCase();
+    let title = asin;
+    if (!ASIN.test(asin)) {
+      const found = await callMcp(env, 'haksai_search_products', { query, limit: 5 });
+      const first = readVariations(found.data)[0];
+      if (!first) {
+        return { error: `「${query}」に当てはまる商品が見つかりませんでした。短い語で言い直してください。`, 探した語: query };
+      }
+      // Sorted by cumulative sales, so the head is the one that sells.
+      asin = first.asin;
+      title = commonTitle([first]);
+    }
+    const [history, product] = await Promise.all([
+      callMcp(env, 'haksai_get_market_history', { asin }),
+      callMcp(env, 'haksai_get_product', { asin }),
+    ]);
+    if (history.data == null) {
+      return { error: `${asin} の市場の履歴を読めませんでした。`, ASIN: asin };
+    }
+    return { 商品: title, ASIN: asin, ...summarizeMarket(history, product, newPrice) };
+  } catch (error) {
+    return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の市場の履歴を読めませんでした。' };
   }
 }

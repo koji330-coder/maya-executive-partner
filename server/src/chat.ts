@@ -22,8 +22,10 @@ import type { Env } from './env';
 import {
   haksaiConfigured,
   HAKSAI_INVENTORY_TOOL,
+  HAKSAI_MARKET_TOOL,
   HAKSAI_SALES_TOOL,
   runHaksaiInventoryTool,
+  runHaksaiMarketTool,
   refersToAmazon,
   runHaksaiSalesTool,
 } from './haksai';
@@ -161,11 +163,12 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     tools: !amazonReady
       ? [SEARCH_MEMORY_TOOL]
       : askingAboutAmazon && !refersToPast(request.message)
-        ? [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL]
-        : [SEARCH_MEMORY_TOOL, HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL],
+        ? [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL]
+        : [SEARCH_MEMORY_TOOL, HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL],
     runTool: (call) => {
       if (call.name === HAKSAI_INVENTORY_TOOL.name) return runHaksaiInventoryTool(env, call);
       if (call.name === HAKSAI_SALES_TOOL.name) return runHaksaiSalesTool(env, call, presidentDate());
+      if (call.name === HAKSAI_MARKET_TOOL.name) return runHaksaiMarketTool(env, call);
       return runMemoryTool(env.MAYA_DB, call);
     },
     requireToolFirst: refersToPast(request.message) || askingAboutAmazon,

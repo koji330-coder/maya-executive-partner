@@ -9,12 +9,18 @@ import {
   haksaiConfigured,
   HaksaiError,
   HAKSAI_INVENTORY_TOOL,
+  HAKSAI_MARKET_TOOL,
   HAKSAI_SALES_TOOL,
+  priceTrial,
   readInventoryArgs,
+  readMarketArgs,
   refusalHint,
   refersToAmazon,
   readSalesArgs,
+  runHaksaiMarketTool,
   runHaksaiSalesTool,
+  summarizeMarket,
+  unitProfit,
   yenLabel,
   summarizeMonth,
   readVariations,
@@ -274,7 +280,7 @@ describe('runHaksaiSalesTool', () => {
 });
 
 describe('refersToAmazon', () => {
-  it.each(['パジャマの在庫、発注はどれが急ぎ?', '9月の売上を教えて', '今月の粗利は?', 'ACOSが高い商品は', 'Amazonの売れ筋を知りたい', '欠品しそうなのは?'])(
+  it.each(['パジャマの在庫、発注はどれが急ぎ?', '9月の売上を教えて', '今月の粗利は?', 'ACOSが高い商品は', 'Amazonの売れ筋を知りたい', '欠品しそうなのは?', '卓上ベルの競合が値下げしてる', 'ランキングは動いてる?'])(
     'catches "%s"',
     (message) => {
       expect(refersToAmazon(message)).toBe(true);
@@ -325,7 +331,7 @@ describe('refusalHint', () => {
 
 describe('the tool manual in the app', () => {
   it('names only tools the server really offers, and offers none it does not describe', () => {
-    const offered = [HAKSAI_INVENTORY_TOOL.name, HAKSAI_SALES_TOOL.name].sort();
+    const offered = [HAKSAI_INVENTORY_TOOL.name, HAKSAI_SALES_TOOL.name, HAKSAI_MARKET_TOOL.name].sort();
     expect(READY_TOOLS.map((tool) => tool.serverTool).sort()).toEqual(offered);
     expect(CONNECTED_TOOLS.filter((tool) => tool.serverTool !== null)).toHaveLength(offered.length);
   });
@@ -393,5 +399,104 @@ describe('the order of the urgent list', () => {
     });
     const result = (await runHaksaiInventoryTool(env(), { name: 'haksai_inventory', args: { query: 'パジャマ' } })) as Record<string, any>;
     expect(result.すぐ発注の一覧.map((line: string) => line.split('：')[0])).toEqual(['M A03', 'L A02', 'M A08']);
+  });
+});
+
+describe('readMarketArgs', () => {
+  it('keeps a plain yen price and drops anything else rather than guessing', () => {
+    expect(readMarketArgs({ query: ' 卓上ベル ', new_price: 690 })).toEqual({ query: '卓上ベル', newPrice: 690 });
+    expect(readMarketArgs({ query: 'x', new_price: '690円' }).newPrice).toBeNull();
+    expect(readMarketArgs({ query: 'x', new_price: -5 }).newPrice).toBeNull();
+    expect(readMarketArgs({ query: 'x' }).newPrice).toBeNull();
+  });
+});
+
+describe('unit profit and the price trial', () => {
+  // The bell as measured on 2026-09-20: price 748, landed cost 154, FBA fee 358, referral 4.95%.
+  it('works out what one unit leaves, and the rise in sales that holds the profit at a lower price', () => {
+    const now = unitProfit(748, 154, 358, 4.95);
+    expect(now).toEqual({ 価格: 748, 粗利: 199, 内訳: { FBA手数料: 358, 紹介料: 37, 原価: 154 } });
+    const trial = priceTrial(now, unitProfit(690, 154, 358, 4.95)) as Record<string, any>;
+    expect(trial.変更後.粗利).toBe(144);
+    expect(trial.同じ粗利に必要な販売数の増加百分率).toBe(38);
+    expect(trial.判断材料).toContain('38%');
+  });
+
+  it('says so when the new price leaves nothing, instead of a percentage', () => {
+    const trial = priceTrial(unitProfit(748, 154, 358, 4.95), unitProfit(500, 154, 358, 4.95)) as Record<string, any>;
+    expect(trial.変更後.粗利).toBeLessThanOrEqual(0);
+    expect(trial.同じ粗利に必要な販売数の増加百分率).toBeUndefined();
+    expect(trial.判断材料).toContain('赤字');
+  });
+});
+
+const stored = (asin: string, latest: number) => ({
+  asin,
+  stored: true,
+  fetchedAt: '2026-09-20T05:58:53.589Z',
+  ageDays: 1,
+  price: { latestYen: latest, minYen: 690, maxYen: 748, changeCount: 2, changes: [{ date: '2026-09-02', fromYen: 748, toYen: 690 }, { date: '2026-09-10', fromYen: 690, toYen: 740 }] },
+  rank: { latest: 205, best: 83, worst: 500, weekly: [{ weekStart: '2026-09-07', avgRank: 205 }] },
+});
+const marketEnvelope = {
+  data: {
+    history: stored('B0FXTQPGSB', 748),
+    competitor: { asin: 'B07ZV6Y8SY', watching: true, lastCheckedAt: '2026-09-20T05:58:53.622Z', history: stored('B07ZV6Y8SY', 740) },
+    recentEvents: [{ kind: 'rank_up', date: '2026-09-13', label: '競合のランキングが上昇（週平均 484位→205位）' }],
+  },
+  meta: { warnings: [] },
+};
+const productEnvelope = { data: { master: { currentLandedCostYen: 154 }, keepa: { priceYen: 748, fbaFeeYen: 358, referralPct: 4.95 } }, meta: { warnings: [] } };
+
+describe('summarizeMarket', () => {
+  it('puts the two histories, the competitor changes and the trial side by side', () => {
+    const out = summarizeMarket(marketEnvelope, productEnvelope, 690) as Record<string, any>;
+    expect(out.競合.価格.変更).toEqual(['9/2 748円→690円', '9/10 690円→740円']);
+    expect(out.競合.追跡中).toBe(true);
+    expect(out.競合の変化[0]).toContain('9/13');
+    expect(out['1個あたりの粗利'].同じ粗利に必要な販売数の増加百分率).toBe(38);
+  });
+
+  it('says a history is not fetched rather than describing one', () => {
+    const out = summarizeMarket({ data: { history: { asin: 'B0X', stored: false }, competitor: null, recentEvents: [] } }, productEnvelope, null) as Record<string, any>;
+    expect(out.自社).toEqual({ ASIN: 'B0X', 状態: '未取得' });
+    expect(out.競合).toBe('設定されていません');
+  });
+
+  it('names what is missing and does not fill a cost that is not there', () => {
+    const out = summarizeMarket(marketEnvelope, { data: { master: { currentLandedCostYen: null }, keepa: null } }, 690) as Record<string, any>;
+    expect(out['1個あたりの粗利'].試算できません).toContain('原価');
+    expect(out['1個あたりの粗利'].試算できません).toContain('FBA手数料');
+    expect(out['1個あたりの粗利'].変更後).toBeUndefined();
+  });
+});
+
+describe('runHaksaiMarketTool', () => {
+  it('finds the product by name, then asks for its history and its cost, and passes the price along', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+      const body = JSON.parse((init as RequestInit).body as string).params;
+      if (body.name === 'haksai_search_products') return Promise.resolve(mcpReply({ data: { groups: [{ variations: [variation('B0FXTQPGSB', '', '', 500)] }] } }));
+      return Promise.resolve(mcpReply(body.name === 'haksai_get_market_history' ? marketEnvelope : productEnvelope));
+    });
+    const out = (await runHaksaiMarketTool(env(), { name: 'haksai_market', args: { query: '卓上ベル', new_price: 690 } })) as Record<string, any>;
+    const names = fetchMock.mock.calls.map((call) => JSON.parse((call[1] as RequestInit).body as string).params.name);
+    expect(names).toEqual(['haksai_search_products', 'haksai_get_market_history', 'haksai_get_product']);
+    expect(out.ASIN).toBe('B0FXTQPGSB');
+    expect(out['1個あたりの粗利'].変更後.粗利).toBe(144);
+  });
+
+  it('does not search when it is given an ASIN', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+      const name = JSON.parse((init as RequestInit).body as string).params.name;
+      return Promise.resolve(mcpReply(name === 'haksai_get_market_history' ? marketEnvelope : productEnvelope));
+    });
+    await runHaksaiMarketTool(env(), { name: 'haksai_market', args: { query: 'b0fxtqpgsb' } });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('asks for a name when none is given, and says a connection failed rather than answering empty', async () => {
+    expect(await runHaksaiMarketTool(env(), { name: 'haksai_market', args: {} })).toEqual({ error: expect.stringContaining('指定してください') });
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 302 }));
+    expect(await runHaksaiMarketTool(env(), { name: 'haksai_market', args: { query: 'B0FXTQPGSB' } })).toEqual({ error: expect.stringContaining('接続できませんでした') });
   });
 });

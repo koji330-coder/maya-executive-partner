@@ -81,9 +81,11 @@ export const SEARCH_GUIDE = `過去の記録を探す道具 search_memory を使
  * do with a caveat: a month still in progress read as a finished one is the
  * mistake this section exists to prevent.
  */
-export const AMAZON_GUIDE = `Amazon の在庫・発注・売上を読む道具 haksai_inventory と haksai_sales を使えます。読むだけで、発注や変更はできません。
+export const AMAZON_GUIDE = `Amazon の在庫・発注・売上・市場の動きを読む道具 haksai_inventory と haksai_sales と haksai_market を使えます。読むだけで、発注や変更はできません。
 
-- 在庫・発注・補充・欠品の相談は haksai_inventory、月の売上・粗利・広告費・売れ筋の相談は haksai_sales を使います
+- 在庫・発注・補充・欠品の相談は haksai_inventory、月の売上・粗利・広告費・売れ筋の相談は haksai_sales、競合の値下げ・価格やランキングの動き・値下げに追随するかの相談は haksai_market を使います
+- 値下げの相談では、haksai_market に new_price（試算したい価格）を渡します。1個あたりの粗利と、同じ粗利を保つのに必要な販売数の増え方は、道具が計算して返します。自分で計算しません
+- haksai_market が「未取得」「試算できません」と返したら、その商品は調べられていない、または原価などが入っていないと伝えます。想像で価格や原価を足しません。競合の値下げを見つけたと言えるのは、道具の履歴に出ているときだけです
 - Gakky に画面やデータを見せてほしいと頼む前に、まず道具で読みます。読めなかったときだけ、読めなかったと伝えて頼みます
 - 道具が「月の途中」「利益は確定していない」「1日分しかない」と注意を返したら、数字と一緒に必ず伝えます。落としません
 - 「調べた数」より該当が多いと書かれていたら、一部だけ見たと伝えます
