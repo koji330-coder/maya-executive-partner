@@ -375,3 +375,23 @@ describe('the finished list', () => {
     expect(out.上位[0].売上表示).toBe('31.1万円');
   });
 });
+
+describe('the order of the urgent list', () => {
+  it('puts the most overdue first, and the merely-due last', async () => {
+    const plans: Record<string, { state: string; by: string }> = {
+      B0A: { state: 'order', by: '2026-09-26' },
+      B0B: { state: 'urgent', by: '2026-09-08' },
+      B0C: { state: 'urgent', by: '2026-08-24' },
+    };
+    jest.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+      const body = JSON.parse((init as RequestInit).body as string);
+      if (body.params.name === 'haksai_search_products') {
+        return Promise.resolve(mcpReply({ data: { groups: [{ variations: [variation('B0A', 'M', 'A08', 3), variation('B0B', 'L', 'A02', 2), variation('B0C', 'M', 'A03', 1)] }] } }));
+      }
+      const plan = plans[body.params.arguments.asin]!;
+      return Promise.resolve(mcpReply({ data: { snapshot: { date: '2026-09-19', rows: [{ available: 1 }] }, plan: { state: plan.state, sellingPacePerDay: 0.2, coverTotalDays: 3, orderBy: plan.by, runoutDate: '2026-10-01', recommendedOrderQty: 5 } }, meta: { warnings: [] } }));
+    });
+    const result = (await runHaksaiInventoryTool(env(), { name: 'haksai_inventory', args: { query: 'パジャマ' } })) as Record<string, any>;
+    expect(result.すぐ発注の一覧.map((line: string) => line.split('：')[0])).toEqual(['M A03', 'L A02', 'M A08']);
+  });
+});

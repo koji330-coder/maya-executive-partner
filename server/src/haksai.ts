@@ -270,7 +270,15 @@ export function summarize(items: Measured[], title: string, snapshotDate: string
   const none: string[] = [];
   let recommended = 0;
 
-  for (const item of items) {
+  // Most overdue first, and the urgent ones before those that merely need ordering.
+  // The order they arrive in is the order of cumulative sales, which is not the order
+  // the president needs to read them in.
+  const byUrgency = [...items].sort((a, b) => {
+    const rank = (item: Measured) => (str(item.plan.state) === 'urgent' ? 0 : 1);
+    return rank(a) - rank(b) || (str(a.plan.orderBy) ?? '9999').localeCompare(str(b.plan.orderBy) ?? '9999');
+  });
+
+  for (const item of byUrgency) {
     const state = str(item.plan.state);
     const qty = num(item.plan.recommendedOrderQty) ?? 0;
     if (state === 'urgent' || state === 'order') {
