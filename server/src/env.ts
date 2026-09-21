@@ -13,6 +13,8 @@ export interface Env extends AccessEnv {
   HAKSAI_MCP_CLIENT_ID?: string;
   HAKSAI_MCP_CLIENT_SECRET?: string;
   MODEL: string;
+  /** How much one model round may write. A string because wrangler vars are; unset or invalid means the default. */
+  MAX_OUTPUT_TOKENS?: string;
   PREFER_FREE: string;
   ALLOW_PAID_FALLBACK: string;
   PAID_DAILY_LIMIT_YEN: string;

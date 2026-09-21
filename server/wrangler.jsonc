@@ -29,6 +29,11 @@
     // rate limit triggers it, never an auth error or a network fault.
     "ALLOW_PAID_FALLBACK": "true",
     "PAID_DAILY_LIMIT_YEN": "50",
+    // How much one model round may write, thinking included. 2048 has been the
+    // cap since v0.1; a longer answer (a list of ten rows) needs more room only if
+    // the log (`wrangler tail`, evt maya_turn) shows finishReason MAX_TOKENS or
+    // thoughtsTokens eating most of it. Raise it here and redeploy to try.
+    "MAX_OUTPUT_TOKENS": "2048",
     // HAKSAI Central の読み取り専用MCP（別のWorker、別のAccessアプリ）。住所は
     // 秘密ではない。入るためのサービストークンだけが秘密で、
     // `wrangler secret put HAKSAI_MCP_CLIENT_ID` / `..._SECRET` に置く。電話に

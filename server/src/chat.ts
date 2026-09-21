@@ -2,6 +2,7 @@ import { validateMayaResponse } from '@/features/chat/mayaResponse';
 import { buildSystemPrompt, type CompanyContext } from '@/features/chat/systemPrompt';
 import type { ApiTier } from '@/services/llm/apiKey';
 import {
+  DEFAULT_MAX_OUTPUT_TOKENS,
   eligibleForPaidRetry,
   generateMayaResponse,
   LlmError,
@@ -49,6 +50,17 @@ export interface ChatReply {
   /** The tool calls made for this answer (memory, Amazon stock). For checking how often she looks. */
   searches: number;
 }
+
+/** The cap from the environment, or the default when it is missing, not a number, or not sensible. */
+export function readMaxOutputTokens(value: string | undefined): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 256 && parsed <= 65_536 ? parsed : DEFAULT_MAX_OUTPUT_TOKENS;
+}
+
+const messageLength = (payload: unknown): number | null => {
+  const message = (payload as { message?: unknown } | null)?.message;
+  return typeof message === 'string' ? message.length : null;
+};
 
 /** Waits before each retry of a busy model. Measured: the second try got through. */
 export const BUSY_RETRY_DELAYS_MS = [8_000, 20_000];
@@ -141,6 +153,7 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     message: request.message,
     attachments: request.attachments,
     model: env.MODEL,
+    maxOutputTokens: readMaxOutputTokens(env.MAX_OUTPUT_TOKENS),
     // Amazon の道具は、つながっているときだけ差し出す。設定のないツールを
     // 見せると、モデルは呼べないものを呼んで、その回を無駄にする。
     // Amazon の話のときは、Amazon の道具だけにする。強制の呼び出しは、
@@ -161,6 +174,23 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   const run = async (tier: ApiTier, apiKey: string): Promise<ChatReply> => {
     const result: GenerateResult = await withBusyRetry(() => generateMayaResponse({ ...base, apiKey }));
     await recordUsage(env.MAYA_DB, tier, result.totalTokens);
+    // One line per turn, for `wrangler tail`. When an answer comes back short this
+    // says whether the cap cut it, the model thought its way through the budget, or
+    // it simply chose to be brief. Numbers only: nothing the president said is logged.
+    console.log(
+      JSON.stringify({
+        evt: 'maya_turn',
+        tier,
+        model: env.MODEL,
+        rounds: result.rounds,
+        tools: result.toolCalls.map((call) => call.name),
+        finishReason: result.finishReason,
+        cap: base.maxOutputTokens,
+        outputTokens: result.responseTokens,
+        thoughtsTokens: result.thoughtsTokens,
+        messageChars: messageLength(result.payload),
+      }),
+    );
     const validated = validateMayaResponse(result.payload);
     if (!validated.ok) {
       throw new LlmError('bad_response', `応答が契約を満たしていません。${validated.errors.join(' ')}`);

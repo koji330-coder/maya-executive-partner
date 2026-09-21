@@ -113,7 +113,12 @@ export interface GenerateOptions {
    * about last year.
    */
   requireToolFirst?: boolean;
+  /** How much one round may write, counting the model's own thinking. Defaults to DEFAULT_MAX_OUTPUT_TOKENS. */
+  maxOutputTokens?: number;
 }
+
+/** A consultation answer needs a few hundred tokens; see the note where it is applied. */
+export const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
 
 export interface GenerateResult {
   /** The raw parsed JSON. It still has to go through the response validator. */
@@ -123,6 +128,12 @@ export interface GenerateResult {
   totalTokens: number;
   /** The tools the model called on the way to this answer, in order. */
   toolCalls: ToolCall[];
+  /** Model calls made for this turn: 1 for a plain answer, more when tools were used. */
+  rounds: number;
+  /** Tokens the model spent thinking, across rounds. Counted against the output cap. */
+  thoughtsTokens: number;
+  /** Why the last round stopped ("STOP" is the normal end). */
+  finishReason: string | null;
 }
 
 /**
@@ -208,7 +219,7 @@ ${attachment.data}` });
     { role: 'user', parts },
   ];
 
-  const usage = { prompt: 0, response: 0, total: 0 };
+  const usage = { prompt: 0, response: 0, total: 0, thoughts: 0 };
   const toolCalls: ToolCall[] = [];
   const canUseTools = Boolean(options.tools?.length && options.runTool);
 
@@ -232,7 +243,7 @@ ${attachment.data}` });
         // a model that starts repeating itself stops cheaply instead of
         // running to the ceiling and returning JSON cut off mid-string, which
         // is a failure this actually hit in testing.
-        maxOutputTokens: 2048,
+        maxOutputTokens: options.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
       },
     });
 
@@ -240,6 +251,7 @@ ${attachment.data}` });
     usage.prompt += metadata.promptTokenCount ?? 0;
     usage.response += metadata.candidatesTokenCount ?? 0;
     usage.total += metadata.totalTokenCount ?? 0;
+    usage.thoughts += metadata.thoughtsTokenCount ?? 0;
 
     const candidate = (
       body as {
@@ -301,6 +313,9 @@ ${attachment.data}` });
       responseTokens: usage.response,
       totalTokens: usage.total,
       toolCalls,
+      rounds: round + 1,
+      thoughtsTokens: usage.thoughts,
+      finishReason: candidate?.finishReason ?? null,
     };
   }
 }
