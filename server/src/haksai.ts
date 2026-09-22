@@ -770,6 +770,21 @@ export async function runHaksaiMarketTool(env: Env, call: ToolCall): Promise<unk
     if (history.data == null) {
       return { error: `${asin} の市場の履歴を読めませんでした。`, ASIN: asin };
     }
+    // 見つけたASINが、自社商品ではなく「誰かの競合」として追跡されているだけのものだった場合。
+    // 商品名検索が自社商品のマスタを探す作りでも、そこに競合のASINが紛れて登録されていることがある。
+    // 気づかず「競合は設定されていません」と答えると、実際にある競合を無いと言うことになるので、
+    // 自社側に読み替える。読み替えたことは、注意として必ず伝える。
+    let redirectedFrom: string | null = null;
+    const initialData = obj(history.data);
+    if (initialData.role === 'competitor_of_own' && typeof initialData.pairedOwnAsin === 'string' && initialData.pairedOwnAsin) {
+      redirectedFrom = asin;
+      asin = initialData.pairedOwnAsin;
+      title = asin;
+      history = await callMcp(env, 'haksai_get_market_history', { asin });
+      if (history.data == null) {
+        return { error: `${asin} の市場の履歴を読めませんでした。`, ASIN: asin };
+      }
+    }
     // 取っていない、または古い履歴だけ、その場で取る。取れなかったときも、保存済みのもので答える。
     const needs = historyNeeds(history);
     let report: KeepaFetchReport | null = null;
@@ -779,7 +794,15 @@ export async function runHaksaiMarketTool(env: Env, call: ToolCall): Promise<unk
     }
     // 取ったあとで読む。基本情報（手数料）も、取得で更新されるため。
     const product = await callMcp(env, 'haksai_get_product', { asin });
-    return { 商品: title, ASIN: asin, ...summarizeMarket(history, product, newPrice, report) };
+    if (redirectedFrom) {
+      const productTitle = str(obj(obj(product.data).master).title);
+      if (productTitle) title = productTitle;
+    }
+    const summary = summarizeMarket(history, product, newPrice, report);
+    if (redirectedFrom) {
+      summary.注意 = [`「${query}」で見つかった ${redirectedFrom} は自社商品ではなく、${asin} の競合として追跡している商品でした。自社側の ${asin} に読み替えて答えます。`, ...list(summary.注意)];
+    }
+    return { 商品: title, ASIN: asin, ...summary };
   } catch (error) {
     return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の市場の履歴を読めませんでした。' };
   }

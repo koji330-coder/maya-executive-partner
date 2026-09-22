@@ -528,6 +528,28 @@ describe('runHaksaiMarketTool', () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 302 }));
     expect(await runHaksaiMarketTool(env(), { name: 'haksai_market', args: { query: 'B0FXTQPGSB' } })).toEqual({ error: expect.stringContaining('接続できませんでした') });
   });
+
+  it('redirects to the own product when the found ASIN turns out to be tracked only as somebody else\'s competitor, and says so', async () => {
+    const ownHistory = { data: { history: notStored('B0G1LMSDTB'), competitor: { asin: 'B0C1BSN28L', watching: true, lastCheckedAt: null, history: stored('B0C1BSN28L', 1200) }, recentEvents: [] }, meta: { warnings: [] } };
+    const rivalHistory = { data: { role: 'competitor_of_own', pairedOwnAsin: 'B0G1LMSDTB', history: stored('B0C1BSN28L', 1200), competitor: null, recentEvents: [] }, meta: { warnings: [] } };
+    const ownProduct = { data: { master: { title: 'エアコン 掃除ブラシ 3本セット', currentLandedCostYen: null }, keepa: null }, meta: { warnings: [] } };
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+      const body = JSON.parse((init as RequestInit).body as string).params;
+      if (body.name === 'haksai_search_products') return Promise.resolve(mcpReply({ data: { groups: [{ variations: [variation('B0C1BSN28L', '', '', 0)] }] } }));
+      if (body.name === 'haksai_get_market_history') {
+        return Promise.resolve(mcpReply(body.arguments.asin === 'B0G1LMSDTB' ? ownHistory : rivalHistory));
+      }
+      return Promise.resolve(mcpReply(ownProduct));
+    });
+    const out = (await runHaksaiMarketTool(env(), { name: 'haksai_market', args: { query: 'エアコン掃除ブラシ' } })) as Record<string, any>;
+    const calls = fetchMock.mock.calls.map((call) => JSON.parse((call[1] as RequestInit).body as string).params);
+    expect(calls.filter((call) => call.name === 'haksai_get_market_history').map((call) => call.arguments.asin)).toEqual(['B0C1BSN28L', 'B0G1LMSDTB']);
+    expect(out.ASIN).toBe('B0G1LMSDTB');
+    expect(out.商品).toBe('エアコン 掃除ブラシ 3本セット');
+    expect(out.注意[0]).toContain('B0C1BSN28L');
+    expect(out.注意[0]).toContain('B0G1LMSDTB');
+    expect(out.競合.ASIN).toBe('B0C1BSN28L'); // 読み替えた後は、本来の自社×競合のペアが返る
+  });
 });
 
 const notStored = (asin: string) => ({ data: { history: { asin, stored: false }, competitor: null, recentEvents: [] }, meta: { warnings: [] } });
