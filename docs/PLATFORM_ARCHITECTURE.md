@@ -33,12 +33,16 @@ flowchart LR
     Cron[同期ジョブ]
   end
 
+  subgraph PC
+    Agent[AIエージェント<br/>Antigravity / Claude Code等]
+  end
+
   Gemini[Gemini]
   SalesGAS[売上のGAS<br/>スプレッドシート]
   FitGAS[fit-logのGAS<br/>スプレッドシート]
   GitHub[GitHub]
 
-  App -->|相談| Worker
+  App -->|相談・タスク指示| Worker
   Share -->|気になった投稿| App
   Worker -->|道具つきで問い合わせ| Gemini
   Worker <-->|読む・書く| D1
@@ -46,6 +50,7 @@ flowchart LR
   SalesGAS --> Cron
   FitGAS --> Cron
   GitHub --> Cron
+  Worker <-->|タスク取得・完了報告| Agent
 ```
 
 **アプリが話す相手はMAYAサーバーだけです。** アプリは鍵を1つも持ちません。
@@ -87,9 +92,14 @@ MAYAの記憶と、各データの写しを置く1つのデータベースです
 | 売上 | 月ごとの計算結果 | 同期ジョブ |
 | 体 | 食事、筋トレ、屋外運動、体重、日々の記録 | 同期ジョブ |
 | コード | リポジトリの動き | 同期ジョブ |
+| AIエージェントへの指示 | 会話から切り出した改善指示・タスク (`agent_inbox`) | MAYAサーバー（アプリから指示） |
 
 **会話は D1 に移しません。** これまでの会話はテスト用で、端末の中に残れば足ります
 （2026-09-13 決定）。
+
+ただし、**AIエージェントに渡したい指示・改善タスクだけを切り出してD1に置く箱は作ります**
+（2026-09-22 構想追加）。会話の全件を保存するのではなく、開発や調査に回したい要件・文脈
+だけを抜粋して入れます。
 
 **売上は MAYA の D1 に寄せます**（2026-09-13 決定）。売上ラボとは別に、MAYA の
 同期ジョブが計算結果を取り込みます。
@@ -354,6 +364,76 @@ MAYAサーバーからは PC の中を読めないので、**PC から D1 へ送
 **content-engine は 2026-09-09 から1〜2週間の観察中です。** Journal の形は、その
 結果で変わりえます。MAYA からの読み書きは、観察が終わってから設計を固めます。
 
+## AIエージェントへの指示・受け渡し箱（今後の開発構想）
+
+MAYA（iPhoneアプリ）と社長が会話した内容から、PC上のAIエージェント（Antigravity、
+Claude Code、Codexなど）に渡したい改善指示や開発タスクだけを切り出して共有する仕組み
+です（2026-09-22 構想追加）。
+
+### 背景と目的
+
+- **会話の全件保存とタスク受け渡しの違い**: MAYAとの会話エクスポートは会話ログの
+  保全が目的であり、そのまま開発エージェントに渡しても文脈ノイズが多く、即座の作業
+  着手には向きません
+- **スマホでの壁打ちからPCでの実装への直結**: iPhoneでMAYAと相談して固まった
+  「MAYA自身の機能改善」「HAKSAIの機能追加」「他プロジェクトの開発タスク」などを、
+  PCの前に座ったAIエージェントがすぐに取得して実装に進めるパイプラインを作ります
+
+### 全体の流れ
+
+```mermaid
+flowchart LR
+  subgraph iPhone
+    App[MAYAアプリ]
+  end
+
+  subgraph Cloudflare
+    Worker[MAYAサーバー]
+    D1[(D1<br/>agent_inbox)]
+  end
+
+  subgraph PC
+    Agent[AIエージェント<br/>Antigravity / Claude Code等]
+    Skill[エージェント用スキル<br/>SKILL.md / ツール]
+  end
+
+  App -->|1. 指示・改善案を保存| Worker
+  Worker -->|2. 書く (status=OPEN)| D1
+  Agent -->|3. 未着手タスク確認| Skill
+  Skill -->|4. Cloudflare Access経由で照会| Worker
+  Worker -->|5. 指示・背景を返す| Skill
+  Skill -->|6. 完了報告 (status=COMPLETED)| Worker
+```
+
+1. **iPhone（MAYAアプリ）**:
+   - 会話の中で改善やタスクの話になった際、MAYAが「この内容をAIエージェント向けの受け箱に入れますか？」と要約を提示するか、社長が該当メッセージからタスク化を指定します
+   - **自動保存はせず、本人が確認してから送る原則を守ります**（勝手にタスク化してノイズを増やさない）
+2. **MAYAサーバー & D1（Cloudflare）**:
+   - 専用テーブル `agent_inbox` に保存します（ステータスは `OPEN`）
+3. **PC上のAIエージェント**:
+   - 各エージェント（Antigravity、Claude Code等）に専用スキル（`SKILL.md` やスクリプト）を配備します
+   - エージェントが「MAYAからの指示はあるか？」と確認すると、未着手の指示を取得します
+   - 実装開始時に `IN_PROGRESS`、実装とテスト完了時にコミットハッシュや作業概要を添えて `COMPLETED` に更新します
+
+### D1の保存形式（スキーマ案: `agent_inbox`）
+
+| カラム | 型 | 説明 |
+| --- | --- | --- |
+| `id` | TEXT PRIMARY KEY | タスクの一意識別子（ULID等） |
+| `created_at` | TEXT | 登録日時（ISO 8601） |
+| `target_project` | TEXT | 対象プロジェクト名（例: `maya-executive-partner`, `haksai`） |
+| `title` | TEXT | 指示の要約見出し |
+| `instructions` | TEXT | エージェントへの指示本文（Markdown形式） |
+| `conversation_excerpt` | TEXT | 経緯が分かる会話の抜粋・背景文脈 |
+| `status` | TEXT | `OPEN` / `IN_PROGRESS` / `COMPLETED` / `CANCELLED` |
+| `completed_at` | TEXT | 完了日時 |
+| `agent_notes` | TEXT | エージェントからの作業報告やコミットハッシュ |
+
+### 守り方と接続
+
+- **Cloudflare Access で守る**: スマホからの通信と同様、Cloudflare Access で外部を遮断します
+- **サービストークンでどのエージェントからも読めるようにする**: PC上の環境変数等に Access のサービストークンを設定することで、Antigravity、Claude Code、Codexなど、PC上のどのAIエージェントからでも安全に MAYAサーバーのエンドポイントを叩けるようにします
+
 ## 採らない設計
 
 別のAIが提案した記憶の設計をレビューした結論です。方向は同じですが、次の点は
@@ -419,7 +499,7 @@ README も v0.1 から外部連携をすべて外しています。
 | **v0.1** | セッション方式（済）、判断記録（済）、受け箱（済。Journal と話題） | 要らない |
 | **v0.2** | MAYAサーバー（手元で動作）、鍵の移動、記憶を D1 へ、アプリの認証、プロジェクトの一覧 | 作る |
 | **v0.3** | 道具を渡す。売上、fit-log、CONTENT_LOG、GitHub の順につなぐ | 使う |
-| **v0.4** | 相談の中で MAYA が Journal を提案する | 使う |
+| **v0.4** | 相談の中で MAYA が Journal を提案する / AIエージェントへのタスク受け渡し箱（D1 `agent_inbox`） | 使う |
 | 後で | ヘルスケアの歩数、声（相槌から） | |
 
 ### v0.2 の進め方
@@ -487,3 +567,5 @@ Worker を独自ドメインに置けないためです。アドレスを使う�
 8. ~~Journal の正本をどこに置くか~~ MAYA。どの経路の Journal も受け箱に貼る（2026-09-13）
 9. **CONTENT_LOG と Journal を PC から D1 へ送る方法**
 10. ~~GPT と Claude のスキルが Journal をどこへ書いているか~~ チャットに出力するだけで、保存先は無かった（2026-09-13）
+11. **MAYAからAIエージェントへのタスク切り出しUI。** 会話の長押しメニュー等から手動で切り出すか、MAYA自身が「タスクとしてエージェントの受け箱に入れますか？」と提案するか
+
