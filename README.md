@@ -11,7 +11,7 @@ The first milestone is not a full business-management platform. It is to prove t
 
 ## Product principle
 
-> 見た目は、会いたくなるAI美女。頭脳は、社長に反論できる経営参謀。
+> 見た目は、会いたくなるAI美女。頭脳は、Gakkyに反論できる相棒。
 
 ## v0.1 target
 

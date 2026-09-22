@@ -42,7 +42,7 @@ today = datetime.date.today().isoformat()
 
 time_example = template_body("formatTime").replace("${formatNow(now)}", "9月15日(月) 21:40")
 
-decisions_example = """社長がこれまでに記録した判断です。新しい順。今日は 2026-09-15 です。
+decisions_example = """Gakky がこれまでに記録した判断です。新しい順。今日は 2026-09-15 です。
 
 - 2026-09-10［実行中］来月から主力商品を8%値上げする
     理由: 仕入れ値が2割上がり、据え置くと赤字になるため
@@ -51,7 +51,7 @@ decisions_example = """社長がこれまでに記録した判断です。新し
 この記録の使い方:
 """ + usage_rules()
 
-activity_example = """社長の最近の活動です（Journal と、気になって保存した話題）。新しい順。
+activity_example = """Gakky の最近の活動です（Journal と、気になって保存した話題）。新しい順。
 
 使い方:
 - 相談に関係するときだけ、知っている相手として自然に触れます。一覧にして返さないでください
@@ -60,7 +60,7 @@ activity_example = """社長の最近の活動です（Journal と、気にな�
 Journal:
 - 2026-09-14 MAYAのサーバーをクラウドに置いた
     決めたこと: 独自ドメインは使わず workers.dev にする
-    社長の考え: アドレスがキレイかどうかはどうでもいい
+    Gakky の考え: アドレスがキレイかどうかはどうでもいい
 
 話題:
 - 2026-09-13 https://x.com/…/status/…（メモ: あとで読む）"""

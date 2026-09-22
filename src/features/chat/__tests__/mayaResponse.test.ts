@@ -1,7 +1,7 @@
 import { validateMayaResponse } from '../mayaResponse';
 
 const valid = {
-  message: '社長、その値下げは私は反対です。',
+  message: 'Gakky、その値下げは私は反対です。',
   emotion: 'challenge',
   pose: 'lean_forward',
   scene: 'strategy',
@@ -19,7 +19,7 @@ describe('validateMayaResponse', () => {
   });
 
   it('rejects a payload that is not an object', () => {
-    expect(validateMayaResponse('社長、こんにちは')).toEqual({
+    expect(validateMayaResponse('Gakky、こんにちは')).toEqual({
       ok: false,
       errors: ['The response was not a JSON object.'],
     });

@@ -133,8 +133,8 @@ Rendered offline with OmniVoice Studio and shipped as assets.
 
 Examples:
 
-- おはようございます、社長。
-- 社長、それは私は反対です。
+- おはようございます、Gakky。
+- Gakky、それは私は反対です。
 - ちょっと待ってください。
 - 数字を見てみましょう。
 

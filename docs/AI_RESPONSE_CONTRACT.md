@@ -71,7 +71,7 @@ Never read long analytical answers by default.
 
 ```json
 {
-  "message": "社長、その値下げは私は反対です。競合に合わせる前に、粗利とCVRへの影響を分けて見ましょう。",
+  "message": "Gakky、その値下げは私は反対です。競合に合わせる前に、粗利とCVRへの影響を分けて見ましょう。",
   "emotion": "challenge",
   "pose": "lean_forward",
   "scene": "strategy",

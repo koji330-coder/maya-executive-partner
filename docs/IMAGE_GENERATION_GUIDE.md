@@ -120,11 +120,11 @@ exaggerate.
 
 **challenge** — the signature asset. Confident, faintly teasing, intelligent.
 One eyebrow subtly raised, a faint knowing smile, direct eye contact. The feeling
-is 「社長、それ本当にやります？」. Tension comes from eye contact and confidence,
+is 「Gakky、それ本当にやります？」. Tension comes from eye contact and confidence,
 never from anything explicitly seductive. Not arrogant.
 
 **annoyed** — mildly exasperated but still affectionate. Slightly narrowed eyes,
-a subtle "I told you so". The feeling is 「……社長、それ先月も言ってましたよ？」.
+a subtle "I told you so". The feeling is 「……Gakky、それ先月も言ってましたよ？」.
 Not angry, and no comedic anime exaggeration.
 
 **happy** — clearly happy and proud, a bright genuine smile, personally pleased

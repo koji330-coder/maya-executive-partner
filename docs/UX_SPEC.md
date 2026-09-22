@@ -25,7 +25,7 @@ Elements:
 
 Example:
 
-> おはようございます、社長。今日は何を決めます？
+> おはようございます、Gakky。今日は何を決めます？
 
 No long dashboard in v0.1.
 
