@@ -471,6 +471,33 @@ describe('summarizeMarket', () => {
     expect(out['1個あたりの粗利'].試算できません).toContain('FBA手数料');
     expect(out['1個あたりの粗利'].変更後).toBeUndefined();
   });
+
+  it('carries the offering snapshot (offer count, Buy Box holder, out-of-stock rate) when the source has it, and says 未取得 when it does not', () => {
+    const withOffering = {
+      data: {
+        ...marketEnvelope.data,
+        competitor: {
+          ...marketEnvelope.data.competitor,
+          history: {
+            ...marketEnvelope.data.competitor.history,
+            snapshot: { offerCount: 3, buyBoxIsAmazon: false, buyBoxIsFba: true, outOfStockPct90: 16, monthlySoldAtLeast: 200, salesRankDrops30: 23, salesRankDrops90: 51 },
+            offerCount: { latest: 2, min: 1, max: 2, changeCount: 1, changes: [{ date: '2026-09-06', from: 1, to: 2 }] },
+          },
+        },
+      },
+      meta: { warnings: [] },
+    };
+    const out = summarizeMarket(withOffering, productEnvelope, null) as Record<string, any>;
+    expect(out.競合.出品状況).toEqual({
+      出品者数: 3,
+      BuyBoxの持ち主: 'third_party',
+      BuyBoxはFBA: true,
+      在庫切れ率90日パーセント: 16,
+      月販下限: 200,
+      出品者数の変化: ['9/6 1→2'],
+    });
+    expect(out.自社.出品状況).toBe('未取得'); // marketEnvelope の自社側には snapshot を足していない
+  });
 });
 
 describe('runHaksaiMarketTool', () => {

@@ -586,6 +586,23 @@ function readHistory(value: unknown): Record<string, unknown> {
             .map((item) => `${shortDate(str(item.weekStart))}の週 ${num(item.avgRank)}位`),
         }
       : '履歴なし',
+    出品状況: readOffering(history.snapshot, history.offerCount),
+  };
+}
+
+/** Seller-side facts from the stored Keepa snapshot: how many sellers, who holds the Buy Box, how often it was out of stock, and the recent change in seller count. Anything Keepa did not return stays null; it is never guessed. */
+function readOffering(snapshotValue: unknown, offerCountValue: unknown): Record<string, unknown> | string {
+  const snapshot = snapshotValue ? obj(snapshotValue) : null;
+  if (!snapshot) return '未取得';
+  const offerCount = offerCountValue ? obj(offerCountValue) : null;
+  const changes = offerCount ? list(offerCount.changes).map(obj) : [];
+  return {
+    出品者数: num(snapshot.offerCount),
+    BuyBoxの持ち主: snapshot.buyBoxIsAmazon === true ? 'Amazon' : snapshot.buyBoxIsAmazon === false ? 'third_party' : null,
+    BuyBoxはFBA: typeof snapshot.buyBoxIsFba === 'boolean' ? snapshot.buyBoxIsFba : null,
+    在庫切れ率90日パーセント: num(snapshot.outOfStockPct90),
+    月販下限: num(snapshot.monthlySoldAtLeast),
+    出品者数の変化: changes.slice(-3).map((item) => `${shortDate(str(item.date))} ${num(item.from)}→${num(item.to)}`),
   };
 }
 
