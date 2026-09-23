@@ -39,16 +39,18 @@ flowchart LR
 
   Gemini[Gemini]
   SalesGAS[売上のGAS<br/>スプレッドシート]
-  FitGAS[fit-logのGAS<br/>スプレッドシート]
   GitHub[GitHub]
+  HAKSAI[HAKSAI<br/>在庫・売上]
+  FitLog[FIT LOG<br/>D1 + Pages API]
 
   App -->|相談・タスク指示| Worker
   Share -->|気になった投稿| App
   Worker -->|道具つきで問い合わせ| Gemini
   Worker <-->|読む・書く| D1
+  Worker -->|オンデマンド取得| HAKSAI
+  Worker -->|オンデマンド取得| FitLog
   Cron -->|計算結果を写す| D1
   SalesGAS --> Cron
-  FitGAS --> Cron
   GitHub --> Cron
   Worker <-->|タスク取得・完了報告| Agent
 ```
@@ -90,7 +92,7 @@ MAYAの記憶と、各データの写しを置く1つのデータベースです
 | MAYAの記憶 | 判断、次の一手、話題 | MAYAサーバー |
 | 活動と個人の文脈 | CONTENT_LOG と Journal の写し | PCからの同期 |
 | 売上 | 月ごとの計算結果 | 同期ジョブ |
-| 体 | 食事、筋トレ、屋外運動、体重、日々の記録 | 同期ジョブ |
+| 体 | 食事、筋トレ、屋外運動、体重、日々の記録 | 直接参照（Fit-Log D1化により同期不要で直通） |
 | コード | リポジトリの動き | 同期ジョブ |
 | AIエージェントへの指示 | 会話から切り出した改善指示・タスク (`agent_inbox`) | MAYAサーバー（アプリから指示） |
 
