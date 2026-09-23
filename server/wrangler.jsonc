@@ -49,6 +49,9 @@
     // 入るためのトークンは、上の読み取り用と同じもの（Accessのポリシーに入れてある）を使う。
     // 上限（1回20・残す20・1日300トークン）は、向こう側で決まっていて、ここからは変えられない。
     "HAKSAI_KEEPA_URL": "https://haksai-keepa.koji330.workers.dev/mcp",
+    // FIT LOG D1（筋トレ・体組成・食事管理）連携のURL。秘密ではないため vars に置く。
+    // トークンは wrangler secret put FITLOG_API_KEY に置く。
+    "FITLOG_API_URL": "https://fitlog.gakky.jp",
     // Cloudflare Access. Neither value is a secret. Until ACCESS_AUD is filled
     // with the Access application's audience tag, the server refuses every
     // request (src/access.ts), so deploying before Access exists is safe.
