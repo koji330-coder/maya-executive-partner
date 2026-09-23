@@ -20,6 +20,12 @@ export interface Env extends AccessEnv {
   HAKSAI_KEEPA_URL?: string;
   HAKSAI_KEEPA_CLIENT_ID?: string;
   HAKSAI_KEEPA_CLIENT_SECRET?: string;
+  /** FIT LOG D1（筋トレ・体組成・食事管理）連携 */
+  FITLOG_API_URL?: string;
+  FITLOG_API_KEY?: string;
+  /** Cloudflare Access を併用する場合のサービストークン（任意） */
+  FITLOG_CLIENT_ID?: string;
+  FITLOG_CLIENT_SECRET?: string;
   MODEL: string;
   /** How much one model round may write. A string because wrangler vars are; unset or invalid means the default. */
   MAX_OUTPUT_TOKENS?: string;

@@ -6,3 +6,9 @@ GEMINI_API_KEY_PAID=
 # The local dev server has no Access in front of it. Never set this in production.
 ACCESS_DISABLED=true
 KEY_ENCRYPTION_KEY=  # 32 random bytes, base64. node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+# FIT LOG D1
+FITLOG_API_URL=http://localhost:8787
+FITLOG_API_KEY=
+# FITLOG_CLIENT_ID=
+# FITLOG_CLIENT_SECRET=

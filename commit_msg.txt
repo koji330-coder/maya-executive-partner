@@ -1,0 +1,8 @@
+feat: MAYAにFit-Log D1筋トレ食事体重データ連携パイプラインを実装
+
+- server/src/fitlog.ts: FIT LOG D1の/todayエンドポイントから体重・体脂肪推移・筋トレセット・食事PFCを取得・要約するTool実装
+- server/src/chat.ts: 会話文脈（筋トレ・食事・体重等）に応じてfitlog_todayツールをモデルに提供し、実行結果を会話プロンプトに注入
+- server/src/env.ts, server/.dev.vars.example: FITLOG_API_URL, FITLOG_BEARER_TOKEN, CF Access対応環境変数の定義
+- src/features/chat/systemPrompt.ts: MAYAがFIT LOG実測値をもとに助言・励ましを行う指示の追加
+- server/src/__tests__/fitlog.test.ts: 13件の単体テスト追加
+- CONTENT_LOG.md, RESPONSE_GUIDE.htmlの更新

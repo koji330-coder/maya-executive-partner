@@ -81,6 +81,13 @@ export const SEARCH_GUIDE = `過去の記録を探す道具 search_memory を使
  * do with a caveat: a month still in progress read as a finished one is the
  * mistake this section exists to prevent.
  */
+export const FITLOG_GUIDE = `筋トレ・体組成・食事の記録を読む道具 fitlog_today を使えます。読むだけで、記録の追加や変更はできません。
+
+- 今日の体重、体脂肪率、直近の体重推移、筋トレ・有酸素の運動内容、食事の摂取カロリーやPFCバランスの相談で使います
+- Gakky に「今日の体重は何キロ？」「カロリーどれくらい摂った？」と訊かれたり、健康やコンディションに関する相談を受けたら、推測で答えず fitlog_today で読みます
+- 数字は道具が返したものだけを使います。返っていない数字を推測で足しません
+- 未記録の項目があれば、記録されていないことをそのまま伝えます`;
+
 export const AMAZON_GUIDE = `Amazon の在庫・発注・売上・市場の動きを読む道具 haksai_inventory と haksai_sales と haksai_market を使えます。読むだけで、発注や変更はできません。
 
 - 在庫・発注・補充・欠品の相談は haksai_inventory、月の売上・粗利・広告費・売れ筋の相談は haksai_sales、競合の値下げ・価格やランキングの動き・値下げに追随するかの相談は haksai_market を使います
@@ -286,6 +293,7 @@ export function buildSystemPrompt(
   activity?: ActivityContext,
   canSearch = false,
   canReadAmazon = false,
+  canReadFitlog = false,
 ): string {
   const sections = [PERSONA];
   const context = formatCompany(company);
@@ -306,6 +314,9 @@ export function buildSystemPrompt(
   }
   if (canReadAmazon) {
     sections.push(AMAZON_GUIDE);
+  }
+  if (canReadFitlog) {
+    sections.push(FITLOG_GUIDE);
   }
   sections.push(PROTOCOL, CONTRACT);
   return sections.join('\n\n---\n\n');

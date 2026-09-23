@@ -20,6 +20,12 @@ import {
 import { presidentDate, presidentNow } from './clock';
 import type { Env } from './env';
 import {
+  fitlogConfigured,
+  FITLOG_TODAY_TOOL,
+  refersToFitness,
+  runFitlogTodayTool,
+} from './fitlog';
+import {
   haksaiConfigured,
   HAKSAI_INVENTORY_TOOL,
   HAKSAI_MARKET_TOOL,
@@ -147,31 +153,42 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   ]);
 
   const amazonReady = haksaiConfigured(env);
+  const fitlogReady = fitlogConfigured(env);
   const askingAboutAmazon = amazonReady && refersToAmazon(request.message);
+  const askingAboutFitness = fitlogReady && refersToFitness(request.message);
+
+  // 利用可能なツール群を準備（未接続の道具は見せない）
+  const allAvailableTools = [SEARCH_MEMORY_TOOL];
+  if (amazonReady) {
+    allAvailableTools.push(HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL);
+  }
+  if (fitlogReady) {
+    allAvailableTools.push(FITLOG_TODAY_TOOL);
+  }
+
+  let selectedTools = allAvailableTools;
+  if (askingAboutFitness && !refersToPast(request.message) && !askingAboutAmazon) {
+    selectedTools = [FITLOG_TODAY_TOOL];
+  } else if (askingAboutAmazon && !refersToPast(request.message) && !askingAboutFitness) {
+    selectedTools = [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL];
+  }
 
   const base: Omit<GenerateOptions, 'apiKey'> = {
-    systemPrompt: buildSystemPrompt(request.company, decisions, now, activity, true, amazonReady),
+    systemPrompt: buildSystemPrompt(request.company, decisions, now, activity, true, amazonReady, fitlogReady),
     history: request.history,
     message: request.message,
     attachments: request.attachments,
     model: env.MODEL,
     maxOutputTokens: readMaxOutputTokens(env.MAX_OUTPUT_TOKENS),
-    // Amazon の道具は、つながっているときだけ差し出す。設定のないツールを
-    // 見せると、モデルは呼べないものを呼んで、その回を無駄にする。
-    // Amazon の話のときは、Amazon の道具だけにする。強制の呼び出しは、
-    // 差し出された中から選ぶので、記憶の検索が混ざると、そちらを選びうる。
-    tools: !amazonReady
-      ? [SEARCH_MEMORY_TOOL]
-      : askingAboutAmazon && !refersToPast(request.message)
-        ? [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL]
-        : [SEARCH_MEMORY_TOOL, HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL],
+    tools: selectedTools,
     runTool: (call) => {
       if (call.name === HAKSAI_INVENTORY_TOOL.name) return runHaksaiInventoryTool(env, call);
       if (call.name === HAKSAI_SALES_TOOL.name) return runHaksaiSalesTool(env, call, presidentDate());
       if (call.name === HAKSAI_MARKET_TOOL.name) return runHaksaiMarketTool(env, call);
+      if (call.name === FITLOG_TODAY_TOOL.name) return runFitlogTodayTool(env, call, presidentDate());
       return runMemoryTool(env.MAYA_DB, call);
     },
-    requireToolFirst: refersToPast(request.message) || askingAboutAmazon,
+    requireToolFirst: refersToPast(request.message) || askingAboutAmazon || askingAboutFitness,
   };
 
   const run = async (tier: ApiTier, apiKey: string): Promise<ChatReply> => {
