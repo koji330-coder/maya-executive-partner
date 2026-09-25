@@ -1,8 +1,10 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing } from '@/theme';
 
+import { copyText, splitCodeBlocks, type CopyOutcome } from './copyText';
+import type { MayaResponse } from './mayaResponse';
 import type { MayaTurn } from './useConversation';
 
 export interface MayaAnswerProps {
@@ -18,15 +20,39 @@ export interface MayaAnswerProps {
  */
 export function MayaAnswer({ turn, onSaveDecision }: MayaAnswerProps) {
   const { response } = turn;
-  // The first sentence is the position; the rest is why.
-  const [statement, ...rest] = splitStatement(response.message);
-  const reasoning = rest.join('');
+  const segments = splitCodeBlocks(response.message);
+  const firstText = segments.findIndex((segment) => segment.kind === 'text');
 
   return (
     <View style={styles.root}>
       <Text style={styles.who}>MAYA</Text>
-      <Text style={styles.statement}>{statement}</Text>
-      {reasoning ? <Text style={styles.reasoning}>{reasoning}</Text> : null}
+      {segments.map((segment, index) => {
+        if (segment.kind === 'code') {
+          return <CodeBlock key={index} code={segment.text} language={segment.language} />;
+        }
+        if (index !== firstText) {
+          return (
+            <Text key={index} selectable style={styles.reasoning}>
+              {segment.text}
+            </Text>
+          );
+        }
+        // The first sentence is the position; the rest is why.
+        const [statement, ...rest] = splitStatement(segment.text);
+        const reasoning = rest.join('');
+        return (
+          <React.Fragment key={index}>
+            <Text selectable style={styles.statement}>
+              {statement}
+            </Text>
+            {reasoning ? (
+              <Text selectable style={styles.reasoning}>
+                {reasoning}
+              </Text>
+            ) : null}
+          </React.Fragment>
+        );
+      })}
 
       {response.options ? (
         <View style={styles.options}>
@@ -35,7 +61,7 @@ export function MayaAnswer({ turn, onSaveDecision }: MayaAnswerProps) {
               <Text style={[styles.optionKey, option.recommended && styles.optionKeyPicked]}>
                 {String.fromCharCode(65 + index)}
               </Text>
-              <Text style={[styles.optionText, option.recommended && styles.optionTextPicked]}>
+              <Text selectable style={[styles.optionText, option.recommended && styles.optionTextPicked]}>
                 {option.label}
               </Text>
             </View>
@@ -46,7 +72,9 @@ export function MayaAnswer({ turn, onSaveDecision }: MayaAnswerProps) {
       {response.nextAction?.detected && response.nextAction.title ? (
         <View style={styles.action}>
           <Text style={styles.actionKey}>NEXT ACTION</Text>
-          <Text style={styles.actionValue}>{response.nextAction.title}</Text>
+          <Text selectable style={styles.actionValue}>
+            {response.nextAction.title}
+          </Text>
         </View>
       ) : null}
 
@@ -71,8 +99,12 @@ export function MayaAnswer({ turn, onSaveDecision }: MayaAnswerProps) {
       ) : null}
 
       {response.followUpQuestion ? (
-        <Text style={styles.followUp}>{response.followUpQuestion}</Text>
+        <Text selectable style={styles.followUp}>
+          {response.followUpQuestion}
+        </Text>
       ) : null}
+
+      <CopyButton text={answerText(response)} label="全文をコピー" />
 
       {__DEV__ && turn.warnings.length > 0 ? (
         <View style={styles.warnings}>
@@ -84,6 +116,68 @@ export function MayaAnswer({ turn, onSaveDecision }: MayaAnswerProps) {
           ))}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * The reply as plain text, the way it reads on screen: the message as written
+ * (markdown and code fences intact, so it pastes into a document unchanged),
+ * then the options, the next action and the question.
+ */
+export function answerText(response: MayaResponse): string {
+  const parts = [response.message.trim()];
+  if (response.options?.length) {
+    parts.push(
+      response.options
+        .map((option, index) => `${String.fromCharCode(65 + index)}. ${option.label}${option.recommended ? '（推奨）' : ''}`)
+        .join('\n'),
+    );
+  }
+  if (response.nextAction?.detected && response.nextAction.title) parts.push(`NEXT ACTION: ${response.nextAction.title}`);
+  if (response.followUpQuestion) parts.push(response.followUpQuestion);
+  return parts.join('\n\n');
+}
+
+const OUTCOME_LABEL: Record<CopyOutcome, string> = {
+  copied: 'コピーしました',
+  shared: '共有メニューを開きました',
+  failed: 'コピーできませんでした',
+};
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [outcome, setOutcome] = useState<CopyOutcome | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  const press = async () => {
+    const result = await copyText(text);
+    setOutcome(result);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setOutcome(null), 1800);
+  };
+
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={press} hitSlop={8} style={styles.copy}>
+      <Text style={[styles.copyText, outcome === 'copied' && styles.copyTextDone]}>
+        {outcome ? OUTCOME_LABEL[outcome] : label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  return (
+    <View style={styles.code}>
+      <View style={styles.codeHead}>
+        <Text style={styles.codeLanguage}>{language || 'code'}</Text>
+        <CopyButton text={code} label="コピー" />
+      </View>
+      <Text selectable style={styles.codeText}>
+        {code}
+      </Text>
     </View>
   );
 }
@@ -211,6 +305,44 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.charcoalSoft,
     fontStyle: 'italic',
+  },
+  copy: {
+    alignSelf: 'flex-end',
+    paddingVertical: 2,
+  },
+  copyText: {
+    fontSize: 12,
+    color: colors.muted,
+    fontWeight: '600',
+  },
+  copyTextDone: {
+    color: colors.gold,
+  },
+  code: {
+    backgroundColor: colors.ivory,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+  codeHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  codeLanguage: {
+    fontSize: 10,
+    letterSpacing: 1.1,
+    color: colors.muted,
+    fontWeight: '700',
+  },
+  codeText: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.charcoal,
   },
   warnings: {
     borderTopWidth: 1,

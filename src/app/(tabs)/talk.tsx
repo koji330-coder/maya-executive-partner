@@ -267,7 +267,7 @@ export default function TalkScreen() {
         {conversation.turns.map((turn) =>
           turn.role === 'user' ? (
             <View key={turn.id} style={styles.userTurn}>
-              <Text style={styles.userText}>{turn.text}</Text>
+              <Text selectable style={styles.userText}>{turn.text}</Text>
             </View>
           ) : (
             <MayaAnswer key={turn.id} turn={turn} onSaveDecision={openDecision} />
