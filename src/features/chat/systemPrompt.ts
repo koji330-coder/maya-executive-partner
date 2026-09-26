@@ -93,6 +93,25 @@ export const FITLOG_GUIDE = `FIT LOGの実測記録を読む4つの道具を使�
 - 数字は道具が返したものだけを使います。未記録の項目を推測で埋めず、医療的な診断はしません
 - FIT LOG自身のAIコメント、写真、通知設定はMAYAの根拠に使いません`;
 
+/**
+ * VoiceBox（音声メモ・会議録音アプリ）の会話を読む道具の使い方。サーバーで、会話が1件でも届いているときだけ出す。
+ *
+ * 持っているのは要約と議事録だけで、原文と音声は持たない。そこを言わないと、
+ * モデルは「録音の全文を見た」かのように話す。取り込み時刻の注意も、道具が返した
+ * ときは必ず伝えさせる。古い同期を「今」の会話として言わせないため。
+ */
+export const VOICE_GUIDE = `VoiceBox（Gakky の音声メモ・会議録音アプリ）に残っている会話を読む4つの道具を使えます。すべて読み取り専用です。
+
+- voice_recent：最近の会話の一覧（日付・種類・題名・要点・参加者）。「最近の会議は？」「今週どんな話をした？」
+- voice_search：語で探す（題名・要点・決定事項・やること・参加者・論点）。「〇〇の件は何と決めた？」
+- voice_detail：見つけた会話1件の、決定事項・やること・論点まで。recording_id は voice_recent か voice_search の結果から渡します
+- voice_actions：会話から出た「やること」を、担当・期限つきで期間ごとにまとめる。「会議で出た宿題は？」
+- 持っているのは、Gakky が VoiceBox で採用した要約と議事録だけです。原文（文字起こし）も音声も持っていません。「全文を確認した」「録音を聞いた」とは言いません
+- 会話の記録を、覚えている相手として使います。読み上げず、相談に必要な分だけ触れます。記録に無いことは、作らずに「記録にありません」と言います
+- 道具が「鮮度の注意」を返したら、それより新しい会話が未着の可能性があると、短く伝えます
+- 「やること」に完了の記録はありません。終わったかどうかを、決めつけません
+- 会議の話でも、Gakky が過去の会話を指していない相談（一般的な進め方など）では、探しません`;
+
 export const AMAZON_GUIDE = `Amazon の在庫・発注・売上・市場の動きを読む道具 haksai_inventory と haksai_sales と haksai_market を使えます。読むだけで、発注や変更はできません。
 
 - 在庫・発注・補充・欠品の相談は haksai_inventory、月の売上・粗利・広告費・売れ筋の相談は haksai_sales、競合の値下げ・価格やランキングの動き・値下げに追随するかの相談は haksai_market を使います
@@ -299,6 +318,7 @@ export function buildSystemPrompt(
   canSearch = false,
   canReadAmazon = false,
   canReadFitlog = false,
+  canReadVoice = false,
 ): string {
   const sections = [PERSONA];
   const context = formatCompany(company);
@@ -322,6 +342,9 @@ export function buildSystemPrompt(
   }
   if (canReadFitlog) {
     sections.push(FITLOG_GUIDE);
+  }
+  if (canReadVoice) {
+    sections.push(VOICE_GUIDE);
   }
   sections.push(PROTOCOL, CONTRACT);
   return sections.join('\n\n---\n\n');

@@ -25,6 +25,7 @@ flowchart LR
   subgraph iPhone
     App[MAYAアプリ]
     Share[共有シート]
+    VoiceBox[VoiceBox<br/>音声メモ・会議録音]
   end
 
   subgraph Cloudflare
@@ -45,6 +46,7 @@ flowchart LR
 
   App -->|相談・タスク指示| Worker
   Share -->|気になった投稿| App
+  VoiceBox -->|採用した要約・議事録だけ| Worker
   Worker -->|道具つきで問い合わせ| Gemini
   Worker <-->|読む・書く| D1
   Worker -->|オンデマンド取得| HAKSAI
@@ -95,9 +97,11 @@ MAYAの記憶と、各データの写しを置く1つのデータベースです
 | 体 | 食事、筋トレ、屋外運動、体重、日々の記録 | 直接参照（Fit-Log D1化により同期不要で直通） |
 | コード | リポジトリの動き | 同期ジョブ |
 | AIエージェントへの指示 | 会話から切り出した改善指示・タスク (`agent_inbox`) | MAYAサーバー（アプリから指示） |
+| 会話の要約（VoiceBox） | 音声メモ・会議録音のうち、Gakkyが採用した要約と議事録だけ。**原文と音声は含まない** (`voice_digests`) | VoiceBox から MAYAサーバーへ送信 |
 
 **会話は D1 に移しません。** これまでの会話はテスト用で、端末の中に残れば足ります
-（2026-09-13 決定）。
+（2026-09-13 決定）。ここでいう会話は MAYA との会話です。VoiceBox で録音した会話の
+要約は別で、上の表のとおり届きます（2026-09-27 追加）。
 
 ただし、**AIエージェントに渡したい指示・改善タスクだけを切り出してD1に置く箱は作ります**
 （2026-09-22 構想追加）。会話の全件を保存するのではなく、開発や調査に回したい要件・文脈
@@ -143,6 +147,8 @@ getRepoActivity(repo, days)        コミット、Issue、PR の要約
 searchTopics(query)                共有シートから貯めた話題
 searchDecisions(query)             完了した判断を含む全件
 getActivity(project, days)         CONTENT_LOG の出来事
+voice_recent / voice_search / voice_detail / voice_actions
+                                   VoiceBox の会話（要約・議事録）。下の「VoiceBox」の節
 searchJournal(query)               Journal の記録
 proposeJournalEntry(kind, text)    記録の提案。保存は本人の確認後
 ```
@@ -204,6 +210,29 @@ AIコメント生成・保存と既読変更を起こさない読み取り専用
 MAYAの接続は GET だけを許し、FIT LOGの食事・運動・体重の保存、削除、設定変更APIは
 呼びません。大きな分析レスポンスもそのままGeminiへ渡さず、MAYAサーバーで質問に
 合う期間だけを選び、記録日数と信頼性を添えて圧縮します。
+
+### VoiceBox（音声メモ・会議録音）
+
+**MAYA が知るのは「どんな会話があり、何が決まったか」だけです。** VoiceBox（Gakkyの
+iPhone アプリ）は、録音を文字起こしし、要約や議事録を作ります。そのうち、Gakkyが
+**採用した版の要約・議事録だけ**が MAYA に届きます（2026-09-27 決定）。
+
+| 届くもの | 届かないもの |
+| --- | --- |
+| 題名、日付、種類（アイデア / 会議）、長さ、要点、決定事項、やること（担当・期限）、参加者、論点 | 原文（文字起こし）、音声、しおり、メモ |
+
+- **書き込みは VoiceBox からの `POST /v1/voice-digests` だけ**（1回20件まで）。MAYA の道具はすべて読み取り専用
+- 録音ごとに `recording_id` で1行。**同じ ID は上書き**で、内容の指紋（`content_hash`）が同じなら書きません
+- **`imported_at` を保存し、道具の結果にも添えます。** 最後の取り込みが48時間より古いと「それより新しい会話は未着かもしれない」と返し、古い同期を今の会話として言わせません
+- VoiceBox で録音ごとに「MAYAに送らない」を選べます。送らなかったものは MAYA に存在しません
+- 認証は他と同じ Cloudflare Access のサービストークン。取り消しを別々にできるよう、MAYA アプリとは別のトークンを VoiceBox に発行する
+- 道具は4つ。`voice_recent`（最近の会話）、`voice_search`（語で探す）、`voice_detail`（1件の全項目）、`voice_actions`（会話から出たやること）
+- **やることの完了は分かりません。** VoiceBox は完了状態を持たず、MAYA も決めつけません
+- 会話が1件も届いていないうちは、道具も案内文も相談に出しません（`voiceConfigured`）
+- 相談の中で、録音・議事録・ボイスメモなどを指したときは、必ず道具を先に呼ばせます。「会議」という語だけでは呼びません
+
+VoiceBox 側の設計は、VoiceBox リポジトリの `docs/CLOUD_SYNC_DESIGN.md` にあります。
+原文と音声のバックアップは、MAYA とは別の VoiceBox 専用の保管庫に置き、MAYA は読みません。
 
 ### GitHub
 
