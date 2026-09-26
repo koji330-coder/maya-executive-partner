@@ -2,265 +2,260 @@ import type { Env } from '../env';
 import {
   cleanCredential,
   fitlogConfigured,
-  FITLOG_TODAY_TOOL,
-  readFitlogTodayArgs,
+  FITLOG_DAY_TOOL,
+  FITLOG_EXERCISE_TOOL,
+  FITLOG_PROGRESS_TOOL,
+  FITLOG_WEEKLY_TOOL,
+  readFitlogDayArgs,
+  readFitlogExerciseArgs,
+  readFitlogProgressArgs,
+  readFitlogWeeklyArgs,
   refersToFitness,
   refusalHint,
-  runFitlogTodayTool,
-  summarizeFitlogToday,
-  type BodyRecord,
+  runFitlogDayTool,
+  runFitlogWeeklyTool,
+  summarizeFitlogDay,
+  summarizeFitlogExercise,
+  summarizeFitlogProgress,
+  summarizeFitlogWeekly,
   type FitlogTodayRaw,
 } from '../fitlog';
 
-describe('fitlogConfigured', () => {
-  it('returns true when URL and API key are set', () => {
-    const env = {
-      FITLOG_API_URL: 'https://fitlog.example.com',
-      FITLOG_API_KEY: 'test-key',
-    } as unknown as Env;
+const env = {
+  FITLOG_API_URL: 'https://fitlog.example.com',
+  FITLOG_API_KEY: 'test-token',
+} as unknown as Env;
+
+describe('fitlog configuration and declarations', () => {
+  it('requires a URL and one supported credential form', () => {
     expect(fitlogConfigured(env)).toBe(true);
+    expect(
+      fitlogConfigured({ FITLOG_API_URL: 'https://fitlog.example.com', FITLOG_CLIENT_ID: 'cid', FITLOG_CLIENT_SECRET: 'secret' } as Env),
+    ).toBe(true);
+    expect(fitlogConfigured({ FITLOG_API_KEY: 'key' } as Env)).toBe(false);
+    expect(fitlogConfigured({ FITLOG_API_URL: 'https://fitlog.example.com' } as Env)).toBe(false);
   });
 
-  it('returns true when URL and Access service token are set', () => {
-    const env = {
-      FITLOG_API_URL: 'https://fitlog.example.com',
-      FITLOG_CLIENT_ID: 'cid',
-      FITLOG_CLIENT_SECRET: 'csec',
-    } as unknown as Env;
-    expect(fitlogConfigured(env)).toBe(true);
-  });
-
-  it('returns false when URL is missing', () => {
-    const env = {
-      FITLOG_API_KEY: 'test-key',
-    } as unknown as Env;
-    expect(fitlogConfigured(env)).toBe(false);
-  });
-
-  it('returns false when credentials are missing', () => {
-    const env = {
-      FITLOG_API_URL: 'https://fitlog.example.com',
-    } as unknown as Env;
-    expect(fitlogConfigured(env)).toBe(false);
+  it('exposes four purpose-specific read tools', () => {
+    expect([FITLOG_DAY_TOOL.name, FITLOG_PROGRESS_TOOL.name, FITLOG_WEEKLY_TOOL.name, FITLOG_EXERCISE_TOOL.name]).toEqual([
+      'fitlog_day',
+      'fitlog_progress',
+      'fitlog_weekly',
+      'fitlog_exercise',
+    ]);
   });
 });
 
-describe('readFitlogTodayArgs', () => {
-  it('defaults to today date when none provided', () => {
-    expect(readFitlogTodayArgs({}, '2026-09-24')).toEqual({ date: '2026-09-24' });
-    expect(readFitlogTodayArgs({ date: 'invalid' }, '2026-09-24')).toEqual({ date: '2026-09-24' });
-  });
-
-  it('accepts valid YYYY-MM-DD date', () => {
-    expect(readFitlogTodayArgs({ date: '2026-09-20' }, '2026-09-24')).toEqual({ date: '2026-09-20' });
-  });
-});
-
-describe('refersToFitness', () => {
-  it('detects workout and diet queries', () => {
-    expect(refersToFitness('今日の筋トレ何やったっけ？')).toBe(true);
-    expect(refersToFitness('今日の体重教えて')).toBe(true);
-    expect(refersToFitness('体脂肪率増えてる？')).toBe(true);
-    expect(refersToFitness('今日摂取カロリーどれくらい？')).toBe(true);
-    expect(refersToFitness('タンパク質足りてる？')).toBe(true);
-    expect(refersToFitness('ワークアウトの記録')).toBe(true);
-    expect(refersToFitness('有酸素運動した？')).toBe(true);
-    expect(refersToFitness('FitLog見て')).toBe(true);
-  });
-
-  it('detects outdoor activity queries', () => {
-    expect(refersToFitness('今日の屋外活動は？')).toBe(true);
-    expect(refersToFitness('今日どれくらい歩いた？')).toBe(true);
-    expect(refersToFitness('ランニングの記録ある？')).toBe(true);
-    expect(refersToFitness('ウォーキングしたっけ')).toBe(true);
-  });
-
-  it('ignores unrelated queries', () => {
+describe('fitness routing and argument validation', () => {
+  it('detects the expanded activity and progress vocabulary', () => {
+    for (const message of ['今日の体重', 'ウォーキングした？', '登山したっけ', '歩数は？', 'TDEEは？', '自己ベスト', '1RM伸びた？', '体脂肪の目標まであと何％？']) {
+      expect(refersToFitness(message)).toBe(true);
+    }
     expect(refersToFitness('Amazonの売上はどう？')).toBe(false);
-    expect(refersToFitness('明日のスケジュール確認して')).toBe(false);
-    expect(refersToFitness('こんにちは')).toBe(false);
+  });
+
+  it('uses safe defaults for malformed tool arguments', () => {
+    expect(readFitlogDayArgs({ date: 'bad' }, '2026-09-26')).toEqual({ date: '2026-09-26' });
+    expect(readFitlogWeeklyArgs({}, '2026-09-26')).toEqual({ referenceDate: '2026-09-26' });
+    expect(readFitlogProgressArgs({ window_days: 13, tdee_window_days: 31 }, '2026-09-26')).toEqual({
+      endDate: '2026-09-26',
+      windowDays: 28,
+      tdeeWindowDays: 90,
+    });
+    expect(readFitlogProgressArgs({ end_date: '2026-09-20', window_days: 42, tdee_window_days: 180 }, '2026-09-26')).toEqual({
+      endDate: '2026-09-20',
+      windowDays: 42,
+      tdeeWindowDays: 180,
+    });
+    expect(readFitlogExerciseArgs({ name: '  ベンチプレス  ' })).toEqual({ name: 'ベンチプレス' });
   });
 });
 
-describe('cleanCredential', () => {
-  it('strips headers or bearer prefix', () => {
+describe('credential and HTTP error messages', () => {
+  it('cleans copied header values', () => {
     expect(cleanCredential('Bearer abc-123')).toBe('abc-123');
     expect(cleanCredential(' CF-Access-Client-Id: xyz ')).toBe('xyz');
   });
-});
 
-describe('refusalHint', () => {
-  it('provides specific messages for different errors', () => {
+  it('provides actionable status messages', () => {
     expect(refusalHint(401)).toContain('APIキー');
     expect(refusalHint(403)).toContain('Cloudflare Access');
     expect(refusalHint(404)).toContain('見つかりません');
-    expect(refusalHint(500)).toContain('エラー');
+    expect(refusalHint(500)).toContain('HTTP 500');
   });
 });
 
-describe('summarizeFitlogToday', () => {
-  it('formats raw today payload into clean executive summary', () => {
+describe('FIT LOG summaries', () => {
+  it('does not present a fallback measurement as the requested date', () => {
     const raw: FitlogTodayRaw = {
       status: 'ok',
-      kcal: { eaten: 1800, target: 2200 },
+      kcal: { eaten: 1800, target: 2300 },
+      kcalBonus: { gym: 200, outdoor: 100, total: 300 },
       protein: { g: 120, target: 140 },
       fat: { g: 50, target: 60 },
       carb: { g: 200, target: 250 },
       weightKg: 68.5,
       bodyfatPercent: 15.2,
+      targetBodyfat: 15,
       weightDeltaKg: -0.3,
-      weightTrend7d: [69.1, 68.9, 68.8, 68.5],
-      exercise: { strengthSets: 12, cardioMinutes: 20 },
-      workoutEntries: [
-        {
-          id: 'w1',
-          name: 'ベンチプレス',
-          type: 'strength',
-          sets: [
-            { weight: 80, reps: 10 },
-            { weight: 80, reps: 8 },
-          ],
-          time: null,
-          dist: null,
-          level: null,
-          floors: null,
-          cardioKcal: null,
-        },
-      ],
-      meals: [
-        {
-          id: 'm1',
-          time: '12:30',
-          label: '昼食',
-          name: '鶏胸肉と玄米',
-          kcal: 650,
-          protein: 50,
-          fat: 10,
-          carb: 80,
-        },
-      ],
-    };
-
-    const summary = summarizeFitlogToday(raw, '2026-09-24');
-    expect(summary['対象日']).toBe('2026-09-24');
-    expect((summary['運動状況'] as any)['筋トレセット数']).toBe(12);
-    expect((summary['食事と栄養'] as any)['カロリー']['残り']).toBe('400kcal');
-    expect(summary['屋外活動']).toEqual({ 記録: '記録なし', 消費カロリー合計: '0kcal' });
-  });
-
-  it('reports outdoor activities and the kcal bonus they add to the target', () => {
-    const raw: FitlogTodayRaw = {
-      status: 'ok',
-      kcal: { eaten: 1800, target: 2500 },
-      kcalBonus: { gym: 200, outdoor: 300, total: 500 },
-      outdoor: [
-        { id: 'o1', time: '07:10', activityType: 'walking', distance: 5.2, duration: 62, kcal: 250 },
-        { id: 'o2', time: null, activityType: 'cycling', distance: null, duration: 30, kcal: 120 },
-      ],
-    };
-    const summary = summarizeFitlogToday(raw, '2026-09-24');
-    expect(summary['屋外活動']).toEqual({
-      記録: ['07:10 ウォーキング (62分 / 5.2km / 250kcal)', 'サイクリング (30分 / 120kcal)'],
-      消費カロリー合計: '370kcal',
-    });
-    expect((summary['食事と栄養'] as any)['カロリー']['目標の内訳']).toBe('基本 2000kcal + ジム日 200kcal + 屋外活動 300kcal');
-  });
-
-  it('dates the weight from history, and says when the day itself has no record', () => {
-    const history: BodyRecord[] = [
-      { date: '2026-09-20', weight: 69.1, bodyfat: 16.0 },
-      { date: '2026-09-22', weight: 68.8, bodyfat: null },
-      { date: '2026-09-25', weight: 68.0, bodyfat: 15.0 },
-    ];
-    const body = summarizeFitlogToday({ status: 'ok', weightKg: 68.8, hasBodyMetrics: false }, '2026-09-24', history)['体組成'];
-    expect(body).toEqual({
-      体重: '68.8kg（2026-09-22の記録）',
-      体重の記録日: '2026-09-22',
-      対象日の体重記録: 'なし。2026-09-22の記録を表示',
-      前回記録比: '-0.3kg（2026-09-20比）',
-      体脂肪率: '16%（2026-09-20の記録）',
-      直近の体重記録: ['2026-09-20 69.1kg', '2026-09-22 68.8kg'],
-    });
-  });
-
-  it('marks the weight as that day when it was recorded that day', () => {
-    const history: BodyRecord[] = [{ date: '2026-09-24', weight: 68.5, bodyfat: 15.2 }];
-    const body = summarizeFitlogToday({ status: 'ok' }, '2026-09-24', history)['体組成'] as any;
-    expect(body['体重']).toBe('68.5kg（2026-09-24の記録）');
-    expect(body['対象日の体重記録']).toBe('あり');
-  });
-
-  it('says the date is unknown when history could not be read', () => {
-    const body = summarizeFitlogToday({ status: 'ok', weightKg: 68.8, hasBodyMetrics: false, weightDeltaKg: -0.3 }, '2026-09-24')['体組成'] as any;
-    expect(body['体重']).toBe('68.8kg（2026-09-24より前の直近の記録。記録日は不明）');
-    expect(body['対象日の体重記録']).toBe('なし');
-    expect(body['前回記録比']).toBe('-0.3kg');
-  });
-});
-
-describe('runFitlogTodayTool', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('fetches data and returns formatted summary', async () => {
-    const env = {
-      FITLOG_API_URL: 'https://fitlog.example.com',
-      FITLOG_API_KEY: 'test-token',
-    } as unknown as Env;
-
-    const fakePayload = {
-      status: 'ok',
-      kcal: { eaten: 1500, target: 2000 },
-      protein: { g: 100, target: 120 },
-      fat: { g: 40, target: 50 },
-      carb: { g: 150, target: 200 },
-      weightKg: 70,
-      bodyfatPercent: 16,
-      weightDeltaKg: 0,
-      weightTrend7d: [70],
-      exercise: { strengthSets: 5, cardioMinutes: 0 },
+      weightTrend7d: [69.1, 68.8, 68.5],
+      hasBodyMetrics: false,
+      bodyMetricsMeta: {
+        requestedDate: '2026-09-26',
+        hasEntryOnDate: false,
+        weightRecordedDate: '2026-09-25',
+        bodyfatRecordedDate: '2026-09-24',
+        weightSource: 'health',
+        bodyfatSource: null,
+        healthLastSync: '2026-09-26T01:00:00Z',
+      },
+      exercise: { strengthSets: 5, cardioMinutes: 20 },
       workoutEntries: [],
+      outdoor: [
+        {
+          id: 'o1',
+          time: '08:00',
+          activityType: 'walking',
+          distance: 4.2,
+          duration: 50,
+          avgHeartRate: 105,
+          kcal: 220,
+          elevationGain: 30,
+          source: 'health',
+        },
+      ],
       meals: [],
     };
 
-    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async (input) =>
-      String(input).includes('/body-metrics/history')
-        ? new Response(JSON.stringify({ status: 'ok', history: [{ date: '2026-09-23', weight: 70, bodyfat: 16 }] }), { status: 200 })
-        : new Response(JSON.stringify(fakePayload), { status: 200, headers: { 'Content-Type': 'application/json' } }),
-    );
-
-    const result = await runFitlogTodayTool(env, { name: FITLOG_TODAY_TOOL.name, args: {} }, '2026-09-24');
-    expect(result).toHaveProperty('対象日', '2026-09-24');
-    expect((result as any)['体組成']['体重']).toBe('70kg（2026-09-23の記録）');
-    expect(fetchMock).toHaveBeenCalledWith('https://fitlog.example.com/body-metrics/history?days=30', expect.anything());
+    const summary = summarizeFitlogDay(raw, '2026-09-26');
+    expect((summary['体組成'] as Record<string, unknown>)['体重']).toBe('68.5kg（2026-09-25の直近記録）');
+    expect((summary['体組成'] as Record<string, unknown>)['前回測定比']).toBe('-0.3kg');
+    expect((summary['記録の状態'] as Record<string, unknown>)['体重の出所']).toBe('Appleヘルスケア');
+    expect((summary['運動'] as Record<string, unknown>)['屋外運動']).toEqual([
+      'ウォーキング 08:00（50分、4.2km、220kcal、平均心拍105、獲得標高30m／Appleヘルスケア）',
+    ]);
   });
 
-  it('still answers when the weight history cannot be read', async () => {
-    const env = {
-      FITLOG_API_URL: 'https://fitlog.example.com',
-      FITLOG_API_KEY: 'test-token',
-    } as unknown as Env;
-    jest.spyOn(global, 'fetch').mockImplementation(async (input) =>
-      String(input).includes('/body-metrics/history')
-        ? new Response('boom', { status: 500 })
-        : new Response(JSON.stringify({ status: 'ok', weightKg: 70, hasBodyMetrics: true }), { status: 200 }),
+  it('selects only the requested progress windows and carries reliability', () => {
+    const summary = summarizeFitlogProgress(
+      {
+        status: 'ok',
+        tdee: {
+          targetKcal: 2200,
+          windows: [
+            { windowDays: 90, tdee: 2450, avgIntake: 2200, pacePerWeek: -0.2, deficit: 250, mealDays: 82, weightDays: 40, reliable: true, reason: 'ok' },
+          ],
+        },
+        composition: {
+          '28': {
+            summary: {
+              windowDays: 28,
+              weight: { start: 70, current: 69, delta: -1 },
+              fat: { start: 12, current: 11.2, delta: -0.8 },
+              lean: { start: 58, current: 57.8, delta: -0.2 },
+            },
+          },
+        },
+        weeklyOutput: { '28': [] },
+        strength: {
+          '28': [{ name: 'ベンチプレス', recordCount: 8, recentAvg: 91, prevAvg: 88, growth: 0.034, dataSufficient: true }],
+        },
+      },
+      { status: 'ok', bodyfat15: { target: 15, avg: 15.6, samples: 5, minSamples: 3, firstBodyfat: 20, firstDate: '2026-01-01', unlockedAt: null } },
+      '2026-09-26',
+      28,
+      90,
     );
-
-    const result = await runFitlogTodayTool(env, { name: FITLOG_TODAY_TOOL.name, args: {} }, '2026-09-24');
-    expect((result as any)['体組成']['体重']).toBe('70kg（2026-09-24の記録）');
+    expect((summary['体組成'] as Record<string, unknown>)['脂肪量']).toBe('12kg → 11.2kg（-0.8kg）');
+    expect((summary['実測TDEE'] as Record<string, unknown>)['信頼できる計算か']).toBe(true);
+    expect((summary['体脂肪率目標'] as Record<string, unknown>)['現在地']).toBe('あと0.6ポイント');
   });
 
-  it('handles API errors gracefully', async () => {
-    const env = {
-      FITLOG_API_URL: 'https://fitlog.example.com',
-      FITLOG_API_KEY: 'test-token',
-    } as unknown as Env;
+  it('returns weekly facts without using an AI comment', () => {
+    const summary = summarizeFitlogWeekly({
+      status: 'ok',
+      weekStart: '2026-09-14',
+      weekEnd: '2026-09-20',
+      hasActivity: true,
+      badges: [],
+      facts: {
+        gymDays: 3,
+        prevGymDays: 2,
+        strengthSets: 30,
+        volume: 12000,
+        prevVolume: 10000,
+        cardioMinutes: 45,
+        prs: [{ name: 'ベンチプレス', weight: 80, reps: 8, date: '2026-09-18' }],
+        outdoorCount: 2,
+        outdoorDistance: 8,
+        outdoorKcal: 500,
+        outdoorMinutes: 100,
+        mealDays: 7,
+        proteinHitDays: 5,
+        avgKcal: 2100,
+        targetKcal: 2200,
+        weightStart: 70,
+        weightEnd: 69.5,
+        weightDays: 5,
+      },
+    });
+    expect((summary['運動'] as Record<string, unknown>)['ジム']).toBe('3日（前週2日）');
+    expect((summary['体重'] as Record<string, unknown>)['変化']).toBe('-0.5kg');
+    expect(summary['注意']).toContain('AIコメント');
+  });
 
-    jest.spyOn(global, 'fetch').mockImplementation(async () => new Response('Unauthorized', { status: 401 }));
+  it('keeps exercise history compact', () => {
+    const summary = summarizeFitlogExercise(
+      {
+        status: 'ok',
+        machine: { name: 'ベンチプレス', area: '上半身', part: '胸', type: 'strength', techniqueMemo: null },
+        best: { weight: 80, reps: 8, date: '2026-09-20' },
+        latest: { date: '2026-09-20', best: { weight: 80, reps: 8 }, sets: [{ weight: 80, reps: 8 }] },
+        volume28d: 5000,
+        recordCount: 10,
+        trend: [{ date: '2026-09-20', e1rm: 96 }],
+        records: [],
+      },
+      'ベンチプレス',
+    );
+    expect(summary['自己ベスト']).toBe('80kg×8回（2026-09-20）');
+    expect(summary['直近28日ボリューム']).toBe('5000kg');
+  });
+});
 
-    const result = await runFitlogTodayTool(env, { name: FITLOG_TODAY_TOOL.name, args: {} }, '2026-09-24');
+describe('read-only HTTP calls', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('fetches a daily snapshot with GET', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 'ok', weightKg: 70 }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+    const result = await runFitlogDayTool(env, { name: FITLOG_DAY_TOOL.name, args: {} }, '2026-09-26');
+    expect(result).toHaveProperty('対象日', '2026-09-26');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://fitlog.example.com/today?date=2026-09-26',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('uses factsOnly for weekly data so FIT LOG does not generate or save AI text', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ status: 'ok', weekStart: '2026-09-14', weekEnd: '2026-09-20', hasActivity: false, facts: null }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    await runFitlogWeeklyTool(env, { name: FITLOG_WEEKLY_TOOL.name, args: {} }, '2026-09-26');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://fitlog.example.com/recap/weekly?date=2026-09-26&factsOnly=1',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('turns an API refusal into a tool result instead of throwing', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
+    const result = await runFitlogDayTool(env, { name: FITLOG_DAY_TOOL.name, args: {} }, '2026-09-26');
     expect(result).toHaveProperty('error');
-    expect((result as any).error).toContain('APIキー');
+    expect(String(result.error)).toContain('APIキー');
   });
 });

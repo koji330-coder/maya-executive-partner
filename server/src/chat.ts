@@ -21,9 +21,16 @@ import { presidentDate, presidentNow } from './clock';
 import type { Env } from './env';
 import {
   fitlogConfigured,
-  FITLOG_TODAY_TOOL,
+  FITLOG_DAY_TOOL,
+  FITLOG_EXERCISE_TOOL,
+  FITLOG_PROGRESS_TOOL,
+  FITLOG_TOOLS,
+  FITLOG_WEEKLY_TOOL,
   refersToFitness,
-  runFitlogTodayTool,
+  runFitlogDayTool,
+  runFitlogExerciseTool,
+  runFitlogProgressTool,
+  runFitlogWeeklyTool,
 } from './fitlog';
 import {
   haksaiConfigured,
@@ -155,7 +162,11 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   const amazonReady = haksaiConfigured(env);
   const fitlogReady = fitlogConfigured(env);
   const askingAboutAmazon = amazonReady && refersToAmazon(request.message);
-  const askingAboutFitness = fitlogReady && refersToFitness(request.message);
+  // 「じゃあ先週は？」のような短い続きだけは、直近の会話も判定に含める。
+  const recentFitnessContext = request.history.slice(-4).some((exchange) => refersToFitness(exchange.text));
+  const fitnessFollowUp = /^(じゃあ|では|それ|その|先週|今週|昨日|最近|前回|どう|もっと|詳しく)/.test(request.message.trim());
+  const askingAboutFitness = fitlogReady && (refersToFitness(request.message) || (fitnessFollowUp && recentFitnessContext));
+  const askingAboutRememberedConversation = /覚えて|話した|言ってた|決めた|決めてた|経緯/.test(request.message);
 
   // 利用可能なツール群を準備（未接続の道具は見せない）
   const allAvailableTools = [SEARCH_MEMORY_TOOL];
@@ -163,12 +174,12 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     allAvailableTools.push(HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL);
   }
   if (fitlogReady) {
-    allAvailableTools.push(FITLOG_TODAY_TOOL);
+    allAvailableTools.push(...FITLOG_TOOLS);
   }
 
   let selectedTools = allAvailableTools;
-  if (askingAboutFitness && !refersToPast(request.message) && !askingAboutAmazon) {
-    selectedTools = [FITLOG_TODAY_TOOL];
+  if (askingAboutFitness && !askingAboutRememberedConversation && !askingAboutAmazon) {
+    selectedTools = [...FITLOG_TOOLS];
   } else if (askingAboutAmazon && !refersToPast(request.message) && !askingAboutFitness) {
     selectedTools = [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL];
   }
@@ -185,7 +196,10 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
       if (call.name === HAKSAI_INVENTORY_TOOL.name) return runHaksaiInventoryTool(env, call);
       if (call.name === HAKSAI_SALES_TOOL.name) return runHaksaiSalesTool(env, call, presidentDate());
       if (call.name === HAKSAI_MARKET_TOOL.name) return runHaksaiMarketTool(env, call);
-      if (call.name === FITLOG_TODAY_TOOL.name) return runFitlogTodayTool(env, call, presidentDate());
+      if (call.name === FITLOG_DAY_TOOL.name) return runFitlogDayTool(env, call, presidentDate());
+      if (call.name === FITLOG_PROGRESS_TOOL.name) return runFitlogProgressTool(env, call, presidentDate());
+      if (call.name === FITLOG_WEEKLY_TOOL.name) return runFitlogWeeklyTool(env, call, presidentDate());
+      if (call.name === FITLOG_EXERCISE_TOOL.name) return runFitlogExerciseTool(env, call);
       return runMemoryTool(env.MAYA_DB, call);
     },
     requireToolFirst: refersToPast(request.message) || askingAboutAmazon || askingAboutFitness,
