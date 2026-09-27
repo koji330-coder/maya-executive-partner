@@ -5,7 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { exportTranscript } from '@/features/chat/conversationRepository';
-import { CONNECTED_TOOLS } from '@/features/tools/catalog';
+import { TOOL_GROUPS } from '@/features/tools/catalog';
 import { ConnectedToolCard } from '@/features/tools/ConnectedToolCard';
 import { colors, radius, spacing } from '@/theme';
 
@@ -155,15 +155,21 @@ export default function ToolsScreen() {
     <ScreenContainer scroll>
       <Text style={styles.title}>ツール</Text>
 
-      <Text style={styles.sectionHeading}>Mayaが相談で使える道具</Text>
+      <Text style={styles.sectionHeading}>MAYAが相談で使える情報</Text>
       <Text style={styles.lede}>
-        相談でこう聞くと、Mayaが自分で読みに行きます。開くと、できることと、聞き方が出ます。
+        相談でこう聞くと、MAYAが自分で読みに行きます。開くと、できることと、聞き方が出ます。
       </Text>
-      <View style={styles.connected}>
-        {CONNECTED_TOOLS.map((tool) => (
-          <ConnectedToolCard key={tool.id} tool={tool} />
-        ))}
-      </View>
+      {TOOL_GROUPS.map((group) => (
+        <View key={group.id} style={styles.toolGroup}>
+          <Text style={styles.groupHeading}>{group.label}</Text>
+          <Text style={styles.groupDescription}>{group.description}</Text>
+          <View style={styles.connected}>
+            {group.tools.map((tool) => (
+              <ConnectedToolCard key={tool.id} tool={tool} />
+            ))}
+          </View>
+        </View>
+      ))}
 
       <Text style={styles.sectionHeading}>そのほか</Text>
       <Text style={styles.lede}>
@@ -220,7 +226,21 @@ const styles = StyleSheet.create({
   },
   connected: {
     gap: spacing.sm,
-    marginBottom: spacing.md,
+  },
+  toolGroup: {
+    marginBottom: spacing.lg,
+  },
+  groupHeading: {
+    marginBottom: 2,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.charcoal,
+  },
+  groupDescription: {
+    marginBottom: spacing.sm,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.muted,
   },
   grid: {
     flexDirection: 'row',

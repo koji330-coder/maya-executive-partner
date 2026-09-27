@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import { buildSystemPrompt, VOICE_GUIDE } from '@/features/chat/systemPrompt';
+import { VOICEBOX_TOOL } from '@/features/tools/catalog';
 
 import type { Env } from '../env';
 import {
@@ -208,7 +209,9 @@ describe('the four tools', () => {
 
   it('declares four read-only tools', () => {
     expect(VOICE_TOOLS.map((tool) => tool.name)).toEqual(['voice_recent', 'voice_search', 'voice_detail', 'voice_actions']);
+    expect(VOICEBOX_TOOL.serverTools).toEqual(VOICE_TOOLS.map((tool) => tool.name));
     for (const tool of VOICE_TOOLS) expect(tool.description).toContain('読み取り専用');
+    for (const question of VOICEBOX_TOOL.ask) expect(refersToVoice(question)).toBe(true);
   });
 
   it('voice_recent lists the latest conversations with the period and a reminder of what is held', async () => {

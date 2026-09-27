@@ -7,13 +7,14 @@ import { colors, radius, spacing } from '@/theme';
 import type { ConnectedTool } from './catalog';
 
 /**
- * One tool, closed to a line and opened to its manual.
+ * One user-facing source or capability, closed to a line and opened to its manual.
  *
  * Closed by default: with more tools connected the screen would otherwise become
- * a wall of text, and what a person wants at a glance is which ones exist.
+ * a wall of text. At a glance, people need to know what MAYA can read—not how
+ * many internal function calls implement it.
  */
 export function ConnectedToolCard({ tool }: { tool: ConnectedTool }) {
-  const ready = tool.serverTool !== null;
+  const ready = tool.serverTools.length > 0;
   const [open, setOpen] = React.useState(false);
 
   return (

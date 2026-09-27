@@ -1,4 +1,5 @@
 import type { Env } from '../env';
+import { FITLOG_TOOL } from '@/features/tools/catalog';
 import {
   cleanCredential,
   fitlogConfigured,
@@ -37,12 +38,14 @@ describe('fitlog configuration and declarations', () => {
   });
 
   it('exposes four purpose-specific read tools', () => {
-    expect([FITLOG_DAY_TOOL.name, FITLOG_PROGRESS_TOOL.name, FITLOG_WEEKLY_TOOL.name, FITLOG_EXERCISE_TOOL.name]).toEqual([
+    const offered = [FITLOG_DAY_TOOL.name, FITLOG_PROGRESS_TOOL.name, FITLOG_WEEKLY_TOOL.name, FITLOG_EXERCISE_TOOL.name];
+    expect(offered).toEqual([
       'fitlog_day',
       'fitlog_progress',
       'fitlog_weekly',
       'fitlog_exercise',
     ]);
+    expect(FITLOG_TOOL.serverTools).toEqual(offered);
   });
 });
 
@@ -65,6 +68,7 @@ describe('fitness routing and argument validation', () => {
       expect(refersToFitness(message)).toBe(true);
     }
     expect(refersToFitness('Amazonの売上はどう？')).toBe(false);
+    for (const question of FITLOG_TOOL.ask) expect(refersToFitness(question)).toBe(true);
   });
 
   it('uses safe defaults for malformed tool arguments', () => {

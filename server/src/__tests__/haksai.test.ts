@@ -1,4 +1,4 @@
-import { CONNECTED_TOOLS, READY_TOOLS } from '@/features/tools/catalog';
+import { AMAZON_TOOLS } from '@/features/tools/catalog';
 
 import type { Env } from '../env';
 import {
@@ -334,12 +334,13 @@ describe('refusalHint', () => {
 describe('the tool manual in the app', () => {
   it('names only tools the server really offers, and offers none it does not describe', () => {
     const offered = [HAKSAI_INVENTORY_TOOL.name, HAKSAI_SALES_TOOL.name, HAKSAI_MARKET_TOOL.name].sort();
-    expect(READY_TOOLS.map((tool) => tool.serverTool).sort()).toEqual(offered);
-    expect(CONNECTED_TOOLS.filter((tool) => tool.serverTool !== null)).toHaveLength(offered.length);
+    const readyAmazonCards = AMAZON_TOOLS.filter((tool) => tool.serverTools.length > 0);
+    expect(readyAmazonCards.flatMap((tool) => tool.serverTools).sort()).toEqual(offered);
+    expect(readyAmazonCards).toHaveLength(offered.length);
   });
 
   it('only suggests questions the server turns into a tool call', () => {
-    for (const tool of READY_TOOLS) {
+    for (const tool of AMAZON_TOOLS.filter((item) => item.serverTools.length > 0)) {
       for (const question of tool.ask) {
         expect({ question, triggers: refersToAmazon(question) }).toEqual({ question, triggers: true });
       }
