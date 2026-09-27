@@ -1504,3 +1504,43 @@ AI秘書が読める情報源が増えるにつれ、内部の読み取り機能
 ### 素材
 
 `src/features/tools/catalog.ts`、`src/features/tools/ConnectedToolCard.tsx`、`src/app/(tabs)/tools.tsx`
+
+---
+date: 2026-09-27
+tags: [MAYA, FIT LOG連携, 道具画面, 不具合修正]
+sensitivity: home
+publishable: yes
+sources: []
+---
+
+### やったこと
+
+MAYAのFIT LOG連携から、歩数を除外していた記述と実装を、直った内容に合わせて更新した。ツール画面の説明書（`catalog.ts`）、MAYAの会話ルール（`systemPrompt.ts`）、実際に道具が返すコンディション（`fitlog.ts`）の3か所に、歩数の二重計上を理由に「まだ使わない」という古い記述が残っていた。
+
+### なぜやった
+
+歩数がヘルスケアの複数の提供元（スマホ本体・スマートウォッチ）で二重計上される不具合が、FIT LOG D1側で本日解消された。ツール画面の説明書きを書いている途中でトークン切れになり、この古い記述を含んだまま中断していた。
+
+### 解決方法
+
+- `fitlog.ts`の`summarizeFitlogDay`のコンディションに、歩数（対象日ちょうどの記録、未記録は「未記録」として区別）を追加した。
+- ツール画面の説明書（`catalog.ts`）から「調査中のため使わない」という注記を外し、「複数の提供元による二重計上を解消済み」に書き換えた。「できること」と「聞き方の例」にも歩数を足した。
+- MAYAの会話ルール（`systemPrompt.ts`）の同趣旨の記述も合わせて更新した。
+- `docs/PLATFORM_ARCHITECTURE.md`の該当箇所と、「後で」に残っていた「ヘルスケアの歩数」を外した。
+- 単体テストを、歩数が除外されることを確認するものから、対象日の歩数がそのまま含まれ、未記録時は「未記録」になることを確認するものに書き換えた。
+
+### 成果
+
+型・静的解析・単体テスト302件が通った。MAYAサーバーへ反映（本番デプロイ）、ツール画面はEAS Updateで配信した。
+
+### 使用技術
+
+Cloudflare Workers / TypeScript / Expo / Jest
+
+### 学び
+
+外部システムの既知の不具合を理由にした「まだ使わない」という記述は、複数箇所（道具の実装・会話ルール・利用者向けの説明書・設計ドキュメント）に散らばりやすい。不具合を直したら、テキスト検索でその根拠となった語（今回は「歩数」「二重計上」）を横断的に洗い出し、実装とドキュメントを同時に更新する必要がある。
+
+### 素材
+
+`server/src/fitlog.ts`、`src/features/tools/catalog.ts`、`src/features/chat/systemPrompt.ts`、`docs/PLATFORM_ARCHITECTURE.md`

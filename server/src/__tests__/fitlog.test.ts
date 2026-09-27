@@ -220,8 +220,7 @@ describe('FIT LOG summaries', () => {
     expect(condition['腹囲']).toBe('78.5cm（対象日ちょうどの記録）');
     expect((condition['食事の質'] as Record<string, unknown>)['タグ判定済み']).toBe('1/2食');
     expect((condition['食事の質'] as Record<string, unknown>)['揚げ物または脂多め']).toBe(1);
-    expect(JSON.stringify(summary)).not.toContain('歩数');
-    expect(JSON.stringify(summary)).not.toContain('99999');
+    expect(condition['歩数']).toBe('99999歩（対象日ちょうどの記録。ヘルスケア由来）');
   });
 
   it('distinguishes missing condition records from zero or no issue', () => {
@@ -230,6 +229,7 @@ describe('FIT LOG summaries', () => {
     expect((condition['睡眠'] as Record<string, unknown>)['注記']).toContain('0分ではなく');
     expect((condition['飲酒'] as Record<string, unknown>)['注記']).toContain('飲まなかったという意味ではなく');
     expect(condition['腹囲']).toContain('未記録');
+    expect(condition['歩数']).toBe('未記録');
   });
 
   it('selects only the requested progress windows and carries reliability', () => {

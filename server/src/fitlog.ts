@@ -557,6 +557,7 @@ export function summarizeFitlogDay(raw: FitlogTodayRaw, date: string): Record<st
       飲酒: alcoholCondition(raw),
       腹囲: raw.waistCm != null ? `${raw.waistCm}cm（対象日ちょうどの記録）` : '未記録（直近値では補完していません）',
       食事の質: mealQualityCondition(raw),
+      歩数: raw.steps != null ? `${raw.steps}歩（対象日ちょうどの記録。ヘルスケア由来）` : '未記録',
     },
     注意: 'FIT LOG自身のAIコメントと写真は含めていません。医療的な診断には使いません。',
     出所: 'FIT LOG D1（データベース実測値）',
