@@ -54,7 +54,8 @@ import {
   VOICE_SEARCH_TOOL,
   VOICE_TOOLS,
   voiceConfigured,
-} from './memory/voiceDigests';
+  vaultSource,
+} from './voicebox';
 import { resolveKeys } from './memory/apiKeys';
 import { loadCostPolicy } from './memory/settings';
 import { paidLimitReached, recordUsage } from './usage';
@@ -171,8 +172,8 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
 
   const amazonReady = haksaiConfigured(env);
   const fitlogReady = fitlogConfigured(env);
-  // VoiceBox の会話が1件でも届いていれば、その道具を相談に出す。
-  const voiceReady = await voiceConfigured(env.MAYA_DB);
+  // VoiceBox への接続が設定されていれば、その道具を相談に出す（会話は、必要なときに読みに行く）。
+  const voiceReady = voiceConfigured(env);
   const askingAboutAmazon = amazonReady && refersToAmazon(request.message);
   // 「じゃあ先週は？」のような短い続きだけは、直近の会話も判定に含める。
   const recentFitnessContext = request.history.slice(-4).some((exchange) => refersToFitness(exchange.text));
@@ -222,7 +223,7 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
         call.name === VOICE_DETAIL_TOOL.name ||
         call.name === VOICE_ACTIONS_TOOL.name
       ) {
-        return runVoiceTool(env.MAYA_DB, call, presidentDate());
+        return runVoiceTool(vaultSource(env), call, presidentDate());
       }
       return runMemoryTool(env.MAYA_DB, call);
     },

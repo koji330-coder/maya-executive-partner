@@ -22,12 +22,6 @@ import {
   setJournalVerdict,
 } from './memory/inbox';
 import { deleteKey, keyStatuses, readKeyText, readTier, resolveKeys, saveKey } from './memory/apiKeys';
-import {
-  deleteVoiceDigest,
-  listVoiceDigestIndex,
-  readVoiceDigest,
-  upsertVoiceDigests,
-} from './memory/voiceDigests';
 import { loadCostPolicy, parseCostPatch, saveCostPolicy } from './memory/settings';
 import { checkApiKey } from '@/services/llm/geminiClient';
 import {
@@ -181,33 +175,6 @@ const ROUTES: Route[] = [
     pattern: new RegExp(`^/v1/topics/${ID}$`),
     handle: async ({ env, params }) => {
       await deleteTopic(env.MAYA_DB, params[0] ?? '');
-      return json({ ok: true });
-    },
-  },
-
-  // ---- voice digests（VoiceBox から届く、会話の要約と議事録。原文・音声は届かない）
-  {
-    method: 'POST',
-    pattern: /^\/v1\/voice-digests$/,
-    handle: async ({ request, env }) => {
-      const body = await readJson(request);
-      // 1件（digest）でも、まとめて（digests）でも受け取る。
-      const items = Array.isArray(body.digests) ? body.digests : body.digest !== undefined ? [body.digest] : [];
-      const results = await upsertVoiceDigests(env.MAYA_DB, items.map(readVoiceDigest));
-      return json({ results });
-    },
-  },
-  {
-    method: 'GET',
-    pattern: /^\/v1\/voice-digests$/,
-    handle: async ({ env, url }) =>
-      json({ digests: await listVoiceDigestIndex(env.MAYA_DB, Number(url.searchParams.get('limit')) || 200) }),
-  },
-  {
-    method: 'DELETE',
-    pattern: new RegExp(`^/v1/voice-digests/${ID}$`),
-    handle: async ({ env, params }) => {
-      await deleteVoiceDigest(env.MAYA_DB, params[0] ?? '');
       return json({ ok: true });
     },
   },

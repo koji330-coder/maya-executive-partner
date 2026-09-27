@@ -46,9 +46,6 @@ editing it; the key is read at start-up, not on reload.
 | `PATCH /v1/projects/:id` | Rename, pause, finish |
 | `POST /v1/projects/:id/aliases`, `DELETE .../aliases/:alias` | What the president calls it |
 | `POST /v1/projects/:id/sources` | `github`, `folder` or `dataset` |
-| `POST /v1/voice-digests` | Receive adopted summaries/minutes from VoiceBox (`{digests:[…]}` or `{digest:{…}}`, up to 20). Same `recordingId` overwrites; identical content is skipped by hash |
-| `GET /v1/voice-digests` | Index only (id, date, title, hash, importedAt), so VoiceBox can check what has arrived |
-| `DELETE /v1/voice-digests/:recordingId` | Remove one |
 
 `npm run check:api` exercises all of these against the running dev server
 without calling Gemini. To clear what it leaves in the local D1:

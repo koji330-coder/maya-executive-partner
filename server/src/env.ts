@@ -26,6 +26,11 @@ export interface Env extends AccessEnv {
   /** Cloudflare Access を併用する場合のサービストークン（任意） */
   FITLOG_CLIENT_ID?: string;
   FITLOG_CLIENT_SECRET?: string;
+  /** VoiceBox の保管庫（別のWorker、別のAccessアプリ）。URL は秘密ではない（wrangler.jsonc）。 */
+  VOICEBOX_VAULT_URL?: string;
+  /** VoiceBox の窓を読むためのサービストークン（読み取り専用）。秘密。`wrangler secret put` で置く。 */
+  VOICEBOX_VAULT_CLIENT_ID?: string;
+  VOICEBOX_VAULT_CLIENT_SECRET?: string;
   MODEL: string;
   /** How much one model round may write. A string because wrangler vars are; unset or invalid means the default. */
   MAX_OUTPUT_TOKENS?: string;

@@ -49,6 +49,10 @@
     // 入るためのトークンは、上の読み取り用と同じもの（Accessのポリシーに入れてある）を使う。
     // 上限（1回20・残す20・1日300トークン）は、向こう側で決まっていて、ここからは変えられない。
     "HAKSAI_KEEPA_URL": "https://haksai-keepa.koji330.workers.dev/mcp",
+    // VoiceBox（音声メモ・会議録音アプリ）の保管庫。VoiceBox は独立したサービスで、MAYA が読みに行く。
+    // 住所は秘密ではない。入るためのサービストークン（読み取り専用の voicebox-maya）だけが秘密で、
+    // `wrangler secret put VOICEBOX_VAULT_CLIENT_ID` / `..._SECRET` に置く。三つが揃うまで、会話の道具は相談に出てこない。
+    "VOICEBOX_VAULT_URL": "https://voicebox-vault.koji330.workers.dev",
     // FIT LOG D1（筋トレ・体組成・食事管理）連携のURL。秘密ではないため vars に置く。
     // トークンは wrangler secret put FITLOG_API_KEY に置く。
     "FITLOG_API_URL": "https://fitlog.gakky.jp",
