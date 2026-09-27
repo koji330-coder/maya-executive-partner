@@ -48,14 +48,36 @@ describe('fitlog configuration and declarations', () => {
 
 describe('fitness routing and argument validation', () => {
   it('detects the expanded activity and progress vocabulary', () => {
-    for (const message of ['今日の体重', 'ウォーキングした？', '登山したっけ', '歩数は？', 'TDEEは？', '自己ベスト', '1RM伸びた？', '体脂肪の目標まであと何％？']) {
+    for (const message of [
+      '今日の体重',
+      'ウォーキングした？',
+      '登山したっけ',
+      '歩数は？',
+      'TDEEは？',
+      '自己ベスト',
+      '1RM伸びた？',
+      '体脂肪の目標まであと何％？',
+      '9/18日のコンディションは？',
+      '昨日の睡眠と飲酒はどうだった？',
+      '腹囲は記録されてる？',
+      '揚げ物と塩分が多かった日は？',
+    ]) {
       expect(refersToFitness(message)).toBe(true);
     }
     expect(refersToFitness('Amazonの売上はどう？')).toBe(false);
   });
 
   it('uses safe defaults for malformed tool arguments', () => {
-    expect(readFitlogDayArgs({ date: 'bad' }, '2026-09-26')).toEqual({ date: '2026-09-26' });
+    expect(readFitlogDayArgs({}, '2026-09-26')).toEqual({ date: '2026-09-26' });
+    expect(readFitlogDayArgs({ date: '2026-09-18' }, '2026-09-26')).toEqual({ date: '2026-09-18' });
+    expect(readFitlogDayArgs({ date: 'bad' }, '2026-09-26')).toEqual({
+      date: null,
+      error: '日付は実在する日をYYYY-MM-DD形式で指定してください。',
+    });
+    expect(readFitlogDayArgs({ date: '2026-02-30' }, '2026-09-26')).toEqual({
+      date: null,
+      error: '日付は実在する日をYYYY-MM-DD形式で指定してください。',
+    });
     expect(readFitlogWeeklyArgs({}, '2026-09-26')).toEqual({ referenceDate: '2026-09-26' });
     expect(readFitlogProgressArgs({ window_days: 13, tdee_window_days: 31 }, '2026-09-26')).toEqual({
       endDate: '2026-09-26',
@@ -134,6 +156,76 @@ describe('FIT LOG summaries', () => {
     expect((summary['運動'] as Record<string, unknown>)['屋外運動']).toEqual([
       'ウォーキング 08:00（50分、4.2km、220kcal、平均心拍105、獲得標高30m／Appleヘルスケア）',
     ]);
+  });
+
+  it('returns a dated condition snapshot without exposing steps or double-counting alcohol tags', () => {
+    const summary = summarizeFitlogDay(
+      {
+        status: 'ok',
+        meals: [
+          {
+            id: 'm1',
+            time: '19:00',
+            label: '夕食',
+            name: '唐揚げ定食',
+            kcal: 800,
+            protein: 35,
+            fat: 32,
+            carb: 80,
+            tags: { salt: 'high', fried: true, fiber: 'low', alcohol: true },
+          },
+          {
+            id: 'm2',
+            time: '12:00',
+            label: '昼食',
+            name: 'そば',
+            kcal: 500,
+            protein: 18,
+            fat: 8,
+            carb: 70,
+            tags: null,
+          },
+        ],
+        alcohol: [
+          {
+            id: 'a1',
+            time: '20:00',
+            drinkKey: 'beer_500',
+            label: 'ビール',
+            volumeMl: 500,
+            abvPercent: 5,
+            pureAlcoholG: 20,
+          },
+        ],
+        waistCm: 78.5,
+        steps: 99999,
+        sleep: { totalMin: 330, deepMin: 50, remMin: 70 },
+        sleepTrend14: [
+          { date: '2026-09-16', deepMin: 60, remMin: 80, coreMin: 280 },
+          { date: '2026-09-17', deepMin: 50, remMin: 70, coreMin: 300 },
+          { date: '2026-09-18', deepMin: 50, remMin: 70, coreMin: 210 },
+        ],
+      },
+      '2026-09-18',
+    );
+
+    const condition = summary['コンディション'] as Record<string, Record<string, unknown> | string>;
+    expect((condition['睡眠'] as Record<string, unknown>)['合計']).toBe('5時間30分（330分）');
+    expect((condition['睡眠'] as Record<string, unknown>)['平均との差']).toBe('-90分');
+    expect((condition['飲酒'] as Record<string, unknown>)['純アルコール合計']).toBe('20g');
+    expect(condition['腹囲']).toBe('78.5cm（対象日ちょうどの記録）');
+    expect((condition['食事の質'] as Record<string, unknown>)['タグ判定済み']).toBe('1/2食');
+    expect((condition['食事の質'] as Record<string, unknown>)['揚げ物または脂多め']).toBe(1);
+    expect(JSON.stringify(summary)).not.toContain('歩数');
+    expect(JSON.stringify(summary)).not.toContain('99999');
+  });
+
+  it('distinguishes missing condition records from zero or no issue', () => {
+    const summary = summarizeFitlogDay({ status: 'ok', meals: [] }, '2026-09-18');
+    const condition = summary['コンディション'] as Record<string, Record<string, unknown> | string>;
+    expect((condition['睡眠'] as Record<string, unknown>)['注記']).toContain('0分ではなく');
+    expect((condition['飲酒'] as Record<string, unknown>)['注記']).toContain('飲まなかったという意味ではなく');
+    expect(condition['腹囲']).toContain('未記録');
   });
 
   it('selects only the requested progress windows and carries reliability', () => {
@@ -236,6 +328,25 @@ describe('read-only HTTP calls', () => {
       'https://fitlog.example.com/today?date=2026-09-26',
       expect.objectContaining({ method: 'GET' }),
     );
+  });
+
+  it('fetches the explicitly requested past date instead of silently using today', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 'ok' }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+    const result = await runFitlogDayTool(env, { name: FITLOG_DAY_TOOL.name, args: { date: '2026-09-18' } }, '2026-09-26');
+    expect(result).toHaveProperty('対象日', '2026-09-18');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://fitlog.example.com/today?date=2026-09-18',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('rejects an invalid explicit date without making a request for today', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    const result = await runFitlogDayTool(env, { name: FITLOG_DAY_TOOL.name, args: { date: '9/18' } }, '2026-09-26');
+    expect(result).toHaveProperty('error');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('uses factsOnly for weekly data so FIT LOG does not generate or save AI text', async () => {

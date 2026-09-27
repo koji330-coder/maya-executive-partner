@@ -22,7 +22,7 @@ export class FitlogError extends Error {
 
 /** 健康データが必要な相談かを保守的に判定する。 */
 export function refersToFitness(message: string): boolean {
-  return /(筋トレ|トレーニング|ワークアウト|ジム|運動|有酸素|屋外|アウトドア|散歩|ウォーキング|歩いた|歩行|歩数|ランニング|ジョギング|走った|サイクリング|自転車|ハイキング|登山|体重|体脂肪|脂肪量|除脂肪|カロリー|PFC|タンパク質|たんぱく質|脂質|炭水化物|食事|プロテイン|増量|減量|体調|健康|フィットネス|TDEE|1RM|自己ベスト|筋力|ボリューム|FitLog|FIT LOG)/i.test(
+  return /(筋トレ|トレーニング|ワークアウト|ジム|運動|有酸素|屋外|アウトドア|散歩|ウォーキング|歩いた|歩行|歩数|ランニング|ジョギング|走った|サイクリング|自転車|ハイキング|登山|体重|体脂肪|脂肪量|除脂肪|腹囲|ウエスト|カロリー|PFC|タンパク質|たんぱく質|脂質|炭水化物|食事|塩分|揚げ物|食物繊維|プロテイン|飲酒|お酒|酒量|ビール|睡眠|眠り|寝た|コンディション|増量|減量|体調|健康|フィットネス|TDEE|1RM|自己ベスト|筋力|ボリューム|FitLog|FIT LOG)/i.test(
     message,
   );
 }
@@ -30,7 +30,8 @@ export function refersToFitness(message: string): boolean {
 export const FITLOG_DAY_TOOL: ToolDeclaration = {
   name: 'fitlog_day',
   description:
-    'FIT LOGから、今日または指定日の体重・体脂肪率、食事とPFC、ジム、有酸素、屋外運動を調べます。' +
+    'FIT LOGから、今日または指定日のコンディションを調べます。睡眠、飲酒、腹囲、食事の質、' +
+    '体重・体脂肪率、食事とPFC、ジム、有酸素、屋外運動をまとめて返します。' +
     '測定日とデータの出所も返すので、直近値を当日の値と取り違えません。読み取り専用です。',
   parameters: {
     type: 'object',
@@ -112,6 +113,12 @@ export interface FitlogTodayRaw {
     protein: number;
     fat: number;
     carb: number;
+    tags?: {
+      salt?: 'low' | 'mid' | 'high';
+      fried?: boolean;
+      fiber?: 'low' | 'mid' | 'high';
+      alcohol?: boolean;
+    } | null;
   }[];
   weightKg?: number | null;
   bodyfatPercent?: number | null;
@@ -152,6 +159,19 @@ export interface FitlogTodayRaw {
     elevationGain?: number | null;
     source?: string | null;
   }[];
+  alcohol?: {
+    id: string;
+    time: string | null;
+    drinkKey: string;
+    label: string;
+    volumeMl: number;
+    abvPercent: number;
+    pureAlcoholG: number;
+  }[];
+  waistCm?: number | null;
+  steps?: number | null;
+  sleep?: { totalMin: number; deepMin: number; remMin: number } | null;
+  sleepTrend14?: { date: string; deepMin: number; remMin: number; coreMin: number }[];
 }
 
 type ChangeMetric = { start: number | null; current: number | null; delta: number | null };
@@ -283,13 +303,23 @@ export function refusalHint(status: number): string {
   return `Fit-Logがエラー（HTTP ${status}）を返しました。`;
 }
 
-function validDate(value: unknown, fallback: string): string {
-  return typeof value === 'string' && ISO_DATE.test(value.trim()) ? value.trim() : fallback;
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!ISO_DATE.test(trimmed)) return false;
+  const parsed = new Date(`${trimmed}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === trimmed;
 }
 
-export function readFitlogDayArgs(raw: unknown, defaultDate: string): { date: string } {
+function validDate(value: unknown, fallback: string): string {
+  return isValidIsoDate(value) ? value.trim() : fallback;
+}
+
+export function readFitlogDayArgs(raw: unknown, defaultDate: string): { date: string | null; error?: string } {
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  return { date: validDate(obj.date, defaultDate) };
+  if (obj.date == null || obj.date === '') return { date: defaultDate };
+  if (isValidIsoDate(obj.date)) return { date: obj.date.trim() };
+  return { date: null, error: '日付は実在する日をYYYY-MM-DD形式で指定してください。' };
 }
 
 export function readFitlogProgressArgs(
@@ -342,6 +372,103 @@ function measuredValue(value: number | null | undefined, unit: string, recordedD
   if (value == null) return '未記録';
   const dateNote = recordedDate && recordedDate !== requestedDate ? `（${recordedDate}の直近記録）` : '';
   return `${value}${unit}${dateNote}`;
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function formatMinutes(value: number): string {
+  const rounded = Math.max(0, Math.round(value));
+  const hours = Math.floor(rounded / 60);
+  const minutes = rounded % 60;
+  return hours > 0 ? `${hours}時間${minutes}分（${rounded}分）` : `${minutes}分`;
+}
+
+function sleepCondition(raw: FitlogTodayRaw, date: string): Record<string, unknown> {
+  if (!raw.sleep) {
+    return {
+      記録: 'なし',
+      注記: '睡眠時間0分ではなく、対象日の睡眠記録がありません。',
+    };
+  }
+
+  const previous = (raw.sleepTrend14 ?? [])
+    .filter((night) => night.date < date)
+    .map((night) => ({
+      totalMin: night.deepMin + night.remMin + night.coreMin,
+      deepMin: night.deepMin,
+      remMin: night.remMin,
+    }));
+  const average = (key: 'totalMin' | 'deepMin' | 'remMin'): number | null =>
+    previous.length ? previous.reduce((sum, night) => sum + night[key], 0) / previous.length : null;
+  const avgTotal = average('totalMin');
+  const avgDeep = average('deepMin');
+  const avgRem = average('remMin');
+
+  return {
+    記録: 'あり',
+    合計: formatMinutes(raw.sleep.totalMin),
+    深い睡眠: formatMinutes(raw.sleep.deepMin),
+    REM睡眠: formatMinutes(raw.sleep.remMin),
+    直前の睡眠平均:
+      avgTotal == null
+        ? '比較できる過去記録なし'
+        : {
+            比較した夜数: previous.length,
+            合計: formatMinutes(avgTotal),
+            深い睡眠: formatMinutes(avgDeep ?? 0),
+            REM睡眠: formatMinutes(avgRem ?? 0),
+          },
+    平均との差: avgTotal == null ? '比較不可' : `${Math.round(raw.sleep.totalMin - avgTotal) >= 0 ? '+' : ''}${Math.round(raw.sleep.totalMin - avgTotal)}分`,
+  };
+}
+
+function alcoholCondition(raw: FitlogTodayRaw): Record<string, unknown> {
+  const logs = raw.alcohol ?? [];
+  if (!logs.length) {
+    return {
+      記録: 'なし',
+      注記: '飲まなかったという意味ではなく、飲酒記録がありません。',
+    };
+  }
+  return {
+    記録: 'あり',
+    件数: logs.length,
+    純アルコール合計: `${round1(logs.reduce((sum, log) => sum + log.pureAlcoholG, 0))}g`,
+    内訳: logs.map(
+      (log) => `${log.time ? `${log.time} ` : ''}${log.label} ${log.volumeMl}ml（${log.abvPercent}%・純アルコール${round1(log.pureAlcoholG)}g）`,
+    ),
+  };
+}
+
+const SALT_LABELS = { low: '塩分控えめ', mid: '塩分普通', high: '塩分高め' } as const;
+const FIBER_LABELS = { low: '食物繊維少なめ', mid: '食物繊維普通', high: '食物繊維多め' } as const;
+
+function mealQualityCondition(raw: FitlogTodayRaw): Record<string, unknown> {
+  const meals = raw.meals ?? [];
+  const tagged = meals.filter((meal) => meal.tags != null);
+  const mealTags = tagged.map((meal) => {
+    const tags = meal.tags!;
+    const labels = [
+      tags.salt ? SALT_LABELS[tags.salt] : null,
+      tags.fried ? '揚げ物・脂多め' : null,
+      tags.fiber ? FIBER_LABELS[tags.fiber] : null,
+      tags.alcohol ? '食事内に飲酒あり' : null,
+    ].filter(Boolean);
+    return `${meal.time ? `${meal.time} ` : ''}[${meal.label}] ${meal.name || '食事'}: ${labels.join('・') || '該当タグなし'}`;
+  });
+
+  return {
+    食事記録数: meals.length,
+    タグ判定済み: `${tagged.length}/${meals.length}食`,
+    高塩分: tagged.filter((meal) => meal.tags?.salt === 'high').length,
+    揚げ物または脂多め: tagged.filter((meal) => meal.tags?.fried === true).length,
+    食物繊維少なめ: tagged.filter((meal) => meal.tags?.fiber === 'low').length,
+    食事内の飲酒タグ: tagged.filter((meal) => meal.tags?.alcohol === true).length,
+    食事別: mealTags.length ? mealTags : 'タグ判定済みの食事なし',
+    注記: '食事内の飲酒タグは文脈用です。純アルコール合計には加算していません。未判定の食事を「問題なし」とは扱いません。',
+  };
 }
 
 /** 日次レスポンスを、出所と欠測を失わずにモデル向けへ圧縮する。 */
@@ -424,6 +551,12 @@ export function summarizeFitlogDay(raw: FitlogTodayRaw, date: string): Record<st
         炭水化物: `${raw.carb?.g ?? 0}g / 目標${raw.carb?.target ?? 0}g`,
       },
       食事一覧: meals.length ? meals : '記録なし',
+    },
+    コンディション: {
+      睡眠: sleepCondition(raw, date),
+      飲酒: alcoholCondition(raw),
+      腹囲: raw.waistCm != null ? `${raw.waistCm}cm（対象日ちょうどの記録）` : '未記録（直近値では補完していません）',
+      食事の質: mealQualityCondition(raw),
     },
     注意: 'FIT LOG自身のAIコメントと写真は含めていません。医療的な診断には使いません。',
     出所: 'FIT LOG D1（データベース実測値）',
@@ -567,7 +700,8 @@ function toolFailure(error: unknown, context: Record<string, unknown>): Record<s
 }
 
 export async function runFitlogDayTool(env: Env, call: ToolCall, today: string): Promise<Record<string, unknown>> {
-  const { date } = readFitlogDayArgs(call.args, today);
+  const { date, error } = readFitlogDayArgs(call.args, today);
+  if (!date) return { error: error ?? '日付を読み取れませんでした。' };
   try {
     return summarizeFitlogDay(await fetchFitlogJson<FitlogTodayRaw>(env, '/today', { date }), date);
   } catch (error) {
