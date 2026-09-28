@@ -59,3 +59,21 @@ NODE_USE_ENV_PROXY=1 node --no-warnings --experimental-transform-types \
 - 道具の結果は `fixtures.ts` の架空データ。本物の HAKSAI / FIT LOG / VoiceBox / D1 には触れない
 - 品質は、返事の形の検証、正しいデータを取ったか、Gemini によるブラインド比較（`judge.ts`、順番はケースごとに入れ替え）
 - `--budget-usd` を超えたら途中で止まる（既定 $1）
+
+## E2E v2（3判断・候補集合・3回反復）
+
+```sh
+NODE_USE_ENV_PROXY=1 node --no-warnings --experimental-transform-types \
+  --import ./server/scripts/jev-router/register.mjs \
+  server/scripts/jev-router/e2e2.ts [--reps 3] [--cases A01,P01] [--threshold 0.9] [--budget-usd 12] [--judge-repeat 15] [--no-judge]
+# 保存済みの結果から集計し直す（API は呼ばない）
+node --no-warnings --experimental-transform-types --import ./server/scripts/jev-router/register.mjs \
+  server/scripts/jev-router/rerender2.ts server/scripts/jev-router/results/<...-e2e2>
+```
+
+- Jev 1回で `context_sufficient`（Noul）・`required_tool`・`useful_tool`・`period` を取る（`pipelines2.ts`）
+- 自信があるとき（≥ しきい値）は Gemini 1往復。`useful_tool` は自信があり、引数をコードで埋められるときだけ先に取る
+- 自信が低いときは、Gemini に見せる道具を3通りで比べる: `all`（現行そのもの。結果は現行を再利用）/ `topp`（確率の上位から累積90%）/ `floor`（確率5%以上）
+- 主指標は Tool 選択、往復、トークン、応答時間、費用、3回の再現性。品質の採点（`judge2.ts`）は MAYA のシステムプロンプトを渡した絶対評価で、補助指標
+- 道具の所要時間は架空データでは0なので、「仮定込み」の応答時間を別に出す（要求の数 × 400ms、実測ではない）
+- 代表ケース 10〜15件を `samples.md` に回答本文つきで出す

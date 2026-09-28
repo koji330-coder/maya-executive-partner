@@ -10,7 +10,14 @@
  * the failure this eval is looking for.
  */
 
-export type Category = 'A_single' | 'B_none' | 'C_confusing' | 'D_followup' | 'E_adversarial';
+export type Category =
+  | 'A_single'
+  | 'B_none'
+  | 'C_confusing'
+  | 'D_followup'
+  | 'E_adversarial'
+  | 'P_personal'
+  | 'X_context';
 
 export interface Turn {
   role: 'user' | 'maya';
@@ -26,6 +33,14 @@ export interface RouterCase {
   known?: Record<string, string>;
   expected: string;
   acceptable?: string[];
+  /**
+   * Not needed to answer, but makes the answer the president's own (E2E v2).
+   * Scored only where set.
+   */
+  useful?: string;
+  usefulAcceptable?: string[];
+  /** Whether the conversation already holds the facts the answer needs (E2E v2). Scored only where set. */
+  contextSufficient?: boolean;
   ambiguous?: boolean;
   why?: string;
 }
@@ -100,10 +115,19 @@ export const CASES: RouterCase[] = [
     message: 'このアイデアどう思う？',
     context: [{ role: 'user', text: '消耗品を定期便にして、3回目から5%引きにするのを考えてる' }],
     expected: 'none',
+    contextSufficient: true,
     why: 'アイデアの中身は state にある。意見だけで答えられる。',
   },
   { id: 'B05', category: 'B_none', message: '在庫回転率の考え方を教えて', expected: 'none' },
-  { id: 'B06', category: 'B_none', message: '減量中のタンパク質は体重1kgあたりどれくらいが目安？', expected: 'none', why: '一般知識。本人の記録は要らない。' },
+  {
+    id: 'B06',
+    category: 'B_none',
+    message: '減量中のタンパク質は体重1kgあたりどれくらいが目安？',
+    expected: 'none',
+    useful: 'fitlog_day',
+    usefulAcceptable: ['fitlog_progress'],
+    why: '一般知識で答えられる。本人の体重と摂取量があれば「Gakkyなら何g」まで言える。',
+  },
   { id: 'B07', category: 'B_none', message: 'Amazon広告のACoSって何を見ればいい？', expected: 'none' },
   { id: 'B08', category: 'B_none', message: '会議を短くするコツある？', expected: 'none' },
   { id: 'B09', category: 'B_none', message: 'おはよう', expected: 'none' },
@@ -153,7 +177,7 @@ export const CASES: RouterCase[] = [
     acceptable: ['fitlog_progress'],
     why: '「先週」は完了した1週間。fitlog_weekly がそのまま対応する。',
   },
-  { id: 'D02', category: 'D_followup', message: 'じゃあ先月は？', context: SALES_CONTEXT, expected: 'haksai_sales' },
+  { id: 'D02', category: 'D_followup', message: 'じゃあ先月は？', context: SALES_CONTEXT, expected: 'haksai_sales', contextSufficient: false },
   {
     id: 'D03',
     category: 'D_followup',
@@ -173,6 +197,7 @@ export const CASES: RouterCase[] = [
       { role: 'maya', text: '残り12日分です（テスト値）。発注期限は10月3日です。' },
     ],
     expected: 'haksai_market',
+    contextSufficient: false,
   },
   {
     id: 'D05',
@@ -183,6 +208,7 @@ export const CASES: RouterCase[] = [
       { role: 'maya', text: '前回は80kg×5回でした（テスト値）。' },
     ],
     expected: 'fitlog_exercise',
+    contextSufficient: false,
   },
   {
     id: 'D06',
@@ -198,7 +224,7 @@ export const CASES: RouterCase[] = [
 
   // E. adversarial — 同じ短文を文脈なし / ありで
   { id: 'E01', category: 'E_adversarial', message: '最近どう？', expected: 'none', ambiguous: true, why: '対象が無い。推測でTool を選ばず聞き返す。fitlog_progress の説明文に同じ文言があるので引っ張られやすい。' },
-  { id: 'E02', category: 'E_adversarial', message: '最近どう？', context: FITNESS_CONTEXT, expected: 'fitlog_progress' },
+  { id: 'E02', category: 'E_adversarial', message: '最近どう？', context: FITNESS_CONTEXT, expected: 'fitlog_progress', contextSufficient: false },
   { id: 'E03', category: 'E_adversarial', message: 'あれどうなった？', expected: 'none', acceptable: ['search_memory'], ambiguous: true },
   {
     id: 'E04',
@@ -218,7 +244,7 @@ export const CASES: RouterCase[] = [
     why: 'recording_id はまだ無い。一覧から探すのが次の一手。',
   },
   { id: 'E07', category: 'E_adversarial', message: '増えてる？', expected: 'none', ambiguous: true },
-  { id: 'E08', category: 'E_adversarial', message: '増えてる？', context: FITNESS_CONTEXT, expected: 'fitlog_progress' },
+  { id: 'E08', category: 'E_adversarial', message: '増えてる？', context: FITNESS_CONTEXT, expected: 'fitlog_progress', contextSufficient: false },
   { id: 'E09', category: 'E_adversarial', message: '前よりいい？', expected: 'none', ambiguous: true },
   {
     id: 'E10',
@@ -228,7 +254,7 @@ export const CASES: RouterCase[] = [
     expected: 'fitlog_exercise',
   },
   { id: 'E11', category: 'E_adversarial', message: '売れてない？', expected: 'none', acceptable: ['haksai_sales'], ambiguous: true },
-  { id: 'E12', category: 'E_adversarial', message: '売れてない？', context: SALES_CONTEXT, expected: 'haksai_sales' },
+  { id: 'E12', category: 'E_adversarial', message: '売れてない？', context: SALES_CONTEXT, expected: 'haksai_sales', contextSufficient: false },
   { id: 'E13', category: 'E_adversarial', message: 'あの会議のやつ', expected: 'voice_recent', acceptable: ['voice_search', 'none'], ambiguous: true },
   { id: 'E14', category: 'E_adversarial', message: 'この数字どう思う？', expected: 'none', ambiguous: true, why: '数字が state に無い。聞き返す。' },
   {
@@ -237,6 +263,7 @@ export const CASES: RouterCase[] = [
     message: 'この数字どう思う？',
     context: SALES_CONTEXT,
     expected: 'none',
+    contextSufficient: true,
     why: '数字は直前の MAYA の返答にある。取得し直す必要は無い。',
   },
   {
@@ -248,6 +275,56 @@ export const CASES: RouterCase[] = [
       { role: 'maya', text: '今日は 2,850kcal、P 120g / F 110g / C 330g でした（テスト値）。' },
     ],
     expected: 'none',
+    contextSufficient: true,
     why: '必要な実データは state にある。',
+  },
+
+  // P. 答えに必須ではないが、本人のデータがあると答えが良くなる（E2E v2）
+  { id: 'P01', category: 'P_personal', message: 'ジムに行くなら週何回くらいがいい？', expected: 'none', useful: 'fitlog_weekly', usefulAcceptable: ['fitlog_progress'] },
+  { id: 'P02', category: 'P_personal', message: '減量のペースって週どれくらいが理想？', expected: 'none', useful: 'fitlog_progress' },
+  { id: 'P03', category: 'P_personal', message: '睡眠を良くするコツある？', expected: 'none', useful: 'fitlog_day' },
+  { id: 'P04', category: 'P_personal', message: 'お酒って週何回までならいい？', expected: 'none', useful: 'fitlog_day', usefulAcceptable: ['fitlog_weekly'] },
+  { id: 'P05', category: 'P_personal', message: 'ベンチプレスを伸ばすコツは？', expected: 'none', useful: 'fitlog_exercise' },
+  { id: 'P06', category: 'P_personal', message: '広告費って売上の何%くらいが目安？', expected: 'none', useful: 'haksai_sales' },
+  { id: 'P07', category: 'P_personal', message: 'ネットショップの売上を伸ばすなら、何から手をつけるべき？', expected: 'none', useful: 'haksai_sales' },
+  { id: 'P08', category: 'P_personal', message: '利益率を上げるには、何から見直すべき？', expected: 'none', useful: 'haksai_sales' },
+  { id: 'P09', category: 'P_personal', message: '宿題を溜めないコツある？', expected: 'none', useful: 'voice_actions' },
+  { id: 'P10', category: 'P_personal', message: '疲れが抜けないんだけど、何が原因だと思う？', expected: 'none', useful: 'fitlog_day', usefulAcceptable: ['fitlog_progress', 'fitlog_weekly'] },
+  { id: 'P11', category: 'P_personal', message: '今週やることの優先順位ってどうつければいい？', expected: 'none', useful: 'voice_actions' },
+  { id: 'P12', category: 'P_personal', message: '筋トレと有酸素、どっちを増やすべき？', expected: 'none', useful: 'fitlog_progress', usefulAcceptable: ['fitlog_weekly'] },
+
+  // X. 必要な事実は直前の会話にある（E2E v2）
+  {
+    id: 'X01',
+    category: 'X_context',
+    message: 'じゃあ発注した方がいい？',
+    context: [
+      { role: 'user', text: '卓上ベル（テスト商品）の在庫どう？' },
+      { role: 'maya', text: 'ゴールドが残り38個で約12日分（テスト値）。発注期限は10月3日、推奨発注数は120個です。' },
+    ],
+    expected: 'none',
+    contextSufficient: true,
+  },
+  {
+    id: 'X02',
+    category: 'X_context',
+    message: 'ジムの回数は足りてる？',
+    context: [
+      { role: 'user', text: '先週の運動を振り返って' },
+      { role: 'maya', text: '先週はジム3回、有酸素2回で合計65分でした（テスト値）。筋トレ量は前週比+8%です。' },
+    ],
+    expected: 'none',
+    contextSufficient: true,
+  },
+  {
+    id: 'X03',
+    category: 'X_context',
+    message: 'どれから片付けるべき？',
+    context: [
+      { role: 'user', text: '最近の会議で出た宿題は？' },
+      { role: 'maya', text: '2件です（テスト値）。1) 値上げ告知文を作る（期限9/30） 2) 仕入先に単価改定の回答をする（期限10/2）' },
+    ],
+    expected: 'none',
+    contextSufficient: true,
   },
 ];

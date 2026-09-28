@@ -59,9 +59,13 @@ export interface FetchedData {
   tool: string;
   args: Record<string, unknown>;
   result: unknown;
+  /** performance.now() when the call was made; calls in one round land together. */
+  at?: number;
+  /** Fetched by the server before Gemini ran (not chosen by Gemini). */
+  prefetched?: boolean;
 }
 
-export type Path = 'current' | 'jev_none' | 'jev_prefetch' | 'jev_fallback';
+export type Path = 'current' | 'jev_none' | 'jev_prefetch' | 'jev_fallback' | 'jev_direct' | 'jev_fallback_all' | 'jev_fallback_topp' | 'jev_fallback_floor';
 
 export interface PipelineResult {
   path: Path;
@@ -86,7 +90,7 @@ export interface GeminiAuth {
   apiKey: string;
 }
 
-function geminiCostUsd(result: Pick<GenerateResult, 'promptTokens' | 'responseTokens' | 'thoughtsTokens'>): number {
+export function geminiCostUsd(result: Pick<GenerateResult, 'promptTokens' | 'responseTokens' | 'thoughtsTokens'>): number {
   return (
     result.promptTokens * GEMINI_USD_PER_INPUT_TOKEN +
     (result.responseTokens + result.thoughtsTokens) * GEMINI_USD_PER_OUTPUT_TOKEN
@@ -112,7 +116,7 @@ function history(testCase: RouterCase): ChatExchange[] {
   return (testCase.context ?? []).map((turn) => ({ role: turn.role, text: turn.text }));
 }
 
-async function callGemini(
+export async function callGemini(
   auth: GeminiAuth,
   testCase: RouterCase,
   systemPrompt: string,
@@ -131,7 +135,7 @@ async function callGemini(
       tools,
       runTool: (call: ToolCall) => {
         const result = runFixtureTool(call);
-        fetched.push({ tool: call.name, args: call.args ?? {}, result });
+        fetched.push({ tool: call.name, args: call.args ?? {}, result, at: performance.now() });
         return Promise.resolve(result);
       },
       requireToolFirst,
@@ -139,7 +143,7 @@ async function callGemini(
   );
 }
 
-function emptyResult(path: Path): PipelineResult {
+export function emptyResult(path: Path): PipelineResult {
   return {
     path,
     latencyMs: 0,
@@ -160,7 +164,7 @@ function emptyResult(path: Path): PipelineResult {
   };
 }
 
-function absorb(target: PipelineResult, result: GenerateResult) {
+export function absorb(target: PipelineResult, result: GenerateResult) {
   target.geminiRounds += result.rounds;
   target.promptTokens += result.promptTokens;
   target.outputTokens += result.responseTokens;
@@ -187,7 +191,7 @@ export async function runCurrent(auth: GeminiAuth, testCase: RouterCase): Promis
 // --- Jev -------------------------------------------------------------------
 
 /** Periods Jev can pick; code turns them into tool arguments. */
-const PERIOD_CRITERIA: Record<string, string> = {
+export const PERIOD_CRITERIA: Record<string, string> = {
   today: '今日',
   yesterday: '昨日',
   this_month: '今月',
