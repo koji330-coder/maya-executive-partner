@@ -13,3 +13,6 @@ __pycache__/
 
 build/
 server/scripts/jev-router/results/
+
+# /brag video output — kept locally, not part of the app
+brag-output/
