@@ -1,8 +1,10 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import {
+  deleteServerJevKey,
   getServerJevSettings,
+  saveServerJevKey,
   saveServerJevMode,
   ServerError,
   usingServer,
@@ -20,6 +22,12 @@ import { colors, radius, spacing } from '@/theme';
  * Each answer shows how it was reached (経路), so the effect can be followed.
  */
 
+function describeKey(status: ServerJevSettings['key']): string {
+  if (!status.set) return '未登録';
+  const tail = status.last4 ? `（末尾 ${status.last4}）` : '';
+  return status.source === 'app' ? `登録済み${tail}` : `Cloudflare に設定済み${tail}`;
+}
+
 type Load =
   | { state: 'loading' }
   | { state: 'off' }
@@ -30,6 +38,10 @@ export function ServerJevSection() {
   const [load, setLoad] = React.useState<Load>({ state: 'loading' });
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [draft, setDraft] = React.useState('');
+  const [keyBusy, setKeyBusy] = React.useState(false);
+  const [keyError, setKeyError] = React.useState<string | null>(null);
+  const [keyDone, setKeyDone] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let alive = true;
@@ -62,6 +74,40 @@ export function ServerJevSection() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const saveKey = async () => {
+    setKeyBusy(true);
+    setKeyError(null);
+    setKeyDone(null);
+    try {
+      setLoad({ state: 'ready', settings: await saveServerJevKey(draft) });
+      // Cleared once stored, so the key does not sit in a field a screenshot could catch.
+      setDraft('');
+      setKeyDone('確かめて保存しました。');
+    } catch (caught) {
+      setKeyError(caught instanceof ServerError ? caught.message : '保存できませんでした。');
+    } finally {
+      setKeyBusy(false);
+    }
+  };
+
+  const removeKey = () => {
+    Alert.alert('TypeSafe のキーを削除しますか？', 'Cloudflare に設定したキーがあれば、そちらに戻ります。無ければ Jev は使われず、従来の判定で答えます。', [
+      { text: 'やめる', style: 'cancel' },
+      {
+        text: '削除',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setLoad({ state: 'ready', settings: await deleteServerJevKey() });
+            setKeyDone('削除しました。');
+          } catch (caught) {
+            setKeyError(caught instanceof ServerError ? caught.message : '削除できませんでした。');
+          }
+        },
+      },
+    ]);
   };
 
   if (load.state === 'off') {
@@ -104,12 +150,46 @@ export function ServerJevSection() {
         </View>
         <Switch value={on} disabled={saving} onValueChange={(value) => void toggle(value)} />
       </View>
-      {!settings.keyConfigured ? (
-        <Text style={styles.error}>
-          サーバーに TypeSafe のキー（TYPESAFE_API_KEY）がありません。ON にしても、すべて従来の判定で答えます。
-        </Text>
-      ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <View style={styles.keyHead}>
+        <Text style={styles.rowTitle}>TypeSafe のキー</Text>
+        <Text style={[styles.keyState, !settings.key.set && styles.keyStateOff]}>{describeKey(settings.key)}</Text>
+      </View>
+      {!settings.key.set ? (
+        <Text style={styles.error}>キーがありません。ON にしても、すべて従来の判定で答えます。</Text>
+      ) : null}
+      <TextInput
+        value={draft}
+        onChangeText={setDraft}
+        style={styles.input}
+        placeholder={settings.key.set ? '入れ替えるときだけ入力' : 'キーを貼り付け'}
+        placeholderTextColor={colors.muted}
+        autoCapitalize="none"
+        autoCorrect={false}
+        secureTextEntry
+        editable={!keyBusy}
+      />
+      <View style={styles.actions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!draft.trim() || keyBusy}
+          onPress={() => void saveKey()}
+          style={[styles.primary, (!draft.trim() || keyBusy) && styles.off]}
+        >
+          <Text style={styles.primaryText}>{keyBusy ? '確かめています…' : settings.key.set ? '入れ替え' : '登録'}</Text>
+        </Pressable>
+        {settings.key.source === 'app' ? (
+          <Pressable accessibilityRole="button" disabled={keyBusy} onPress={removeKey} style={styles.secondary}>
+            <Text style={styles.secondaryText}>削除</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {keyError ? <Text style={styles.error}>{keyError}</Text> : null}
+      {keyDone ? <Text style={styles.done}>{keyDone}</Text> : null}
+      <Text style={styles.rowNote}>
+        入れたキーは、サーバーが TypeSafe で使えるか確かめてから、暗号化して保存します。保存したキーは画面にもサーバーの応答にも二度と出ません。
+      </Text>
 
       <Text style={styles.rowTitle}>固定ルール</Text>
       <Text style={styles.rowNote}>Jev が「データ不要」と判断した質問にだけ、上から順に当てはめます。</Text>
@@ -157,5 +237,36 @@ const styles = StyleSheet.create({
   ruleBody: { fontSize: 12, lineHeight: 18, color: colors.charcoalSoft },
   ruleMeta: { fontSize: 11, color: colors.muted },
   error: { fontSize: 13, lineHeight: 19, color: colors.danger },
+  done: { fontSize: 13, lineHeight: 19, color: colors.success },
+  keyHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: spacing.sm },
+  keyState: { fontSize: 12, color: colors.success },
+  keyStateOff: { color: colors.muted },
+  input: {
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 14,
+    color: colors.charcoal,
+  },
+  actions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
+  primary: {
+    backgroundColor: colors.charcoal,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+  },
+  primaryText: { color: colors.ivory, fontSize: 14, fontWeight: '600' },
+  secondary: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+  },
+  secondaryText: { color: colors.charcoal, fontSize: 14 },
+  off: { opacity: 0.35 },
   note: { fontSize: 12, lineHeight: 18, color: colors.muted },
 });

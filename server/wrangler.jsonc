@@ -36,7 +36,8 @@
     // Jev routing (server/src/jevRouter.ts). "off" behaves exactly as before
     // Jev; "assist" asks TypeSafe's Jev which tool a turn needs and sends it the
     // message and the last few turns. Starting value only: the settings screen
-    // switches it (D1 wins). The key is a secret: `wrangler secret put TYPESAFE_API_KEY`.
+    // switches it (D1 wins). The key is entered in the settings screen (stored encrypted
+    // in D1); a Worker secret TYPESAFE_API_KEY is only the fallback.
     "JEV_ROUTER_MODE": "off",
     // How much one model round may write, thinking included. 2048 was enough for
     // 3.5-flash-lite, which does not think. 3.8-flash thinks (about 800 tokens on a

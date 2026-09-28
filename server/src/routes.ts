@@ -32,6 +32,12 @@ import {
 } from './memory/settings';
 import { JEV_MODEL, JEV_THRESHOLD, JEV_TIMEOUT_MS, TOPP_MASS } from './jevRouter';
 import { JEV_RULES } from './jevRules';
+import {
+  checkTypesafeKey,
+  deleteTypesafeKey,
+  saveTypesafeKey,
+  typesafeKeyStatus,
+} from './memory/typesafeKey';
 import { checkApiKey } from '@/services/llm/geminiClient';
 import {
   addAlias,
@@ -282,6 +288,28 @@ const ROUTES: Route[] = [
       return json(await jevSettings(env));
     },
   },
+  // The TypeSafe key, like the Gemini keys: tried first, stored encrypted, never returned.
+  {
+    method: 'PUT',
+    pattern: /^\/v1\/settings\/jev\/key$/,
+    handle: async ({ request, env }) => {
+      const key = readKeyText((await readJson(request)).key);
+      const check = await checkTypesafeKey(key);
+      if (!check.ok) {
+        throw new ApiError(400, 'key_rejected', `このキーでは Jev を呼べませんでした。${check.detail}`);
+      }
+      await saveTypesafeKey(env.MAYA_DB, env, key);
+      return json(await jevSettings(env));
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/v1\/settings\/jev\/key$/,
+    handle: async ({ env }) => {
+      await deleteTypesafeKey(env.MAYA_DB);
+      return json(await jevSettings(env));
+    },
+  },
 
   // Gemini keys. Write-only: nothing here returns a key, only whether one is set.
   {
@@ -326,9 +354,11 @@ const ROUTES: Route[] = [
 ];
 
 async function jevSettings(env: Env) {
+  const key = await typesafeKeyStatus(env.MAYA_DB, env);
   return {
     mode: await loadJevMode(env.MAYA_DB, env),
-    keyConfigured: Boolean(env.TYPESAFE_API_KEY),
+    keyConfigured: key.set,
+    key,
     model: JEV_MODEL,
     threshold: JEV_THRESHOLD,
     timeoutMs: JEV_TIMEOUT_MS,

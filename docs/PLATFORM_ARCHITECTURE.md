@@ -197,7 +197,9 @@ proposeJournalEntry(kind, text)    記録の提案。保存は本人の確認後
 - **ON のあいだは、相談の文と直近の会話（最大6件、1件600字まで）が毎回 TypeSafe に送られます。**
   学習には使わないと明記されていますが、データを残さない契約（ZDR）はエンタープライズ向けです。
   ON にするかは Gakky が設定画面で決めます
-- 鍵は Worker の秘密 `TYPESAFE_API_KEY`。アプリには置きません
+- 鍵は設定画面から入れます（`server/src/memory/typesafeKey.ts`）。Gemini のキーと同じく、TypeSafe で使えるか確かめてから
+  `KEY_ENCRYPTION_KEY` で暗号化し、D1 の `server_settings` に置きます。返すのは末尾4文字だけです。
+  Worker の秘密 `TYPESAFE_API_KEY` は、画面から入れるまでの予備。アプリには置きません
 - **回答ごとに経路を返し、端末の会話に残します。** 回答の下の「経路」を開くと、Jev の判定、先に読んだ道具、
   Gemini に見せた道具と呼んだ道具、往復回数、トークン、時間が出ます。ログ（`maya_turn`）にも同じ数字を
   出します。本文は出しません

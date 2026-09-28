@@ -302,8 +302,10 @@ export function saveServerCostPolicy(patch: Partial<ServerCostPolicy>): Promise<
 /** Jev routing on the server (server/src/jevRouter.ts). */
 export interface ServerJevSettings {
   mode: 'off' | 'assist';
-  /** Whether TYPESAFE_API_KEY is set on the Worker. Never the key. */
+  /** Whether a TypeSafe key is available (entered here, or the Worker secret). */
   keyConfigured: boolean;
+  /** Where the key comes from and its last four characters. Never the key. */
+  key: ServerKeyStatus;
   model: string;
   threshold: number;
   timeoutMs: number;
@@ -317,6 +319,15 @@ export function getServerJevSettings(): Promise<ServerJevSettings> {
 
 export function saveServerJevMode(mode: ServerJevSettings['mode']): Promise<ServerJevSettings> {
   return serverRequest<ServerJevSettings>('/v1/settings/jev', { method: 'PUT', body: { mode } });
+}
+
+/** Sends the TypeSafe key; the server tries it against TypeSafe, then stores it encrypted. */
+export function saveServerJevKey(key: string): Promise<ServerJevSettings> {
+  return serverRequest<ServerJevSettings>('/v1/settings/jev/key', { method: 'PUT', body: { key }, timeoutMs: 30_000 });
+}
+
+export function deleteServerJevKey(): Promise<ServerJevSettings> {
+  return serverRequest<ServerJevSettings>('/v1/settings/jev/key', { method: 'DELETE' });
 }
 
 export type ServerKeyTier = 'free' | 'paid';

@@ -60,6 +60,7 @@ import {
 } from './voicebox';
 import { resolveKeys } from './memory/apiKeys';
 import { loadCostPolicy, loadJevMode } from './memory/settings';
+import { resolveTypesafeKey } from './memory/typesafeKey';
 import { askJev, JevError, planRoute, type JevDecision, type RoutePlan } from './jevRouter';
 import { paidLimitReached, recordUsage } from './usage';
 
@@ -244,7 +245,9 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     jevError = 'attachments';
   } else if (jevMode === 'assist') {
     try {
-      jev = await askJev(env.TYPESAFE_API_KEY, request.message, request.history, allAvailableTools);
+      // The key entered in the settings screen wins over the Worker secret.
+      const jevKey = await resolveTypesafeKey(env.MAYA_DB, env);
+      jev = await askJev(jevKey, request.message, request.history, allAvailableTools);
       plan = planRoute({
         decision: jev,
         message: request.message,
