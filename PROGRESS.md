@@ -1,9 +1,5 @@
 # Progress
 
-> **次にやること（自宅PC）：** Jev による道具の判定を本番で使い始める。手順は `docs/HANDOFF.md`。
-> 「続きは？」と訊かれたら、そこから始める。
-
-
 ## Current phase
 
 Phase 5 — Decisions and conversation sessions: complete. Verified on a device on 2026-09-13: conversation list, new conversation, expressions. Decision recall verified the same day: a decision saved in one conversation was brought up in a new one. The time stamps are not yet tried on a device. Phase 6 (voice) is postponed by decision; see docs/ASSET_BACKLOG.md.
