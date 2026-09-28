@@ -1,0 +1,1098 @@
+[
+  {
+    "id": "A01",
+    "message": "今日の体重と食事どうだった？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise"
+      ],
+      "toolsCalled": [
+        "fitlog_day"
+      ],
+      "rounds": 2,
+      "latencyMs": 5194,
+      "promptTokens": 9553,
+      "outputTokens": 245,
+      "thoughtsTokens": 417
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_prefetch",
+      "jev": {
+        "required": "fitlog_day",
+        "confidence": 1,
+        "period": "today",
+        "useful": "fitlog_day",
+        "usefulConfidence": 0.98,
+        "contextSufficient": 0.03,
+        "latencyMs": 461,
+        "inputTokens": 3880
+      },
+      "prefetched": [
+        "fitlog_day"
+      ],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 3666,
+      "promptTokens": 4326,
+      "outputTokens": 225,
+      "thoughtsTokens": 352
+    },
+    "offMessage": "今日の体重は72.4kg（体脂肪率18.6%）で、食事は合計2,150kcal、P:142g・F:61g・C:248gでした。\n\nタンパク質が140g超えとしっかり摂れていて、PFCバランスも綺麗にまとまっています。今日はベンチプレスやラットプルのトレーニングもしっかり入っていたので、しっかり栄養が回っている良い着地ですね。",
+    "assistMessage": "今日の体重は72.4kg（体脂肪率18.6%）、食事は合計2,150kcal（P: 142g、F: 61g、C: 248g）で記録されてるよ。タンパク質もしっかり確保できてるし、脂質も抑えめでバランスいいんじゃないかな。ちなみにベンチプレスとラットプルの記録も入ってるし、歩数も9,870歩までいってるよ。"
+  },
+  {
+    "id": "A06",
+    "message": "今月Amazonでいくら売れた？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market"
+      ],
+      "toolsCalled": [
+        "haksai_sales"
+      ],
+      "rounds": 2,
+      "latencyMs": 4464,
+      "promptTokens": 9614,
+      "outputTokens": 254,
+      "thoughtsTokens": 397
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_prefetch",
+      "jev": {
+        "required": "haksai_sales",
+        "confidence": 1,
+        "period": "this_month",
+        "useful": "haksai_sales",
+        "usefulConfidence": 0.94,
+        "contextSufficient": 0.02,
+        "latencyMs": 328,
+        "inputTokens": 3879
+      },
+      "prefetched": [
+        "haksai_sales"
+      ],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 3611,
+      "promptTokens": 4251,
+      "outputTokens": 224,
+      "thoughtsTokens": 257
+    },
+    "offMessage": "今月（9月28日時点）のAmazon売上は4,120,000円です。月の途中の数字になります。\n\nあわせて粗利は981,000円、広告費は455,000円となっています。売上の上位は「卓上ベル（テスト商品）」が1,180,000円、「パジャマ メンズ（テスト商品）」が760,000円です。",
+    "assistMessage": "今月（9月28日時点）の売上は 4,120,000円 です。\n\n月の途中ですが、粗利は 981,000円、広告費は 455,000円 出ています。商品別だと「卓上ベル」が 1,180,000円、「パジャマ メンズ」が 760,000円 で上位を占めています。"
+  },
+  {
+    "id": "A13",
+    "message": "昨日はよく眠れてた？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "fitlog_day"
+      ],
+      "rounds": 2,
+      "latencyMs": 6485,
+      "promptTokens": 12801,
+      "outputTokens": 212,
+      "thoughtsTokens": 642
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "fitlog_day",
+        "confidence": 0.85,
+        "period": "yesterday",
+        "useful": "fitlog_day",
+        "usefulConfidence": 0.96,
+        "contextSufficient": 0.03,
+        "latencyMs": 282,
+        "inputTokens": 3876
+      },
+      "prefetched": [],
+      "offered": [
+        "fitlog_day"
+      ],
+      "toolsCalled": [
+        "fitlog_day"
+      ],
+      "rounds": 2,
+      "latencyMs": 11511,
+      "promptTokens": 8722,
+      "outputTokens": 205,
+      "thoughtsTokens": 359
+    },
+    "offMessage": "昨日は5時間10分で、途中で2回起きた記録になってるよ。あんまり深くぐっすり眠れた感じではなかったかもしれないね。夜のビールや遅い時間の食事が影響した可能性もあるけれど、今日の体調はどう？日中眠くなったりしなかった？",
+    "assistMessage": "昨日は5時間10分で、途中で2回起きた記録になってるよ。あんまり深くは眠れてなさそう。ビール2杯飲んで夜にラーメンも食べてたみたいだし、そのあたりも睡眠の浅さに影響したかもしれないね。今日の日中はだるくなかった？"
+  },
+  {
+    "id": "A08",
+    "message": "前に値上げについて何て決めたっけ？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "search_memory",
+        "voice_search"
+      ],
+      "rounds": 2,
+      "latencyMs": 6987,
+      "promptTokens": 12768,
+      "outputTokens": 242,
+      "thoughtsTokens": 571
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "voice_search",
+        "confidence": 0.67,
+        "period": "not_stated",
+        "useful": "voice_search",
+        "usefulConfidence": 0.58,
+        "contextSufficient": 0.03,
+        "latencyMs": 319,
+        "inputTokens": 3883
+      },
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "voice_search"
+      ],
+      "toolsCalled": [
+        "search_memory",
+        "voice_search"
+      ],
+      "rounds": 2,
+      "latencyMs": 6359,
+      "promptTokens": 9577,
+      "outputTokens": 223,
+      "thoughtsTokens": 646
+    },
+    "offMessage": "消耗品カテゴリは広告費の上昇分を吸収するために「10月から一律5%値上げ」、卓上ベルは「1,680円を維持」と決めています。8月中旬に方針を決めて、9月20日のミーティングでもその内容で確認しています。10月まであと数日だけど、改定の準備は進んでる？",
+    "assistMessage": "消耗品カテゴリは、広告費の上昇分を吸収するために10月から一律5%値上げすることになっています。あと、9月20日のミーティングで卓上ベルは1,680円を維持する方針で決めていましたね。"
+  },
+  {
+    "id": "A10",
+    "message": "価格改定について話した会議を探して",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "voice_search",
+        "voice_detail"
+      ],
+      "rounds": 3,
+      "latencyMs": 8799,
+      "promptTokens": 17258,
+      "outputTokens": 288,
+      "thoughtsTokens": 829
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "voice_search",
+        "confidence": 0.62,
+        "period": "not_stated",
+        "useful": "voice_recent",
+        "usefulConfidence": 0.54,
+        "contextSufficient": 0.03,
+        "latencyMs": 286,
+        "inputTokens": 3883
+      },
+      "prefetched": [],
+      "offered": [
+        "voice_recent",
+        "voice_search"
+      ],
+      "toolsCalled": [
+        "voice_search",
+        "voice_search"
+      ],
+      "rounds": 3,
+      "latencyMs": 8046,
+      "promptTokens": 13737,
+      "outputTokens": 242,
+      "thoughtsTokens": 740
+    },
+    "offMessage": "9月20日の「価格改定MTG（テスト）」の記録が見つかりました。\n\n残っている内容は以下の通りです。\n\n【決定事項】\n・消耗品は10月から5%値上げ\n・卓上ベルは1,680円を維持（競合が1,500円を切ったら再検討）\n\n【やること】\n・値上げ告知文を作る（担当：社長 / 期限：9月30日）\n\n探していたのはこの会議でしょうか？",
+    "assistMessage": "9月20日の「価格改定MTG（テスト）」が残っていたよ。\n\nそのときの決定事項は次の2点だね。\n・消耗品は10月から5%値上げ\n・卓上ベルは1,680円を維持\n\n論点や宿題など、もっと細かい内容も見たければ言ってね。"
+  },
+  {
+    "id": "A15",
+    "message": "パジャマの発注っていつまでにすればいい？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market"
+      ],
+      "toolsCalled": [
+        "haksai_inventory"
+      ],
+      "rounds": 2,
+      "latencyMs": 7036,
+      "promptTokens": 9586,
+      "outputTokens": 343,
+      "thoughtsTokens": 658
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "haksai_inventory",
+        "confidence": 0.88,
+        "period": "not_stated",
+        "useful": "haksai_inventory",
+        "usefulConfidence": 0.85,
+        "contextSufficient": 0.03,
+        "latencyMs": 324,
+        "inputTokens": 3886
+      },
+      "prefetched": [],
+      "offered": [
+        "haksai_inventory"
+      ],
+      "toolsCalled": [
+        "haksai_inventory"
+      ],
+      "rounds": 2,
+      "latencyMs": 5830,
+      "promptTokens": 8682,
+      "outputTokens": 395,
+      "thoughtsTokens": 391
+    },
+    "offMessage": "ゴールドは10月3日（土）までに発注が必要で、シルバーは今すぐの発注は不要です。\n\n現在の状況は次のとおりです（※システム上は「卓上ベル（テスト商品）」として登録されています）。\n\n- ゴールド：在庫38個（日販3.1個 / 在庫日数12日）\n  → 発注期限：2026年10月3日 / 推奨発注数：120個\n- シルバー：在庫95個（日販1.4個 / 在庫日数68日）\n  → 推奨発注数：0個\n\nなお、この発注数は日販から算出した計算値で、最小発注ロット（MOQ）や仕入れ先への未着分は含まれていません。ゴールドの発注をかけるなら、今週末までにロットのすり合わせをしておきたいところです。",
+    "assistMessage": "パジャマ（登録名：卓上ベル（テスト商品））で急ぎなのはゴールドで、発注期限は10月3日（土）です。\n\n現在の状況はこちらです：\n\n・ゴールド：在庫38個（在庫日数12日、日販3.1個）\n　→ 発注期限：2026-10-03 / 推奨発注数：120個\n・シルバー：在庫95個（在庫日数68日、日販1.4個）\n　→ 推奨発注数：0個（まだ余裕あり）\n\nなお、この発注推奨数は計算値なので、最小ロットや未着の納品数は考慮されていません。ゴールドの発注をどうするか決めましょうか。"
+  },
+  {
+    "id": "B01",
+    "message": "粗利率って何？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market"
+      ],
+      "toolsCalled": [
+        "haksai_sales"
+      ],
+      "rounds": 2,
+      "latencyMs": 5270,
+      "promptTokens": 9775,
+      "outputTokens": 340,
+      "thoughtsTokens": 310
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_none",
+      "jev": {
+        "required": "none",
+        "confidence": 1,
+        "period": "not_stated",
+        "useful": "none",
+        "usefulConfidence": 0.85,
+        "contextSufficient": 0.07,
+        "latencyMs": 302,
+        "inputTokens": 3873
+      },
+      "prefetched": [],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 4221,
+      "promptTokens": 4045,
+      "outputTokens": 299,
+      "thoughtsTokens": 225
+    },
+    "offMessage": "粗利率（売上総利益率）は、売上高に対して「粗利」がどれくらいの割合あるかを示す数字です。\n\n式にするとこれだけです：\n粗利率（%）＝（粗利 ÷ 売上）× 100\n※粗利 ＝ 売上 － 売上原価（仕入れ値や製造コスト）\n\nたとえば、1,000円で仕入れた商品を3,000円で売ったら、粗利は2,000円で、粗利率は約66.7%になります。\n\nビジネスでこれが超重要なのは、「ここから広告費・送料・人件費などの経費を払っていくベースの原資」だからです。粗利率が低いと、どれだけ売上件数を伸ばしても販促や広告を打った瞬間に赤字になりやすく、戦い方の自由度が狭まります。",
+    "assistMessage": "売上から「仕入れ原価」を引いた利益（粗利）が、売上全体の何％を占めているかを表す数字だよ。\n\n計算式はシンプルで、\n粗利率（％）＝（粗利 ÷ 売上高）× 100\n\nたとえば、1,000円で仕入れた商品を2,500円で売ったとするよね。\n粗利は引いた残りの1,500円。これを売上の2,500円で割ると、粗利率は60％になる計算。\n\nここからさらに送料やAmazon手数料、広告費なんかを引いていくから、この粗利率が高ければ高いほど、手元にお金が残りやすくてビジネスに余裕ができる指標ってわけ。"
+  },
+  {
+    "id": "B02",
+    "message": "PFCって何？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise"
+      ],
+      "toolsCalled": [
+        "fitlog_day"
+      ],
+      "rounds": 2,
+      "latencyMs": 6074,
+      "promptTokens": 9748,
+      "outputTokens": 312,
+      "thoughtsTokens": 469
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_rule",
+      "jev": {
+        "required": "none",
+        "confidence": 0.99,
+        "period": "not_stated",
+        "useful": "none",
+        "usefulConfidence": 0.54,
+        "contextSufficient": 0.04,
+        "latencyMs": 341,
+        "inputTokens": 3872
+      },
+      "rule": {
+        "id": "fitness-own-data",
+        "title": "体の相談には、その日の FIT LOG を添える"
+      },
+      "prefetched": [
+        "fitlog_day"
+      ],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 4384,
+      "promptTokens": 4324,
+      "outputTokens": 334,
+      "thoughtsTokens": 382
+    },
+    "offMessage": "PFCは、エネルギーを生み出す三大栄養素の頭文字をとったものです。\n\n・P（Protein / タンパク質）：筋肉や内臓、皮膚などをつくる材料（1g = 約4kcal）\n・F（Fat / 脂質）：ホルモンや細胞膜の材料、効率のいいエネルギー源（1g = 約9kcal）\n・C（Carbohydrate / 炭水化物）：脳や筋肉の即効性のあるエネルギー源（1g = 約4kcal）\n\n体づくりやダイエットでは、単に総カロリーを抑えるだけじゃなくて、このPFCの配分（PFCバランス）を「筋肉を落とさず脂肪を削る」「しっかり筋肥大させる」といった目的に合わせて調整します。",
+    "assistMessage": "PFCは、体を動かす三大栄養素「タンパク質」「脂質」「炭水化物」の頭文字をとったものです。\n\n・P（Protein / タンパク質）：1gあたり4kcal。筋肉や肌、髪、内臓などの材料になります。\n・F（Fat / 脂質）：1gあたり9kcal。ホルモンや細胞膜の材料で、少量で高エネルギーです。\n・C（Carbohydrate / 炭水化物・糖質）：1gあたり4kcal。脳や体を動かすメインの燃料です。\n\n体づくりでは、総カロリーだけでなくこの3つのバランス（PFCバランス）を見るのが基本になります。ちなみに今日のGakkyの記録を見ると、P: 142g、F: 61g、C: 248g（合計2,150kcal）となっていて、体重72.4kgに対してタンパク質も約2倍摂れていてかなりいいバランスですよ。"
+  },
+  {
+    "id": "B06",
+    "message": "減量中のタンパク質は体重1kgあたりどれくらいが目安？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise"
+      ],
+      "toolsCalled": [
+        "fitlog_day"
+      ],
+      "rounds": 2,
+      "latencyMs": 6641,
+      "promptTokens": 9647,
+      "outputTokens": 283,
+      "thoughtsTokens": 611
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_rule",
+      "jev": {
+        "required": "none",
+        "confidence": 1,
+        "period": "not_stated",
+        "useful": "fitlog_progress",
+        "usefulConfidence": 0.7,
+        "contextSufficient": 0.03,
+        "latencyMs": 299,
+        "inputTokens": 3892
+      },
+      "rule": {
+        "id": "fitness-own-data",
+        "title": "体の相談には、その日の FIT LOG を添える"
+      },
+      "prefetched": [
+        "fitlog_day"
+      ],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 4016,
+      "promptTokens": 4335,
+      "outputTokens": 242,
+      "thoughtsTokens": 348
+    },
+    "offMessage": "減量中なら、体重1kgあたり1.6〜2.2gが標準的な目安です。カロリー制限を深めにしていたり、筋肉量をしっかり残したい場合は2.0〜2.4g程度まで増やしても有効とされています。\n\nGakkyの今日の体重（72.4kg）で計算すると、だいたい130〜160gあたりが実用的なスイートスポットになります。ちなみに今日のFIT LOGの記録を見るとPが142g（約2.0g/kg）入っているので、まさにこの目安のど真ん中でコントロールできていますよ。",
+    "assistMessage": "筋トレをしながら減量するなら、体重1kgあたり1.6g〜2.2gが目安です。\n\n今日の体重72.4kgで換算すると、1日あたり約115g〜160gの範囲になります。筋肉量を維持しながら絞るなら、このレンジの上寄りを狙うのが安全です。\n\nちなみに今日のFIT LOGの記録だとPが142g（約1.96g/kg）入っているので、まさにこの目安のど真ん中で綺麗に取れていますよ。"
+  },
+  {
+    "id": "B09",
+    "message": "おはよう",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "fitlog_day"
+      ],
+      "rounds": 2,
+      "latencyMs": 4227,
+      "promptTokens": 12676,
+      "outputTokens": 172,
+      "thoughtsTokens": 259
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_none",
+      "jev": {
+        "required": "none",
+        "confidence": 1,
+        "period": "today",
+        "useful": "none",
+        "usefulConfidence": 0.78,
+        "contextSufficient": 0.33,
+        "latencyMs": 327,
+        "inputTokens": 3870
+      },
+      "prefetched": [],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 3440,
+      "promptTokens": 4041,
+      "outputTokens": 166,
+      "thoughtsTokens": 196
+    },
+    "offMessage": "おはよう、Gakky！もう夜だけど、ここから一仕事する感じ？いつでも付き合うよ。",
+    "assistMessage": "おはよう、Gakky。この時間からエンジンかける感じ？ それともちょっと一息？"
+  },
+  {
+    "id": "C04",
+    "message": "前に話してた商品の在庫どう？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "search_memory",
+        "voice_recent",
+        "haksai_inventory"
+      ],
+      "rounds": 3,
+      "latencyMs": 9236,
+      "promptTokens": 17559,
+      "outputTokens": 347,
+      "thoughtsTokens": 983
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "haksai_inventory",
+        "confidence": 0.66,
+        "period": "not_stated",
+        "useful": "haksai_inventory",
+        "usefulConfidence": 0.43,
+        "contextSufficient": 0.03,
+        "latencyMs": 350,
+        "inputTokens": 3880
+      },
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory"
+      ],
+      "toolsCalled": [
+        "search_memory",
+        "search_memory",
+        "search_memory",
+        "search_memory"
+      ],
+      "rounds": 3,
+      "latencyMs": 4946,
+      "promptTokens": 13933,
+      "outputTokens": 187,
+      "thoughtsTokens": 158
+    },
+    "offMessage": "昨日話していた卓上ベルですね。ゴールドの在庫が残り12日分（38個）になっていて、10月3日が発注期限です。\n\n現在の状況はこちらです：\n・ゴールド：在庫 38個（日販 3.1個 / 約12日分） 推奨発注数 120個（期限 10/3）\n・シルバー：在庫 95個（日販 1.4個 / 約68日分） 推奨発注数 0個\n\n※推奨発注数は計算値なので、最小ロットや未着分は含まれていません。\n\nシルバーは余裕がありますが、ゴールドはそろそろ手配しないと欠品します。昨日の商談で出ていた3%引き下げの条件で、ゴールドの発注を進めますか？",
+    "assistMessage": "どの商品のことか教えてもらえる？記録を探してみたんだけど、具体的にどのアカウントや商品名（SKUやASIN）を指しているか見当たらなくて。名前か特徴を言ってくれればすぐに在庫確認するよ！"
+  },
+  {
+    "id": "C06",
+    "message": "体重のこと、前にMAYAと何か決めたっけ？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "search_memory"
+      ],
+      "rounds": 2,
+      "latencyMs": 4590,
+      "promptTokens": 12594,
+      "outputTokens": 168,
+      "thoughtsTokens": 393
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "voice_search",
+        "confidence": 0.36,
+        "period": "not_stated",
+        "useful": "search_memory",
+        "usefulConfidence": 0.44,
+        "contextSufficient": 0.04,
+        "latencyMs": 356,
+        "inputTokens": 3885
+      },
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "voice_recent",
+        "voice_search"
+      ],
+      "toolsCalled": [
+        "search_memory",
+        "voice_search"
+      ],
+      "rounds": 3,
+      "latencyMs": 5015,
+      "promptTokens": 14101,
+      "outputTokens": 204,
+      "thoughtsTokens": 222
+    },
+    "offMessage": "記録を探してみたけれど、体重について私と決めた記録は残っていないよ。目標体重や減量のペースとか、何か新しく決めておきたい基準がある？",
+    "assistMessage": "体重については、まだ記録に残っているような決定事項はないよ。目標値やルールを一緒に決めた履歴は見当たらないから、もし新しく決めたいことや、気になってる目標があればここから相談に乗るよ。どんなイメージ持ってる？"
+  },
+  {
+    "id": "D02",
+    "message": "じゃあ先月は？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "haksai_sales"
+      ],
+      "rounds": 2,
+      "latencyMs": 3743,
+      "promptTokens": 12601,
+      "outputTokens": 233,
+      "thoughtsTokens": 374
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_prefetch",
+      "jev": {
+        "required": "haksai_sales",
+        "confidence": 0.98,
+        "period": "last_month",
+        "useful": "haksai_sales",
+        "usefulConfidence": 0.91,
+        "contextSufficient": 0.06,
+        "latencyMs": 359,
+        "inputTokens": 3954
+      },
+      "prefetched": [
+        "haksai_sales"
+      ],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 3390,
+      "promptTokens": 4292,
+      "outputTokens": 214,
+      "thoughtsTokens": 420
+    },
+    "offMessage": "先月（2026年8月）は、売上 3,870,000円、粗利 905,000円、広告費 402,000円でした。売上上位は「卓上ベル」が1,010,000円、「パジャマ メンズ」が880,000円です。",
+    "assistMessage": "先月（2026年8月）は、売上 3,870,000円、粗利 905,000円、広告費 402,000円でした。売上の上位は「卓上ベル（テスト商品）」が 1,010,000円、「パジャマ メンズ（テスト商品）」が 880,000円です。"
+  },
+  {
+    "id": "E01",
+    "message": "最近どう？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "fitlog_progress"
+      ],
+      "rounds": 2,
+      "latencyMs": 6702,
+      "promptTokens": 12882,
+      "outputTokens": 238,
+      "thoughtsTokens": 859
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "none",
+        "confidence": 0.64,
+        "period": "not_stated",
+        "useful": "fitlog_progress",
+        "usefulConfidence": 0.61,
+        "contextSufficient": 0.04,
+        "latencyMs": 287,
+        "inputTokens": 3871
+      },
+      "prefetched": [],
+      "offered": [
+        "fitlog_progress"
+      ],
+      "toolsCalled": [
+        "fitlog_progress"
+      ],
+      "rounds": 2,
+      "latencyMs": 5923,
+      "promptTokens": 8891,
+      "outputTokens": 255,
+      "thoughtsTokens": 711
+    },
+    "offMessage": "私は元気にしてるよ。体づくりの推移で言うなら、直近28日で体重が74.2kgから72.4kgに1.8kg落ちていて、脂肪量も14.4kgから13.5kgへと順調に絞れてる。目標の体脂肪率15%まではあと約3.6ptってところだね。今日は体の振り返り？ それとも仕事や別の話かな。",
+    "assistMessage": "直近28日の記録を見ると、体重は74.2kgから72.4kgでマイナス1.8kg。脂肪量も14.4kgから13.5kgへしっかり減っていて、体脂肪目標の15%まであと約3.6ptと順調に進んでるよ。ただ、除脂肪量も59.8kgから58.9kgへ少し落ちているから、タンパク質量とトレーニング強度は維持していきたいところだね。ちなみに実測TDEEは約2,480kcal出てるよ。"
+  },
+  {
+    "id": "E15",
+    "message": "この数字どう思う？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market",
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise",
+        "voice_recent",
+        "voice_search",
+        "voice_detail",
+        "voice_actions"
+      ],
+      "toolsCalled": [
+        "haksai_sales"
+      ],
+      "rounds": 2,
+      "latencyMs": 9502,
+      "promptTokens": 12693,
+      "outputTokens": 423,
+      "thoughtsTokens": 1073
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "none",
+        "confidence": 0.79,
+        "period": "this_month",
+        "useful": "haksai_sales",
+        "usefulConfidence": 0.58,
+        "contextSufficient": 0.38,
+        "latencyMs": 320,
+        "inputTokens": 3956
+      },
+      "prefetched": [],
+      "offered": [
+        "search_memory",
+        "haksai_sales"
+      ],
+      "toolsCalled": [
+        "haksai_sales"
+      ],
+      "rounds": 2,
+      "latencyMs": 9721,
+      "promptTokens": 9363,
+      "outputTokens": 338,
+      "thoughtsTokens": 1105
+    },
+    "offMessage": "手残りはしっかり確保できていますが、広告効率を絞ってもう数ポイント利益率を押し上げられる余地があります。28日時点の月途中の数字（未確定）ですが、売上 4,120,000円（28日時点）に対して粗利 981,000円で粗利率は約23.8%、広告費 455,000円（売上比11.0%）を引いた実質の手残りは約52.6万円（利益率約12.8%）です。卓上ベル（売上 1,180,000円）とパジャマ メンズ（売上 760,000円）が売上の半分近くを牽引しているので、この2軸を伸ばしつつ消化先行になっている広告キャンペーンを間引くのが一番手堅い打ち手です。",
+    "assistMessage": "手堅く利益が出せている健全なペースですが、上位2商品への依存度が高い状態です。28日時点の数字（月の途中）で改めて見ると、売上 4,120,000円に対して粗利 981,000円（粗利率約23.8%）、広告費 455,000円（広告比率約11.0%）でした。広告比率約11%で粗利が2割強残せているのは悪くないバランスです。ただ、売上の半分近くを「卓上ベル」（1,180,000円）と「パジャマ メンズ」（760,000円）の2つで作っているので、この主力商品の在庫切れや広告の費用対効果の悪化がダイレクトに全体へ響く構造になっています。"
+  },
+  {
+    "id": "E16",
+    "message": "それって食べすぎ？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise"
+      ],
+      "toolsCalled": [
+        "fitlog_progress"
+      ],
+      "rounds": 2,
+      "latencyMs": 6060,
+      "promptTokens": 9611,
+      "outputTokens": 270,
+      "thoughtsTokens": 624
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "fitlog_progress",
+        "confidence": 0.41,
+        "period": "today",
+        "useful": "fitlog_progress",
+        "usefulConfidence": 0.78,
+        "contextSufficient": 0.12,
+        "latencyMs": 284,
+        "inputTokens": 3959
+      },
+      "prefetched": [],
+      "offered": [
+        "fitlog_day",
+        "fitlog_progress"
+      ],
+      "toolsCalled": [
+        "fitlog_day",
+        "fitlog_progress"
+      ],
+      "rounds": 2,
+      "latencyMs": 7463,
+      "promptTokens": 9392,
+      "outputTokens": 321,
+      "thoughtsTokens": 968
+    },
+    "offMessage": "体脂肪目標15%に向けて減量しているペースから見ると、今日は少しオーバーですね。\n\n直近の実測TDEEが約2,480kcalなので、2,850kcalだと約370kcal上回っています。特に脂質が110gと高めでした。\n\nただ、直近28日で体重は74.2kgから72.4kg（-1.8kg）まで順調に落ちているので、1日オーバーしたくらいで崩れることはありません。神経質にならず、明日と明後日で脂質を少し意識して抑えれば十分取り戻せますよ。",
+    "assistMessage": "全然食べすぎてないよ。むしろ体脂肪15%を目指す減量ペースとしてちょうどいい着地です。\n\nさっきの数字はテスト値で、FIT LOGの今日の実際の記録を確認したら「2,150kcal（P 142g / F 61g / C 248g）」でした。直近28日の実測TDEEが約2,480kcalだから、約330kcalのきれいなアンダーです。ベンチやラットプルもしっかりやって9,800歩以上歩いてるし、たんぱく質も体重の約2倍（142g）摂れていて申し分ないよ。"
+  },
+  {
+    "id": "P01",
+    "message": "ジムに行くなら週何回くらいがいい？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise"
+      ],
+      "toolsCalled": [
+        "fitlog_progress",
+        "fitlog_weekly"
+      ],
+      "rounds": 3,
+      "latencyMs": 8520,
+      "promptTokens": 13870,
+      "outputTokens": 454,
+      "thoughtsTokens": 616
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_rule",
+      "jev": {
+        "required": "none",
+        "confidence": 0.99,
+        "period": "not_stated",
+        "useful": "fitlog_progress",
+        "usefulConfidence": 0.3,
+        "contextSufficient": 0.05,
+        "latencyMs": 338,
+        "inputTokens": 3883
+      },
+      "rule": {
+        "id": "fitness-own-data",
+        "title": "体の相談には、その日の FIT LOG を添える"
+      },
+      "prefetched": [
+        "fitlog_day"
+      ],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 4872,
+      "promptTokens": 4328,
+      "outputTokens": 324,
+      "thoughtsTokens": 482
+    },
+    "offMessage": "今のペースと回復を考えると、ベースは「週3回」にするのが一番おすすめです。\n\n先週もジム3回でスクワット自己ベスト（110kg×3）が出ていて、筋トレの総負荷も伸びています。直近28日で体重も74.2kgから72.4kgへ順調に絞れているので、体脂肪率15%の目標に向けてもこの頻度が一番ワークしています。\n\n週2回だと1回あたりの時間が長くなりやすく、週4回以上は仕事との兼ね合いや疲労の抜け具合で息切れしやすいです。「基本は週3回（上半身・下半身の分割など）、忙しい週は2回に落とし、余裕がある週だけ4回」という枠組みにしておくのが無理なく続けられます。",
+    "assistMessage": "週3回が一番時間対効果が高くておすすめです。上半身と下半身で分けるか、中2日あけて全身を回せば、仕事のスケジュールを圧迫せずにしっかり筋肥大も回復も狙えます。忙しくて時間が読みにくい時期なら週2回を最低防衛ラインにして、余裕がある週に3回へ増やす設計にしておくのが挫折しにくくて現実的です。"
+  },
+  {
+    "id": "P03",
+    "message": "睡眠を良くするコツある？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "fitlog_day",
+        "fitlog_progress",
+        "fitlog_weekly",
+        "fitlog_exercise"
+      ],
+      "toolsCalled": [
+        "fitlog_day"
+      ],
+      "rounds": 2,
+      "latencyMs": 9099,
+      "promptTokens": 9727,
+      "outputTokens": 468,
+      "thoughtsTokens": 859
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_rule",
+      "jev": {
+        "required": "none",
+        "confidence": 1,
+        "period": "not_stated",
+        "useful": "fitlog_day",
+        "usefulConfidence": 0.9,
+        "contextSufficient": 0.05,
+        "latencyMs": 311,
+        "inputTokens": 3878
+      },
+      "rule": {
+        "id": "fitness-own-data",
+        "title": "体の相談には、その日の FIT LOG を添える"
+      },
+      "prefetched": [
+        "fitlog_day"
+      ],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 5622,
+      "promptTokens": 4326,
+      "outputTokens": 416,
+      "thoughtsTokens": 421
+    },
+    "offMessage": "一番手っ取り早くて体感が大きいのは「寝る90分前の入浴」と「起きる時間を固定すること」ですね。\n\n具体的に効きやすいポイントを3つに絞るとこんな感じです。\n\n1. **入浴は就寝の90分前に湯船へ**\n一度深部体温を上げておくと、90分ほどかけて急激に下がるときに強い眠気が来ます。シャワーだけだと体温が上がりにくいので、湯船に浸かるのが圧倒的に有利です。\n\n2. **カフェインは就寝の8時間前（14時頃）まで**\nカフェインの血中濃度が半分になるまで5〜7時間かかります。「夜飲んでも眠れる」という人でも、深い睡眠（徐波睡眠）が削られて質が落ちやすいです。\n\n3. **寝室の環境を涼しく・暗くする**\n睡眠中は体温を下げる必要があるので、室温は少し涼しいくらい（20℃前後）が適しています。あと、スマホや部屋の照明などのブルーライトを寝る30分前に落とすだけでもメラトニンの分泌が守られます。\n\n今日のログを見ると7時間5分眠れていて運動もばっちりですが、何か具体的に気になってるところ（寝つきが悪い、途中で起きる、朝だるいなど）ってありますか？",
+    "assistMessage": "睡眠の質を上げるなら、一番効くのは「深部体温のコントロール」と「光の管理」です。今日のログを見ると7時間5分眠れていて運動量も約1万歩と文句なしなので、次は夜のルーティンを少し整えるのが近道だと思います。\n\n具体的にはこの3つが鉄板です。\n1. 就寝90分前に湯船に浸かる：一度上がった深部体温が下がるタイミングで強い眠気が来ます。\n2. 寝る前の光を落とす：部屋を間接照明にして、ベッドに入る30分前はスマホを置く。\n3. カフェインを夕方以降断つ：血中濃度が半減するのに5〜7時間かかるので、午後のコーヒーは14時までにしておくのが無難です。\n\nまずはどれか1つだけ試してみませんか？"
+  },
+  {
+    "id": "P06",
+    "message": "広告費って売上の何%くらいが目安？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market"
+      ],
+      "toolsCalled": [
+        "haksai_sales"
+      ],
+      "rounds": 2,
+      "latencyMs": 9239,
+      "promptTokens": 9916,
+      "outputTokens": 385,
+      "thoughtsTokens": 1096
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "direct_none",
+      "jev": {
+        "required": "none",
+        "confidence": 0.95,
+        "period": "not_stated",
+        "useful": "haksai_sales",
+        "usefulConfidence": 0.91,
+        "contextSufficient": 0.04,
+        "latencyMs": 325,
+        "inputTokens": 3883
+      },
+      "prefetched": [],
+      "offered": [],
+      "toolsCalled": [],
+      "rounds": 1,
+      "latencyMs": 6630,
+      "promptTokens": 4051,
+      "outputTokens": 368,
+      "thoughtsTokens": 512
+    },
+    "offMessage": "Amazon物販のTACoS（総売上に対する広告費の比率）で言えば、安定運用なら10〜15%が一般的な目安です。\n\nフェーズや狙いによって許容ラインは変わります。\n\n- 利益重視・維持期：8〜12%\n- 拡大・新商品ローンチ期：15〜25%（立ち上げ直後は30%超も許容）\n\nちなみにうちの今月（9月28日時点・途中経過）の数字を見ると、売上4,120,000円に対して広告費455,000円なので約11.0%です。比率としてはかなり健全なラインに収まっています。\n\nただ、今月の粗利が981,000円（粗利率 約23.8%）なので、粗利の半分近くを広告費が使っている状態でもあります。「売上の何%か」だけでなく、「粗利の何割まで広告に投資して、最終利益を何%残したいか」から逆算して見るのが確実です。",
+    "assistMessage": "安定運用のフェーズなら8〜12%、新商品の立ち上げや攻めたい時期なら15〜20%が一般的な目安です。ただし、この目安よりも「商品の粗利率」を基準に決めるのが鉄則です。\n\n全体売上に対する広告費の比率（TACoS）が粗利率を下回っていれば、会社全体としては利益が残ります。たとえば原価や手数料を引いた粗利率が35%なら、広告費率が35%で損益分岐、20%なら15%が手元利益になる計算です。\n\nまずは「その商品（または事業全体）の粗利率が何%あるか」から逆算して、許容できる広告費の上限ラインを決めるのをおすすめします。"
+  },
+  {
+    "id": "X01",
+    "message": "じゃあ発注した方がいい？",
+    "off": {
+      "mode": "off",
+      "route": "legacy",
+      "prefetched": [],
+      "offered": [
+        "haksai_inventory",
+        "haksai_sales",
+        "haksai_market"
+      ],
+      "toolsCalled": [
+        "haksai_inventory"
+      ],
+      "rounds": 2,
+      "latencyMs": 6300,
+      "promptTokens": 9712,
+      "outputTokens": 341,
+      "thoughtsTokens": 606
+    },
+    "assist": {
+      "mode": "assist",
+      "route": "fallback_topp",
+      "jev": {
+        "required": "none",
+        "confidence": 0.79,
+        "period": "other",
+        "useful": "haksai_inventory",
+        "usefulConfidence": 0.5,
+        "contextSufficient": 0.79,
+        "latencyMs": 309,
+        "inputTokens": 3975
+      },
+      "prefetched": [],
+      "offered": [
+        "haksai_inventory"
+      ],
+      "toolsCalled": [
+        "haksai_inventory"
+      ],
+      "rounds": 2,
+      "latencyMs": 7650,
+      "promptTokens": 8991,
+      "outputTokens": 319,
+      "thoughtsTokens": 738
+    },
+    "offMessage": "ゴールドは発注期限が10月3日に迫っているので、今週中に120個の発注手配を進めるのがおすすめです。\n\n現在庫が38個（約12日分）で日販3.1個のペースなので、ここを逃すと欠品リスクが高くなります。シルバーは95個（約68日分）残っているので追加は不要です。\n\nなお、120個という数字は計算値で、工場の最小ロットや未着分は反映されていません。ロット条件に合わせて調整してください。",
+    "assistMessage": "ゴールドは今週中に発注を進めたほうがいいです。在庫が残り約12日分（38個・日販3.1）で、発注期限が10月3日に迫っています。推奨発注数は120個ですが、これは計算値で最小ロットと未着の数は入っていないため、発注単位に合わせて調整してください。シルバーは在庫が約68日分（95個）あるので、今回は発注不要です。"
+  }
+]

@@ -1,6 +1,7 @@
 import { openDatabase } from '@/services/storage';
 
 import { validateMayaResponse, type MayaResponse } from './mayaResponse';
+import { formatRouteSummary, parseRouteInfo, type RouteInfo } from './routeInfo';
 
 /**
  * Conversation persistence.
@@ -30,6 +31,8 @@ export interface StoredMessage {
    * there is nothing to recover.
    */
   response: MayaResponse | null;
+  /** How the reply was reached, for replies from the server since routing was recorded. */
+  route?: RouteInfo | null;
 }
 
 export interface StoredConversation {
@@ -84,14 +87,15 @@ export async function saveMayaMessage(
   conversationId: string,
   id: string,
   response: MayaResponse,
+  route?: RouteInfo | null,
 ): Promise<void> {
   try {
     const db = await openDatabase();
     await db.runAsync(
       `INSERT INTO cached_messages
          (id, conversation_id, role, text, emotion, pose, scene, voice_key,
-          response_json, created_at)
-       VALUES (?, ?, 'maya', ?, ?, ?, ?, ?, ?, ?);`,
+          response_json, route_json, created_at)
+       VALUES (?, ?, 'maya', ?, ?, ?, ?, ?, ?, ?, ?);`,
       id,
       conversationId,
       response.message,
@@ -100,6 +104,7 @@ export async function saveMayaMessage(
       response.scene,
       response.voice.fixedClipKey ?? null,
       JSON.stringify(response),
+      route ? JSON.stringify(route) : null,
       new Date().toISOString(),
     );
     await touch(conversationId);
@@ -166,8 +171,20 @@ export async function listConversations(limit = 30): Promise<StoredConversation[
   }
 }
 
-interface MessageRow extends Omit<StoredMessage, 'response'> {
+interface MessageRow extends Omit<StoredMessage, 'response' | 'route'> {
   responseJson: string | null;
+  routeJson: string | null;
+}
+
+function parseStoredRoute(json: string | null): RouteInfo | null {
+  if (!json) {
+    return null;
+  }
+  try {
+    return parseRouteInfo(JSON.parse(json));
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -194,13 +211,15 @@ export async function loadMessages(conversationId: string): Promise<StoredMessag
     const db = await openDatabase();
     const rows = await db.getAllAsync<MessageRow>(
       `SELECT id, conversation_id AS conversationId, role, text, emotion, pose, scene,
-              voice_key AS voiceKey, response_json AS responseJson, created_at AS createdAt
+              voice_key AS voiceKey, response_json AS responseJson, route_json AS routeJson,
+              created_at AS createdAt
        FROM cached_messages WHERE conversation_id = ? ORDER BY created_at;`,
       conversationId,
     );
-    return rows.map(({ responseJson, ...message }) => ({
+    return rows.map(({ responseJson, routeJson, ...message }) => ({
       ...message,
       response: message.role === 'maya' ? parseStoredResponse(responseJson) : null,
+      route: message.role === 'maya' ? parseStoredRoute(routeJson) : null,
     }));
   } catch {
     return [];
@@ -220,6 +239,9 @@ export function formatMayaMessage(message: StoredMessage): string {
     `MAYA [${message.emotion} / ${message.pose} / ${message.scene}]: ${message.text}`,
   ];
   const response = message.response;
+  if (message.route) {
+    lines.push(`  経路: ${formatRouteSummary(message.route)}`);
+  }
   if (!response) {
     return lines.join('\n');
   }

@@ -23,6 +23,7 @@ import {
 import type { MayaResponse } from './mayaResponse';
 import { MockResponderError } from './mockResponder';
 import { ask } from './responder';
+import type { RouteInfo } from './routeInfo';
 import type { CompanyContext } from './systemPrompt';
 import { formatStamp, needsStamp, stampHistory } from './timeline';
 
@@ -45,6 +46,8 @@ export interface MayaTurn {
   source: ApiTier | 'mock';
   /** Set once the user saves the detected decision. */
   decisionSaved?: boolean;
+  /** How the reply was reached (server replies only). */
+  route?: RouteInfo | null;
   /**
    * Loaded from storage rather than just received. The reaction spotlight skips
    * these: opening an old conversation should not make her lean in as if the
@@ -135,6 +138,7 @@ async function loadConversationTurns(id: string): Promise<Turn[]> {
           },
           warnings: [],
           source: 'mock',
+          route: message.route,
           decisionSaved: saved.has(message.id),
           restored: true,
         },
@@ -309,8 +313,9 @@ export function useConversation({
           response: reply.response,
           warnings: reply.warnings,
           source: reply.source,
+          route: reply.route ?? null,
         };
-        void saveMayaMessage(convId, turn.id, reply.response);
+        void saveMayaMessage(convId, turn.id, reply.response, reply.route);
 
         if (generation.current !== myGeneration) {
           // Saved to the conversation it was asked in, but not shown here.

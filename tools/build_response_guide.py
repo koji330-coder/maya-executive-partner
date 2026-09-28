@@ -78,6 +78,7 @@ values = {
     "PROTOCOL": constant("PROTOCOL"),
     "CONTRACT": constant("CONTRACT"),
     "SEARCH_GUIDE": constant("SEARCH_GUIDE"),
+    "PREFETCH_INTRO": constant("PREFETCH_INTRO"),
     "TIME_EXAMPLE": time_example,
     "DECISIONS_EXAMPLE": decisions_example,
     "ACTIVITY_EXAMPLE": activity_example,

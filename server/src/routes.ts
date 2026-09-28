@@ -22,7 +22,16 @@ import {
   setJournalVerdict,
 } from './memory/inbox';
 import { deleteKey, keyStatuses, readKeyText, readTier, resolveKeys, saveKey } from './memory/apiKeys';
-import { loadCostPolicy, parseCostPatch, saveCostPolicy } from './memory/settings';
+import {
+  loadCostPolicy,
+  loadJevMode,
+  parseCostPatch,
+  parseJevModePatch,
+  saveCostPolicy,
+  saveJevMode,
+} from './memory/settings';
+import { JEV_MODEL, JEV_THRESHOLD, JEV_TIMEOUT_MS, TOPP_MASS } from './jevRouter';
+import { JEV_RULES } from './jevRules';
 import { checkApiKey } from '@/services/llm/geminiClient';
 import {
   addAlias,
@@ -254,6 +263,26 @@ const ROUTES: Route[] = [
     },
   },
 
+  // Jev routing. The mode switch, and what the screen shows about it: whether
+  // the key is in place (never the key), the fixed numbers, and the fixed rules.
+  {
+    method: 'GET',
+    pattern: /^\/v1\/settings\/jev$/,
+    handle: async ({ env }) => json(await jevSettings(env)),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/v1\/settings\/jev$/,
+    handle: async ({ request, env }) => {
+      const mode = parseJevModePatch(await readJson(request));
+      if (!mode) {
+        throw new ApiError(400, 'bad_mode', 'mode は off か assist です。');
+      }
+      await saveJevMode(env.MAYA_DB, mode);
+      return json(await jevSettings(env));
+    },
+  },
+
   // Gemini keys. Write-only: nothing here returns a key, only whether one is set.
   {
     method: 'GET',
@@ -295,6 +324,18 @@ const ROUTES: Route[] = [
     },
   },
 ];
+
+async function jevSettings(env: Env) {
+  return {
+    mode: await loadJevMode(env.MAYA_DB, env),
+    keyConfigured: Boolean(env.TYPESAFE_API_KEY),
+    model: JEV_MODEL,
+    threshold: JEV_THRESHOLD,
+    timeoutMs: JEV_TIMEOUT_MS,
+    toppMass: TOPP_MASS,
+    rules: JEV_RULES.map((rule) => ({ id: rule.id, title: rule.title, description: rule.description, tool: rule.tool })),
+  };
+}
 
 export async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);

@@ -12,6 +12,7 @@ import { loadLlmSettings } from '@/services/llm/settings';
 import { ASSUMED_TOKENS_PER_TURN, paidLimitReached, recordUsage } from '@/services/llm/usage';
 
 import { validateMayaResponse, type MayaResponse } from './mayaResponse';
+import { parseRouteInfo, type RouteInfo } from './routeInfo';
 import { respondTo as scriptedReply } from './mockResponder';
 import { buildSystemPrompt, type CompanyContext, type DecisionContext } from './systemPrompt';
 
@@ -20,6 +21,8 @@ export interface Reply {
   warnings: string[];
   /** Which key answered, or `mock` when no key is stored. */
   source: ApiTier | 'mock';
+  /** How the server reached the answer. Absent for answers made on the phone. */
+  route?: RouteInfo | null;
 }
 
 export interface AskOptions {
@@ -134,7 +137,7 @@ function finish(payload: unknown, source: ApiTier): Reply {
  * already did, but the screen should not trust a network hop it cannot see.
  */
 async function askServer(options: AskOptions): Promise<Reply> {
-  let data: { response?: unknown; warnings?: unknown; source?: unknown };
+  let data: { response?: unknown; warnings?: unknown; source?: unknown; route?: unknown };
   try {
     data = await serverRequest('/v1/chat', {
       method: 'POST',
@@ -160,7 +163,12 @@ async function askServer(options: AskOptions): Promise<Reply> {
     ? data.warnings.filter((w): w is string => typeof w === 'string')
     : [];
   const source: ApiTier = data.source === 'paid' ? 'paid' : 'free';
-  return { response: result.value, warnings: [...serverWarnings, ...result.warnings], source };
+  return {
+    response: result.value,
+    warnings: [...serverWarnings, ...result.warnings],
+    source,
+    route: parseRouteInfo(data.route),
+  };
 }
 
 const LLM_KINDS = new Set([

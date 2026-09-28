@@ -31,6 +31,10 @@ export interface Env extends AccessEnv {
   /** VoiceBox の窓を読むためのサービストークン（読み取り専用）。秘密。`wrangler secret put` で置く。 */
   VOICEBOX_VAULT_CLIENT_ID?: string;
   VOICEBOX_VAULT_CLIENT_SECRET?: string;
+  /** TypeSafe の Jev（道具の判定）。秘密。`wrangler secret put TYPESAFE_API_KEY` で置く。無ければ Jev は使わない。 */
+  TYPESAFE_API_KEY?: string;
+  /** Jev の経路判定の初期値。off / assist。設定画面で切り替えたら D1 の値が勝つ（memory/settings.ts）。 */
+  JEV_ROUTER_MODE?: string;
   MODEL: string;
   /** How much one model round may write. A string because wrangler vars are; unset or invalid means the default. */
   MAX_OUTPUT_TOKENS?: string;

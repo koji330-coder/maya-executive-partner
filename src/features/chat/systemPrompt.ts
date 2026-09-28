@@ -315,6 +315,24 @@ followUpQuestion
   話を深めるために1つだけ訊きたいことがあるとき。なければ null。
   仕事の進み具合を確かめるための問いにはしません。`;
 
+/**
+ * Data the server read before asking the model (Jev routing, server/src/jevRouter.ts).
+ *
+ * On those turns the model is offered no tools and answers in one round, so it
+ * has to be told that the data is already here and is all there is. The
+ * wording is the one measured in the E2E eval (server/scripts/jev-router).
+ */
+export const PREFETCH_INTRO = `## この質問のために取得済みのデータ
+サーバーが先に取得した結果です。答えの根拠に使ってください。`;
+
+export function formatPrefetchedData(items: { tool: string; args: Record<string, unknown>; result: unknown }[]): string {
+  const blocks = items.map(
+    (item) =>
+      `道具 ${item.tool}（引数 ${JSON.stringify(item.args)}）の結果:\n\`\`\`json\n${JSON.stringify(item.result, null, 2)}\n\`\`\``,
+  );
+  return `${PREFETCH_INTRO}\n\n${blocks.join('\n\n')}`;
+}
+
 export function buildSystemPrompt(
   company?: CompanyContext,
   decisions: DecisionContext[] = [],

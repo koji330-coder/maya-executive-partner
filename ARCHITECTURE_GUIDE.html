@@ -462,7 +462,7 @@
 
   <div class="wide">
     <figure>
-      <svg viewBox="0 0 880 540" role="img" aria-label="スマホはCloudflare Accessの認証を通ってMAYAサーバーに相談を送り、サーバーがGeminiに問い合わせD1データベースを読み書きする。サーバーはサービストークンでHAKSAIの在庫と売上を読み、APIキーでFIT LOGの体重・筋トレ・食事も直接読む。GitHubなどをD1へ写す同期ジョブはまだ作られていない。VoiceBoxから録音した会話の要約だけをサーバーへ送る経路は、受け口までできていて、送る側はこれから">
+      <svg viewBox="0 0 880 540" role="img" aria-label="スマホはCloudflare Accessの認証を通ってMAYAサーバーに相談を送り、サーバーがGeminiに問い合わせD1データベースを読み書きする。設定でONにしたときだけ、サーバーはGeminiの前にTypeSafeのJevへどのデータが要るかを訊く。サーバーはサービストークンでHAKSAIの在庫と売上を読み、APIキーでFIT LOGの体重・筋トレ・食事も直接読む。GitHubなどをD1へ写す同期ジョブはまだ作られていない。VoiceBoxから録音した会話の要約だけをサーバーへ送る経路は、受け口までできていて、送る側はこれから">
         <defs>
           <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
@@ -508,6 +508,15 @@
         <text x="570" y="174" font-size="11" text-anchor="middle" fill="currentColor" opacity=".75">答えを返す</text>
         <rect x="678" y="104" width="120" height="62" rx="12" fill="none" stroke="currentColor" stroke-width="1.5"/>
         <text x="738" y="141" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Gemini</text>
+
+        <!-- Jev: asked first which tool a turn needs; built, off by default (dashed) -->
+        <g class="dim">
+          <path d="M 440 100 V 56 H 672" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#ar2)"/>
+          <text x="560" y="48" font-size="10.5" text-anchor="middle" fill="currentColor">先に判定（設定で ON のとき）</text>
+          <rect x="678" y="30" width="150" height="54" rx="12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <text x="753" y="53" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">Jev（TypeSafe）</text>
+          <text x="753" y="70" font-size="10.5" text-anchor="middle" fill="currentColor">どのデータが要るか</text>
+        </g>
 
         <!-- HAKSAI: the Amazon numbers, read where they already live -->
         <path d="M 462 160 h 74 v 64 h 96" fill="none" stroke="currentColor" stroke-width="1.5"/>
@@ -566,6 +575,7 @@
         右側のHAKSAIとFIT LOGは、それぞれのデータが<strong>すでに置いてある場所をそのまま読む</strong>経路です。MAYAのデータベースに写して溜め直さないため、点線の夜間同期ジョブから外れました。
         VoiceBox（音声メモ・会議録音）は独立したサービスで、MAYAは、その読み取り専用の窓から、採用した要約・議事録だけを必要なときに読みに行きます（HAKSAIやFIT LOGと同じ向きです。点線は、まだ本番でつながっていないことを示します）。原文と音声は、窓にありません。
         FIT LOG（食事・筋トレ・体重・屋外運動）は連携済みです。日ごとの記録に加え、長期の体組成、実測TDEE、週次実績、種目別の成長も必要なときだけ読めます。
+        右上の Jev は、相談の前に「どのデータが要るか」を判定させる外部のモデルです。仕組みはできていますが<strong>既定は OFF</strong>で、設定画面で ON にしたときだけ使います（点線）。
       </figcaption>
     </figure>
   </div>
@@ -617,7 +627,8 @@
       <li><b>在庫・発注・売上の相談なら、HAKSAIに聞く。</b> 在庫は、商品名で探し、サイズ・色ごとの在庫・日販・発注期限・推奨発注数を読んで渡します。<strong>売れている順に15種類までしか見ません。</strong>数十種類あるバリエーションを全部聞くと、相談の待ち時間が延びるからです。競合と価格の相談なら、HAKSAIに<strong>保存してあるKeepaの履歴</strong>を読み、自社と競合の価格・ランキングの動きと、原価・手数料から出した1個あたりの粗利を渡します。値下げしたときの粗利と、同じ粗利を保つのに必要な販売数の増え方は、<strong>サーバーが計算して渡します</strong>（小さいモデルは割り算で桁を落とすため）。履歴が無い、または3日以上前の商品は、サーバーが自動でKeepaから取ります（上限はHAKSAI側で決まっていて、MAYAは変えられません）。取れなかったときは、理由を言って、保存済みのもので答えます。売上は、月ごとの合計と上位の商品を渡します。<strong>月の途中なら「途中」、利益が未確定なら「未確定」と、数字と一緒に渡します。</strong>どちらも読むだけで、発注などはできません。<strong>「在庫」「売上」「粗利」などの言葉が出たら、サーバーが道具を必ず使わせます。</strong>小さいモデルは、任せると道具を使わず「画面を見せてください」と返すことが、実機で分かったためです。</li>
       <li><b>体調・筋トレ・食事・体重の相談なら、FIT LOGに聞く。</b> 質問に合わせて4つの読み取り専用の道具を使い分けます。<code>fitlog_day</code>は指定日の食事・運動・体組成、<code>fitlog_progress</code>は体組成・実測TDEE・運動量・筋力の推移、<code>fitlog_weekly</code>は直前の1週間、<code>fitlog_exercise</code>は指定種目の前回と自己ベストを読みます。「今日の体重」と言えるのは実際にその日の測定があるときだけで、直近値なら測定日と手入力／Appleヘルスケアの出所を添えます。FIT LOG側のAIコメントや写真は読まず、週次取得でもAI生成・保存・既読変更は起こしません。</li>
       <li><b>録音した会話・議事録の相談なら、VoiceBoxの要約に聞く。</b> 4つの読み取り専用の道具を使い分けます。<code>voice_recent</code>は最近の会話の一覧、<code>voice_search</code>は語で探す、<code>voice_detail</code>は1件の決定事項ややること、<code>voice_actions</code>は会話から出た「やること」の一覧です。<strong>持っているのは、Gakkyが採用した要約と議事録だけで、原文も音声も持っていません。</strong>最後に届いた日時も添えて返し、古いときは「それより新しい会話は未着かもしれない」と伝えます。「やること」に完了の記録は無く、終わったかどうかは決めつけません。「議事録」「録音」「ボイスメモ」などの言葉が出たら、サーバーが道具を先に使わせます（「会議」という語だけでは使いません）。</li>
-      <li><b>サーバーが答えを検証して返す。</b> 形が崩れていないか確かめ、判断が含まれていればD1に保存します。</li>
+      <li><b>（設定で Jev を ON にしたときだけ）先に Jev に訊く。</b> 上の道具の選び方の前に、判定専用のモデル Jev に「どのデータが要るか」を1秒まで訊きます。自信が9割以上なら、そのデータをサーバーが先に読んで Gemini を1往復で済ませます（データ不要なら道具なし）。自信が低いときは、Jev が有力と見た道具だけを Gemini に見せます。Jev が答えないとき、添付があるときは、いつもの選び方に戻ります。<strong>ON のあいだは、相談の文と直近の会話が TypeSafe に送られます。</strong></li>
+      <li><b>サーバーが答えを検証して返す。</b> 形が崩れていないか確かめ、判断が含まれていればD1に保存します。どの経路で答えたか（先に読んだ道具、往復回数、時間）も一緒に返し、回答の下の「経路」で見られます。</li>
       <li><b>アプリが表情とポーズを動かして表示する。</b></li>
     </ol>
 
@@ -678,6 +689,13 @@
         </dd>
       </div>
       <div>
+        <dt>TypeSafe（Jev）の鍵</dt>
+        <dd>
+          MAYAサーバーの秘密（<code>TYPESAFE_API_KEY</code>）。Jev に「どのデータが要るか」を訊くための鍵です。
+          <strong>アプリには入れません。</strong>まだサーバーに入れていないので、設定画面で Jev を ON にしても、いまはいつもの選び方で答えます。
+        </dd>
+      </div>
+      <div>
         <dt>サーバーのアドレス</dt>
         <dd>ビルドに入っています。設定画面で確認できます。秘密ではありません。</dd>
       </div>
@@ -713,7 +731,7 @@
 
     <div class="scroll">
       <table>
-        <caption>2026-09-27 時点</caption>
+        <caption>2026-09-28 時点</caption>
         <thead>
           <tr><th>仕組み</th><th>状態</th><th>ひとこと</th></tr>
         </thead>
@@ -807,6 +825,11 @@
             <td>録音した会話の要約を読む（VoiceBox）</td>
             <td><span class="pill off">これから</span></td>
             <td>読む4つの道具はできていて、テストも通っている。VoiceBoxは独立した保管庫で、MAYAが読みに行く（送りつけは取りやめ）。MAYA側の公開（デプロイ）と、接続の設定がこれから。原文と音声は読めない</td>
+          </tr>
+          <tr>
+            <td>Jev に先にデータの要否を判定させる</td>
+            <td><span class="pill hold">準備済み・OFF</span></td>
+            <td>仕組み・設定画面の切り替え・固定ルールの一覧・回答ごとの「経路」表示はできている。サーバーへの公開と鍵の登録はまだ。架空の相談での評価は、余計なデータ取得が36%→20%、Gemini への入力が約35%減、費用が約27%減、平均の応答時間が約9%短縮。本物の相談での効果は未確認（2026-09-28）</td>
           </tr>
           <tr>
             <td>毎晩の同期</td>

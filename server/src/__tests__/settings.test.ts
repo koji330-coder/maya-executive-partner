@@ -2,6 +2,9 @@ import type { Env } from '../env';
 import {
   clampLimitYen,
   loadCostPolicy,
+  loadJevMode,
+  parseJevModePatch,
+  saveJevMode,
   MAX_DAILY_LIMIT_YEN,
   parseCostPatch,
   saveCostPolicy,
@@ -24,6 +27,11 @@ function fakeDb(rows: Record<string, string> = {}, broken = false) {
         if (broken) throw new Error('no such table: server_settings');
         if (!sql.includes('SELECT')) throw new Error(`unexpected: ${sql}`);
         return { results: [...store].map(([key, value]) => ({ key, value })) };
+      },
+      first: async () => {
+        if (broken) throw new Error('no such table: server_settings');
+        const value = store.get(args[0] as string);
+        return value === undefined ? null : { value };
       },
       run: async () => {
         const [key, value] = args as [string, string];
@@ -157,5 +165,31 @@ describe('parseCostPatch', () => {
   it('ignores a value of the wrong type rather than coercing it', () => {
     // '200' from a text field must not become the ceiling by accident.
     expect(parseCostPatch({ paidDailyLimitYen: '200', preferFree: 'false' })).toEqual({});
+  });
+});
+
+describe('Jev routing mode', () => {
+  it('is off unless something says assist', async () => {
+    expect(await loadJevMode(fakeDb().db, ENV)).toBe('off');
+    expect(await loadJevMode(fakeDb().db, { ...ENV, JEV_ROUTER_MODE: 'assist' } as Env)).toBe('assist');
+    expect(await loadJevMode(fakeDb().db, { ...ENV, JEV_ROUTER_MODE: 'on' } as Env)).toBe('off');
+  });
+
+  it('lets the settings screen win over wrangler, both ways', async () => {
+    const { db } = fakeDb();
+    await saveJevMode(db, 'assist');
+    expect(await loadJevMode(db, ENV)).toBe('assist');
+    await saveJevMode(db, 'off');
+    expect(await loadJevMode(db, { ...ENV, JEV_ROUTER_MODE: 'assist' } as Env)).toBe('off');
+  });
+
+  it('falls back to the wrangler value when the table cannot be read', async () => {
+    expect(await loadJevMode(fakeDb({}, true).db, { ...ENV, JEV_ROUTER_MODE: 'assist' } as Env)).toBe('assist');
+  });
+
+  it('accepts only the two modes', () => {
+    expect(parseJevModePatch({ mode: 'assist' })).toBe('assist');
+    expect(parseJevModePatch({ mode: 'shadow' })).toBeNull();
+    expect(parseJevModePatch({})).toBeNull();
   });
 });

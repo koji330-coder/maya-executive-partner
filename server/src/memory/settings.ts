@@ -126,3 +126,51 @@ export function parseCostPatch(body: Record<string, unknown>): Partial<CostPolic
   }
   return patch;
 }
+
+// ---- Jev routing -------------------------------------------------------------
+
+/**
+ * Whether consultations are routed through Jev first (server/src/jevRouter.ts).
+ *
+ * Same pattern as the cost rules: JEV_ROUTER_MODE in wrangler.jsonc is the
+ * starting value ("off"), and the settings screen can switch it without a
+ * redeploy, so it can be turned off from the phone the moment something looks
+ * wrong. Turning it on sends each message and the recent turns to TypeSafe.
+ */
+export type JevRouterMode = 'off' | 'assist';
+
+const JEV_MODE_KEY = 'jev.mode';
+
+export function readJevMode(value: string | undefined): JevRouterMode {
+  return value === 'assist' ? 'assist' : 'off';
+}
+
+export async function loadJevMode(db: D1Database, env: Env): Promise<JevRouterMode> {
+  const base = readJevMode(env.JEV_ROUTER_MODE);
+  try {
+    const row = await db
+      .prepare(`SELECT value FROM server_settings WHERE key = ?;`)
+      .bind(JEV_MODE_KEY)
+      .first<{ value: string }>();
+    return row ? readJevMode(row.value) : base;
+  } catch {
+    // No table or no database: the wrangler value still says what to do, and
+    // its default is off. A settings read never fails a consultation.
+    return base;
+  }
+}
+
+export async function saveJevMode(db: D1Database, mode: JevRouterMode): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO server_settings (key, value, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;`,
+    )
+    .bind(JEV_MODE_KEY, mode, new Date().toISOString())
+    .run();
+}
+
+/** The mode in a request body, or null when it is missing or not one of the two. */
+export function parseJevModePatch(body: Record<string, unknown>): JevRouterMode | null {
+  return body.mode === 'off' || body.mode === 'assist' ? body.mode : null;
+}

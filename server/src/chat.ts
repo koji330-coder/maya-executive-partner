@@ -1,5 +1,6 @@
 import { validateMayaResponse } from '@/features/chat/mayaResponse';
-import { buildSystemPrompt, type CompanyContext } from '@/features/chat/systemPrompt';
+import type { RouteInfo } from '@/features/chat/routeInfo';
+import { buildSystemPrompt, formatPrefetchedData, type CompanyContext } from '@/features/chat/systemPrompt';
 import type { ApiTier } from '@/services/llm/apiKey';
 import {
   DEFAULT_MAX_OUTPUT_TOKENS,
@@ -10,6 +11,7 @@ import {
   type GenerateOptions,
   type GenerateResult,
   type RequestAttachment,
+  type ToolCall,
 } from '@/services/llm/geminiClient';
 import {
   ASSUMED_TOKENS_PER_TURN,
@@ -57,7 +59,8 @@ import {
   vaultSource,
 } from './voicebox';
 import { resolveKeys } from './memory/apiKeys';
-import { loadCostPolicy } from './memory/settings';
+import { loadCostPolicy, loadJevMode } from './memory/settings';
+import { askJev, JevError, planRoute, type JevDecision, type RoutePlan } from './jevRouter';
 import { paidLimitReached, recordUsage } from './usage';
 
 /** What the app sends. Mirrors `AskOptions` in `src/features/chat/responder.ts`. */
@@ -75,6 +78,8 @@ export interface ChatReply {
   source: ApiTier;
   /** The tool calls made for this answer (memory, Amazon stock). For checking how often she looks. */
   searches: number;
+  /** How this answer was reached (routeInfo.ts). Tool names and numbers only. */
+  route: RouteInfo;
 }
 
 /** The cap from the environment, or the default when it is missing, not a number, or not sensible. */
@@ -145,6 +150,7 @@ export function parseChatRequest(body: unknown): ChatRequest {
  * key stopped at the daily ceiling before the request goes out.
  */
 export async function answer(env: Env, request: ChatRequest): Promise<ChatReply> {
+  const turnStarted = Date.now();
   // Keys entered in the app win over the Worker secrets (memory/apiKeys.ts).
   const { free, paid } = await resolveKeys(env.MAYA_DB, env);
   const freeAllowed = freeTierAllowed(request.companyIsReal ?? false);
@@ -162,12 +168,13 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   // Decisions are read here, not sent by the app. From v0.2 they live in D1, so
   // every route into the server remembers the same decisions.
   const now = presidentNow();
-  const [decisions, activity, cost] = await Promise.all([
+  const [decisions, activity, cost, jevMode] = await Promise.all([
     decisionsForPrompt(env.MAYA_DB),
     activityForPrompt(env.MAYA_DB, presidentDate()),
     // The wrangler values are the starting point; the settings screen can move
     // them without a redeploy (memory/settings.ts).
     loadCostPolicy(env.MAYA_DB, env),
+    loadJevMode(env.MAYA_DB, env),
   ]);
 
   const amazonReady = haksaiConfigured(env);
@@ -201,33 +208,86 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     selectedTools = [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_MARKET_TOOL];
   }
 
+  const runTool = (call: ToolCall): Promise<unknown> => {
+    if (call.name === HAKSAI_INVENTORY_TOOL.name) return runHaksaiInventoryTool(env, call);
+    if (call.name === HAKSAI_SALES_TOOL.name) return runHaksaiSalesTool(env, call, presidentDate());
+    if (call.name === HAKSAI_MARKET_TOOL.name) return runHaksaiMarketTool(env, call);
+    if (call.name === FITLOG_DAY_TOOL.name) return runFitlogDayTool(env, call, presidentDate());
+    if (call.name === FITLOG_PROGRESS_TOOL.name) return runFitlogProgressTool(env, call, presidentDate());
+    if (call.name === FITLOG_WEEKLY_TOOL.name) return runFitlogWeeklyTool(env, call, presidentDate());
+    if (call.name === FITLOG_EXERCISE_TOOL.name) return runFitlogExerciseTool(env, call);
+    if (
+      call.name === VOICE_RECENT_TOOL.name ||
+      call.name === VOICE_SEARCH_TOOL.name ||
+      call.name === VOICE_DETAIL_TOOL.name ||
+      call.name === VOICE_ACTIONS_TOOL.name
+    ) {
+      return runVoiceTool(vaultSource(env), call, presidentDate());
+    }
+    return runMemoryTool(env.MAYA_DB, call);
+  };
+  const legacyForce = refersToPast(request.message) || askingAboutAmazon || askingAboutFitness || askingAboutVoice;
+  let systemPrompt = buildSystemPrompt(request.company, decisions, now, activity, true, amazonReady, fitlogReady, voiceReady);
+
+  // Jev routing (jevRouter.ts). Off: none of this runs and the turn is exactly
+  // as before. On: Jev is asked first, and any failure lands back on the line
+  // above, so a consultation never depends on TypeSafe being up.
+  let tools = selectedTools;
+  let requireToolFirst = legacyForce;
+  let jev: JevDecision | null = null;
+  let jevError: string | undefined;
+  let plan: RoutePlan | null = null;
+  const prefetched: string[] = [];
+  if (jevMode === 'assist' && request.attachments?.length) {
+    // Jev reads text only and the eval never covered attachments, so a turn
+    // with an image or a file goes the way it always has.
+    jevError = 'attachments';
+  } else if (jevMode === 'assist') {
+    try {
+      jev = await askJev(env.TYPESAFE_API_KEY, request.message, request.history, allAvailableTools);
+      plan = planRoute({
+        decision: jev,
+        message: request.message,
+        today: presidentDate(),
+        available: allAvailableTools.map((tool) => tool.name),
+        legacyForce,
+      });
+    } catch (error) {
+      jevError = error instanceof JevError ? error.kind : 'invalid';
+    }
+  }
+  if (plan) {
+    tools = allAvailableTools.filter((tool) => plan.offered.includes(tool.name));
+    requireToolFirst = plan.requireToolFirst;
+    if (plan.prefetch.length > 0) {
+      // Read the same way a tool call would be, failures included: a read that
+      // fails is told to MAYA as an error, as runTool's caller does.
+      const items = await Promise.all(
+        plan.prefetch.map(async (item) => {
+          let result: unknown;
+          try {
+            result = await runTool({ name: item.tool, args: item.args });
+          } catch (error) {
+            result = { error: error instanceof Error ? error.message : '道具の実行に失敗しました。' };
+          }
+          prefetched.push(item.tool);
+          return { ...item, result };
+        }),
+      );
+      systemPrompt = `${systemPrompt}\n\n${formatPrefetchedData(items)}`;
+    }
+  }
+
   const base: Omit<GenerateOptions, 'apiKey'> = {
-    systemPrompt: buildSystemPrompt(request.company, decisions, now, activity, true, amazonReady, fitlogReady, voiceReady),
+    systemPrompt,
     history: request.history,
     message: request.message,
     attachments: request.attachments,
     model: env.MODEL,
     maxOutputTokens: readMaxOutputTokens(env.MAX_OUTPUT_TOKENS),
-    tools: selectedTools,
-    runTool: (call) => {
-      if (call.name === HAKSAI_INVENTORY_TOOL.name) return runHaksaiInventoryTool(env, call);
-      if (call.name === HAKSAI_SALES_TOOL.name) return runHaksaiSalesTool(env, call, presidentDate());
-      if (call.name === HAKSAI_MARKET_TOOL.name) return runHaksaiMarketTool(env, call);
-      if (call.name === FITLOG_DAY_TOOL.name) return runFitlogDayTool(env, call, presidentDate());
-      if (call.name === FITLOG_PROGRESS_TOOL.name) return runFitlogProgressTool(env, call, presidentDate());
-      if (call.name === FITLOG_WEEKLY_TOOL.name) return runFitlogWeeklyTool(env, call, presidentDate());
-      if (call.name === FITLOG_EXERCISE_TOOL.name) return runFitlogExerciseTool(env, call);
-      if (
-        call.name === VOICE_RECENT_TOOL.name ||
-        call.name === VOICE_SEARCH_TOOL.name ||
-        call.name === VOICE_DETAIL_TOOL.name ||
-        call.name === VOICE_ACTIONS_TOOL.name
-      ) {
-        return runVoiceTool(vaultSource(env), call, presidentDate());
-      }
-      return runMemoryTool(env.MAYA_DB, call);
-    },
-    requireToolFirst: refersToPast(request.message) || askingAboutAmazon || askingAboutFitness || askingAboutVoice,
+    tools,
+    runTool,
+    requireToolFirst,
   };
 
   const run = async (tier: ApiTier, apiKey: string): Promise<ChatReply> => {
@@ -236,17 +296,60 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     // One line per turn, for `wrangler tail`. When an answer comes back short this
     // says whether the cap cut it, the model thought its way through the budget, or
     // it simply chose to be brief. Numbers only: nothing the president said is logged.
+    const route: RouteInfo = {
+      mode: jevMode,
+      route: plan ? plan.route : jevMode === 'assist' ? 'legacy_fallback' : 'legacy',
+      ...(jevError ? { jevError } : {}),
+      ...(jev
+        ? {
+            jev: {
+              required: jev.required,
+              confidence: jev.confidence,
+              period: jev.period,
+              useful: jev.useful,
+              usefulConfidence: jev.usefulConfidence,
+              contextSufficient: jev.contextSufficient,
+              latencyMs: jev.latencyMs,
+              inputTokens: jev.inputTokens,
+            },
+          }
+        : {}),
+      ...(plan?.rule ? { rule: plan.rule } : {}),
+      prefetched,
+      offered: tools.map((tool) => tool.name),
+      toolsCalled: result.toolCalls.map((call) => call.name),
+      rounds: result.rounds,
+      latencyMs: Date.now() - turnStarted,
+      promptTokens: result.promptTokens,
+      outputTokens: result.responseTokens,
+      thoughtsTokens: result.thoughtsTokens,
+    };
     console.log(
       JSON.stringify({
         evt: 'maya_turn',
         tier,
         model: env.MODEL,
+        router: jevMode,
+        route: route.route,
+        jevError: jevError ?? null,
+        jevMs: jev?.latencyMs ?? null,
+        jevTool: jev?.required ?? null,
+        jevConfidence: jev?.confidence ?? null,
+        jevUseful: jev?.useful ?? null,
+        jevUsefulConfidence: jev?.usefulConfidence ?? null,
+        jevContextSufficient: jev?.contextSufficient ?? null,
+        jevInputTokens: jev?.inputTokens ?? null,
+        rule: plan?.rule?.id ?? null,
+        prefetched,
+        offered: route.offered.length,
         rounds: result.rounds,
         tools: result.toolCalls.map((call) => call.name),
         finishReason: result.finishReason,
         cap: base.maxOutputTokens,
+        promptTokens: result.promptTokens,
         outputTokens: result.responseTokens,
         thoughtsTokens: result.thoughtsTokens,
+        latencyMs: route.latencyMs,
         messageChars: messageLength(result.payload),
       }),
     );
@@ -258,7 +361,8 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
       response: validated.value,
       warnings: validated.warnings,
       source: tier,
-      searches: result.toolCalls.length,
+      searches: result.toolCalls.length + prefetched.length,
+      route,
     };
   };
 

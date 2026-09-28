@@ -5,6 +5,7 @@ import { colors, radius, spacing } from '@/theme';
 
 import { copyText, splitCodeBlocks, type CopyOutcome } from './copyText';
 import type { MayaResponse } from './mayaResponse';
+import { formatRouteDetail, formatRouteSummary, type RouteInfo } from './routeInfo';
 import type { MayaTurn } from './useConversation';
 
 export interface MayaAnswerProps {
@@ -106,6 +107,8 @@ export function MayaAnswer({ turn, onSaveDecision }: MayaAnswerProps) {
 
       <CopyButton text={answerText(response)} label="全文をコピー" />
 
+      {turn.route ? <RouteLine route={turn.route} /> : null}
+
       {__DEV__ && turn.warnings.length > 0 ? (
         <View style={styles.warnings}>
           <Text style={styles.warningKey}>検証で修復した点（開発時のみ表示）</Text>
@@ -117,6 +120,28 @@ export function MayaAnswer({ turn, onSaveDecision }: MayaAnswerProps) {
         </View>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * How the answer was reached, one quiet line under it; tap for the detail.
+ * There so Jev routing can be followed on real questions, answer by answer.
+ */
+function RouteLine({ route }: { route: RouteInfo }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Pressable accessibilityRole="button" onPress={() => setOpen((value) => !value)} style={styles.route}>
+      <Text style={styles.routeSummary}>
+        {open ? '▾' : '▸'} 経路 {formatRouteSummary(route)}
+      </Text>
+      {open
+        ? formatRouteDetail(route).map((line) => (
+            <Text key={line} selectable style={styles.routeDetail}>
+              {line}
+            </Text>
+          ))
+        : null}
+    </Pressable>
   );
 }
 
@@ -343,6 +368,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: colors.charcoal,
+  },
+  route: {
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: spacing.xs,
+    gap: 2,
+  },
+  routeSummary: {
+    fontSize: 11,
+    color: colors.muted,
+  },
+  routeDetail: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.muted,
   },
   warnings: {
     borderTopWidth: 1,

@@ -299,6 +299,26 @@ export function saveServerCostPolicy(patch: Partial<ServerCostPolicy>): Promise<
   return serverRequest<ServerCostPolicy>('/v1/settings/cost', { method: 'PUT', body: patch });
 }
 
+/** Jev routing on the server (server/src/jevRouter.ts). */
+export interface ServerJevSettings {
+  mode: 'off' | 'assist';
+  /** Whether TYPESAFE_API_KEY is set on the Worker. Never the key. */
+  keyConfigured: boolean;
+  model: string;
+  threshold: number;
+  timeoutMs: number;
+  toppMass: number;
+  rules: { id: string; title: string; description: string; tool: string }[];
+}
+
+export function getServerJevSettings(): Promise<ServerJevSettings> {
+  return serverRequest<ServerJevSettings>('/v1/settings/jev');
+}
+
+export function saveServerJevMode(mode: ServerJevSettings['mode']): Promise<ServerJevSettings> {
+  return serverRequest<ServerJevSettings>('/v1/settings/jev', { method: 'PUT', body: { mode } });
+}
+
 export type ServerKeyTier = 'free' | 'paid';
 
 /** What the server says about a key. Never the key itself. */

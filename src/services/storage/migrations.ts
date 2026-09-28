@@ -142,6 +142,15 @@ export const MIGRATIONS: readonly Migration[] = [
       );`,
     ],
   },
+  {
+    version: 5,
+    statements: [
+      // How each answer was reached (routeInfo.ts): the route, Jev's reading,
+      // the tools and the rounds. Kept beside the reply so the president can
+      // look back at what Jev routing changed. Null for replies before it.
+      `ALTER TABLE cached_messages ADD COLUMN route_json TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.reduce(

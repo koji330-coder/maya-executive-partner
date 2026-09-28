@@ -5,6 +5,7 @@ import { exportTranscript, listConversations } from '@/features/chat/conversatio
 import { ApiKeySection } from '@/features/settings/ApiKeySection';
 import { ConnectionModeSection } from '@/features/settings/ConnectionModeSection';
 import { ServerCostSection } from '@/features/settings/ServerCostSection';
+import { ServerJevSection } from '@/features/settings/ServerJevSection';
 import { ServerKeysSection } from '@/features/settings/ServerKeysSection';
 import { ServerSection } from '@/features/settings/ServerSection';
 import { appEnv } from '@/services/api/config';
@@ -78,6 +79,7 @@ export default function SettingsScreen() {
           <ServerSection />
           <ServerKeysSection />
           <ServerCostSection />
+          <ServerJevSection />
         </View>
       ) : null}
       {mode === 'direct' ? (
