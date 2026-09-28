@@ -39,8 +39,10 @@ trivialな変更（typo・依存パッケージ更新のみ等）は記録不要
 新しく publish すると別のアーティファクトができて、社長の手元のリンクが古いままになる。
 
 ```
-URL: https://claude.ai/code/artifact/aebe739f-d47d-45d7-95a2-2bb64b276bdb
+URL: https://claude.ai/artifact/35FapVKEELCt5gGFMBCsWG
 ```
+
+旧URL（`aebe739f-d47d-45d7-95a2-2bb64b276bdb`）は2026-09-29に読めなくなっていたため、上記へ差し替えた。
 
 Artifact ツールに `url` としてこのアドレスを渡す（この会話の外から更新する場合は必須）。
 公開前に `action: "read"` でいまの版を読み、その上に変更を重ねること。
