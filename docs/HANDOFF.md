@@ -11,8 +11,7 @@ Cloudflare にログインできる自宅PCでやる。
 
 ## いまの状態
 
-- コードはブランチ `claude/compassionate-hawking-excwxw` にある（最後のコミット `b7c0c47` 以降）。
-  **`main` にはまだ入っていない。** `main` から早送りで取り込める（衝突なし）
+- コードは `main` に取り込み済み（2026-09-28、早送り。作業ブランチは `claude/compassionate-hawking-excwxw`）
 - テストは `npm run check` で351件すべて通過
 - 既定は OFF。OFF のあいだは Jev 以前とまったく同じ動き（テストで固定済み）
 - 設計と評価の記録: `docs/PLATFORM_ARCHITECTURE.md`「道具の判定を Jev に先にさせる」、
@@ -20,7 +19,7 @@ Cloudflare にログインできる自宅PCでやる。
 
 ## 手順
 
-### 1. [ ] 最新を取って `main` に取り込む
+### 1. [x] 最新を取って `main` に取り込む（2026-09-28 済み。自宅PCでは `git checkout main && git pull origin main` だけでよい）
 
 ```
 git fetch origin
