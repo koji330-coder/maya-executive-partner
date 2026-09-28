@@ -31,7 +31,7 @@ function variantSection(name: string, summary: Summary): string {
   lines.push(`- Tool が必要なのに none: ${rateCell(summary.toolNeededButNone)}`);
   lines.push(`- Tool 不要なのに Tool: ${rateCell(summary.noneNeededButTool)}`);
   lines.push(`- Confidence 90% 以上の誤答: **${summary.highConfidenceWrong.length} 件**`);
-  lines.push(`- 曖昧ケースに Confidence 90% 以上で答えた: ${summary.highConfidenceOnAmbiguous.length} 件`);
+  lines.push(`- 曖昧ケースで Tool を Confidence 90% 以上で選んだ: ${summary.highConfidenceOnAmbiguous.length} 件`);
   lines.push(
     `- Latency: average ${ms(summary.latency.average)} / p50 ${ms(summary.latency.p50)} / p95 ${ms(summary.latency.p95)}`,
   );
@@ -106,11 +106,15 @@ export function renderReport(
   summaries: Record<string, Summary>,
   baseline: { testCase: RouterCase; selection: BaselineSelection }[],
 ): string {
+  const versions = [
+    ...new Set(Object.values(summaries).flatMap((summary) => summary.modelVersions)),
+  ];
   const header = [
     '# Jev Router Evaluation',
     '',
     `- router: ${router.name}${router.remote ? '' : '（オフライン。Jev の評価ではなく、ハーネスの動作確認）'}`,
     `- 実行: ${new Date().toISOString()}`,
+    `- モデル: ${versions.join(', ') || '—'}`,
     '- confidence は router が返した値。返さない場合のみ、確率分布から TypeSafe の定義式で算出した値を使う。',
     '',
   ];

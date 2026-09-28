@@ -26,6 +26,8 @@ export interface EvalRow {
   latency_ms: number;
   input_tokens: number | null;
   estimated_cost_usd: number | null;
+  /** The model version that answered (e.g. jev-1.13.0). */
+  model_version: string | null;
   error: string | null;
 }
 
@@ -72,12 +74,13 @@ export interface Summary {
   /** Expected none, chose a tool. */
   noneNeededButTool: Rate;
   highConfidenceWrong: EvalRow[];
-  /** Ambiguous cases answered with high confidence (whatever the option). */
+  /** Ambiguous cases where a tool (not none) was chosen with high confidence. */
   highConfidenceOnAmbiguous: EvalRow[];
   bands: { label: string; rate: Rate }[];
   latency: { average: number | null; p50: number | null; p95: number | null };
   inputTokens: number | null;
   costUsd: number | null;
+  modelVersions: string[];
 }
 
 export function summarize(rows: EvalRow[]): Summary {
@@ -133,7 +136,9 @@ export function summarize(rows: EvalRow[]): Summary {
     toolNeededButNone: rate(count((row) => row.jev_selected_tool === NONE, expectsTool), expectsTool.length),
     noneNeededButTool: rate(count((row) => row.jev_selected_tool !== NONE, expectsNone), expectsNone.length),
     highConfidenceWrong: answered.filter((row) => !row.correct && (confidenceOf(row) ?? 0) >= HIGH_CONFIDENCE),
-    highConfidenceOnAmbiguous: answered.filter((row) => row.ambiguous && (confidenceOf(row) ?? 0) >= HIGH_CONFIDENCE),
+    highConfidenceOnAmbiguous: answered.filter(
+      (row) => row.ambiguous && row.jev_selected_tool !== NONE && (confidenceOf(row) ?? 0) >= HIGH_CONFIDENCE,
+    ),
     bands,
     latency: {
       average: latencies.length === 0 ? null : latencies.reduce((a, b) => a + b, 0) / latencies.length,
@@ -142,5 +147,6 @@ export function summarize(rows: EvalRow[]): Summary {
     },
     inputTokens: tokens.length === 0 ? null : tokens.reduce((a, b) => a + b, 0),
     costUsd: costs.length === 0 ? null : costs.reduce((a, b) => a + b, 0),
+    modelVersions: [...new Set(answered.map((row) => row.model_version).filter((v): v is string => v !== null))],
   };
 }

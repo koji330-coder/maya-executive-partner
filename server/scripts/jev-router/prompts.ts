@@ -1,23 +1,22 @@
 /**
- * The two router variants the eval compares. Both send the same state and the
- * same options; they differ only in how much of MAYA's tool rule is spelled out.
+ * The two router variants the eval compares. Both offer the same options, each
+ * described by the production tool description (a Choice's `criteria`); they
+ * differ only in how much of MAYA's tool rule is spelled out.
  *
  * A (minimal): tool names and descriptions, and "pick the next tool".
- * B (explicit): the rules that fixed the Playground misroute (none 92% →
- * fitlog 100%) written out.
+ * B (explicit): MAYA's role in the state, and the rules that fixed the
+ * Playground misroute (none 92% → fitlog 100%) written into the instructions.
  *
  * Comparing them separates "Jev routes well" from "a detailed rule routes well".
  */
 import type { RouterCase } from './cases.ts';
-import { EVAL_TOOLS, NONE, OPTIONS, type RouterTool } from './tools.ts';
+import { EVAL_TOOLS, NONE } from './tools.ts';
 
 export type Variant = 'minimal' | 'explicit';
 export const VARIANTS: Variant[] = ['minimal', 'explicit'];
 
 export interface RouterState {
   maya_role?: string;
-  routing_rules?: string[];
-  available_tools: RouterTool[];
   conversation_context: { role: string; text: string }[];
   known_facts: Record<string, string>;
   user_message: string;
@@ -25,8 +24,9 @@ export interface RouterState {
 
 export interface RouterQuestion {
   id: 'next_tool';
-  instructions: string;
-  options: string[];
+  instructions: string | { question: string; routing_rules: string[] };
+  /** Option → description. The option names are the tool names plus none. */
+  criteria: Record<string, string>;
 }
 
 const MAYA_ROLE =
@@ -42,30 +42,36 @@ const RULES = [
   '何を指しているか state から特定できない短い発話は、Tool を当て推量で選ばず none（聞き返す）とする。',
 ];
 
-const MINIMAL_INSTRUCTIONS = `ユーザーへ回答するために、次に使用すべき Tool を1つ選んでください。Tool が不要なら ${NONE} を選んでください。`;
+const MINIMAL_INSTRUCTIONS = `\`user_message\` に回答するために、次に使用すべき Tool を1つ選んでください。Tool が不要なら ${NONE} を選んでください。`;
+const MINIMAL_NONE = 'Tool を使わない。';
 
 const EXPLICIT_INSTRUCTIONS =
   'ユーザーへ正確に回答するために、現在の state から次に使用すべき Tool を1つ選んでください。' +
   'ユーザー固有の実データが必要で、そのデータが state 内に無い場合は必ず対応する Tool を選んでください。' +
   '複数段階の処理が必要な場合、最終的な Tool ではなく「次に実行すべき Tool」を選んでください。' +
   `${NONE} は Tool を一切使わず正確に回答できる場合のみ選んでください。` +
-  '判断は state.routing_rules に従ってください。';
-
+  '判断は `routing_rules` に従ってください。';
+const EXPLICIT_NONE =
+  'Tool を使わない。外部データや保存データを取得しなくても、一般知識・意見・推論、または state 内に既にある情報だけで正確に回答できる場合、' +
+  'または発話が何を指すか state から特定できず聞き返すべき場合に限る。';
 export function buildState(variant: Variant, testCase: RouterCase): RouterState {
   const common = {
-    available_tools: EVAL_TOOLS,
     conversation_context: testCase.context ?? [],
     known_facts: testCase.known ?? {},
     user_message: testCase.message,
   };
   if (variant === 'minimal') return common;
-  return { maya_role: MAYA_ROLE, routing_rules: RULES, ...common };
+  return { maya_role: MAYA_ROLE, ...common };
 }
 
 export function buildQuestion(variant: Variant): RouterQuestion {
+  const criteria = Object.fromEntries(EVAL_TOOLS.map((tool) => [tool.name, tool.description]));
+  if (variant === 'minimal') {
+    return { id: 'next_tool', instructions: MINIMAL_INSTRUCTIONS, criteria: { ...criteria, [NONE]: MINIMAL_NONE } };
+  }
   return {
     id: 'next_tool',
-    instructions: variant === 'minimal' ? MINIMAL_INSTRUCTIONS : EXPLICIT_INSTRUCTIONS,
-    options: OPTIONS,
+    instructions: { question: EXPLICIT_INSTRUCTIONS, routing_rules: RULES },
+    criteria: { ...criteria, [NONE]: EXPLICIT_NONE },
   };
 }

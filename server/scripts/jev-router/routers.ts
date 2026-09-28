@@ -12,6 +12,8 @@ export interface RouterDecision {
   confidence: number | null;
   inputTokens?: number | null;
   costUsd?: number | null;
+  /** The model version that answered, when the router reports it. */
+  model?: string | null;
   /** The unparsed response, kept so the fields can be re-checked later. */
   raw?: unknown;
 }
@@ -51,7 +53,7 @@ export const dryRunRouter: Router = {
       : /売|Amazon/.test(text) ? 'haksai_sales'
       : /体重|体脂肪|食|眠/.test(text) ? 'fitlog_day'
       : 'none';
-    const probabilities = Object.fromEntries(question.options.map((option) => [option, option === pick ? 1 : 0]));
+    const probabilities = Object.fromEntries(Object.keys(question.criteria).map((option) => [option, option === pick ? 1 : 0]));
     return { selected: pick, probabilities, confidence: 1 };
   },
 };

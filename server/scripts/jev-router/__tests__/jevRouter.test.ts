@@ -25,6 +25,7 @@ function row(partial: Partial<EvalRow>): EvalRow {
     latency_ms: 100,
     input_tokens: null,
     estimated_cost_usd: null,
+    model_version: null,
     error: null,
     ...partial,
   };
@@ -50,9 +51,12 @@ describe('jev router cases', () => {
 
   it('keeps routing rules out of the minimal variant', () => {
     const c = CASES[0]!;
-    expect(buildState('minimal', c)).not.toHaveProperty('routing_rules');
-    expect(buildState('explicit', c).routing_rules?.length).toBeGreaterThan(0);
-    expect(buildQuestion('minimal').options).toEqual(OPTIONS);
+    expect(buildState('minimal', c)).not.toHaveProperty('maya_role');
+    expect(typeof buildQuestion('minimal').instructions).toBe('string');
+    const explicit = buildQuestion('explicit').instructions;
+    expect(typeof explicit === 'object' && explicit.routing_rules.length).toBeGreaterThan(0);
+    expect(Object.keys(buildQuestion('minimal').criteria)).toEqual(OPTIONS);
+    expect(Object.keys(buildQuestion('explicit').criteria)).toEqual(OPTIONS);
   });
 });
 

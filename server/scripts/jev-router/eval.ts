@@ -6,8 +6,8 @@
  *   node --import ./server/scripts/jev-router/register.mjs \
  *     server/scripts/jev-router/eval.ts [--router dry-run|typesafe] [--variant minimal|explicit|both]
  *
- * --router typesafe sends the cases to TypeSafe and needs TYPESAFE_API_KEY in
- * the environment. Output goes to server/scripts/jev-router/results/ (ignored
+ * --router typesafe sends the cases to TypeSafe. The key comes from the cloud
+ * environment's API credential, or from TYPESAFE_API_KEY when run elsewhere. Output goes to server/scripts/jev-router/results/ (ignored
  * by git).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -57,6 +57,7 @@ async function runCase(router: Router, variant: Variant, testCase: RouterCase): 
       latency_ms: latency,
       input_tokens: decision.inputTokens ?? null,
       estimated_cost_usd: decision.costUsd ?? null,
+      model_version: decision.model ?? null,
       error: null,
     };
   } catch (error) {
@@ -71,6 +72,7 @@ async function runCase(router: Router, variant: Variant, testCase: RouterCase): 
       latency_ms: Math.round(performance.now() - started),
       input_tokens: null,
       estimated_cost_usd: null,
+      model_version: null,
       error: error instanceof Error ? error.message : String(error),
     };
   }

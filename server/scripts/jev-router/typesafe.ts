@@ -1,57 +1,86 @@
 /**
- * TypeSafe (Jev) adapter — NOT YET WIRED.
+ * TypeSafe (Jev) adapter, per the official API reference
+ * (https://docs.typesafe.ai/api, read 2026-09-28):
  *
- * The request and response field names must come from TypeSafe's official
- * documentation, not from guesses. docs.typesafe.ai and the API host were
- * blocked by this container's network policy when the harness was written, so
- * the mapping below is left empty on purpose and `decide` refuses to run.
+ *   POST https://api.typesafe.ai/v1/systemone
+ *   Authorization: Bearer <API_KEY>
+ *   { state, model, questions: { <id>: { type: "choice", instructions, criteria: { <option>: <description> } } } }
+ *   → { model, answers: { <id>: { type, choice, probabilities, confidence } }, usage: { input_tokens, output_tokens } }
  *
- * To finish it (after reading the docs):
- *   1. set ENDPOINT and the auth header as documented
- *   2. fill `toRequest` from our state + question (Choice question, options = OPTIONS)
- *   3. fill `fromResponse`: the chosen option, per-option probabilities, the
- *      confidence, and token / cost fields if the response carries them
+ * Price (https://docs.typesafe.ai/models): jev-1.13 charges input tokens only,
+ * $0.042 per million. The version is pinned so the numbers here stay comparable
+ * when jev-latest moves.
  *
- * The key is read from TYPESAFE_API_KEY in the environment only. It is never
+ * The key: in the cloud environment it is an API credential that the network
+ * layer attaches to requests for api.typesafe.ai, so this process never sees it.
+ * Run elsewhere, it is read from TYPESAFE_API_KEY. Either way it is never
  * written to the log or the report.
  */
 import type { RouterQuestion, RouterState } from './prompts.ts';
 import type { Router, RouterDecision } from './routers.ts';
 
-const UNVERIFIED =
-  'TypeSafe の API 仕様が未確認のため、送信しません（server/scripts/jev-router/typesafe.ts の説明を参照）。';
+const ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
+export const MODEL = 'jev-1.13.0';
+const USD_PER_INPUT_TOKEN = 0.042 / 1_000_000;
+const RETRYABLE = new Set([429, 529]);
+const MAX_ATTEMPTS = 4;
 
-// Filled in from the official docs. Left null until then.
-const ENDPOINT: string | null = null;
-const authHeaders: ((apiKey: string) => Record<string, string>) | null = null;
-
-function toRequest(_state: RouterState, _question: RouterQuestion): unknown {
-  throw new Error(UNVERIFIED);
+interface ChoiceAnswer {
+  type: 'choice';
+  choice: string;
+  probabilities: Record<string, number>;
+  confidence: number;
 }
 
-function fromResponse(_body: unknown): RouterDecision {
-  throw new Error(UNVERIFIED);
+interface SystemOneResponse {
+  model: string;
+  answers: Record<string, ChoiceAnswer>;
+  usage: { input_tokens: number; output_tokens: number };
+}
+
+export function toRequest(state: RouterState, question: RouterQuestion) {
+  return {
+    state,
+    model: MODEL,
+    questions: {
+      [question.id]: { type: 'choice', instructions: question.instructions, criteria: question.criteria },
+    },
+  };
+}
+
+export function fromResponse(body: SystemOneResponse, questionId: string): RouterDecision {
+  const answer = body.answers?.[questionId];
+  if (!answer || answer.type !== 'choice') throw new Error('TypeSafe の応答に choice の答えがありません。');
+  const inputTokens = body.usage?.input_tokens ?? null;
+  return {
+    selected: answer.choice,
+    probabilities: answer.probabilities,
+    confidence: answer.confidence,
+    inputTokens,
+    costUsd: inputTokens === null ? null : inputTokens * USD_PER_INPUT_TOKEN,
+    model: body.model,
+    raw: body,
+  };
 }
 
 export function typesafeRouter(): Router {
-  const endpoint = ENDPOINT;
-  const headers = authHeaders;
-  if (!endpoint || !headers) throw new Error(UNVERIFIED);
   const apiKey = process.env.TYPESAFE_API_KEY;
-  if (!apiKey) {
-    throw new Error('TYPESAFE_API_KEY が環境変数にありません。キーはコミットせず、実行時の環境変数だけで渡してください。');
-  }
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (apiKey) headers.authorization = `Bearer ${apiKey}`;
   return {
     name: 'typesafe-jev',
     remote: true,
     async decide(state, question) {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', ...headers(apiKey) },
-        body: JSON.stringify(toRequest(state, question)),
-      });
-      if (!response.ok) throw new Error(`TypeSafe ${response.status}`);
-      return fromResponse(await response.json());
+      const body = JSON.stringify(toRequest(state, question));
+      for (let attempt = 1; ; attempt += 1) {
+        const response = await fetch(ENDPOINT, { method: 'POST', headers, body });
+        if (response.ok) return fromResponse((await response.json()) as SystemOneResponse, question.id);
+        if (!RETRYABLE.has(response.status) || attempt >= MAX_ATTEMPTS) {
+          // The error body describes the offending field; it never echoes the key.
+          throw new Error(`TypeSafe ${response.status}: ${(await response.text()).slice(0, 300)}`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+      }
     },
   };
 }
