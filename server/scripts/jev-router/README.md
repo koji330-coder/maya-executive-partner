@@ -39,3 +39,23 @@ NODE_USE_ENV_PROXY=1 node --no-warnings --import ./server/scripts/jev-router/reg
 - テスト発話・商品名・数字はすべて架空。実データは入れない
 - キーは環境変数 `TYPESAFE_API_KEY` だけ。ログにもレポートにも書かない
 - 本番の Worker・D1・EAS には触れない
+
+## E2E 評価（Gemini 接続）
+
+Jev をルーター単体でなく、MAYA の応答の流れに組み込んだときの速さ・費用・品質を、現行と同じケースで並べて測る。
+
+```sh
+NODE_USE_ENV_PROXY=1 node --no-warnings --experimental-transform-types \
+  --import ./server/scripts/jev-router/register.mjs \
+  server/scripts/jev-router/e2e.ts [--cases A01,B01] [--limit N] [--threshold 0.9] [--budget-usd 1] [--no-judge]
+```
+
+- `--experimental-transform-types` は `geminiClient.ts` の構文（コンストラクタ引数のプロパティ）を Node に読ませるため
+- **current**: `chat.ts` と同じ絞り込み → Gemini が道具を決めて呼ぶ（道具を使うと2往復）
+- **jev**: Jev（Minimal）が confidence ≥ しきい値で
+  - `none` → Gemini を道具なしで1往復
+  - 引数をコードで埋められる道具（`fitlog_day` の今日/昨日、`haksai_sales` の今月/先月、`fitlog_progress` など）→ サーバーが先に実行し、結果をプロンプトに入れて Gemini 1往復
+  - それ以外 → current にそのまま回す（Jev の時間と費用は加算）
+- 道具の結果は `fixtures.ts` の架空データ。本物の HAKSAI / FIT LOG / VoiceBox / D1 には触れない
+- 品質は、返事の形の検証、正しいデータを取ったか、Gemini によるブラインド比較（`judge.ts`、順番はケースごとに入れ替え）
+- `--budget-usd` を超えたら途中で止まる（既定 $1）

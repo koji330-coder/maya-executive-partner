@@ -8,6 +8,7 @@ import { FITLOG_TOOLS } from '../../src/fitlog.ts';
 import { HAKSAI_INVENTORY_TOOL, HAKSAI_MARKET_TOOL, HAKSAI_SALES_TOOL } from '../../src/haksai.ts';
 import { SEARCH_MEMORY_TOOL } from '../../src/memory/search.ts';
 import { VOICE_TOOLS } from '../../src/voicebox.ts';
+import type { ToolDeclaration } from '@/services/llm/geminiClient';
 
 export const NONE = 'none';
 
@@ -17,14 +18,16 @@ export interface RouterTool {
 }
 
 /** Same order chat.ts builds allAvailableTools in, with every source connected. */
-export const EVAL_TOOLS: RouterTool[] = [
+export const TOOL_DECLARATIONS: ToolDeclaration[] = [
   SEARCH_MEMORY_TOOL,
   HAKSAI_INVENTORY_TOOL,
   HAKSAI_SALES_TOOL,
   HAKSAI_MARKET_TOOL,
   ...FITLOG_TOOLS,
   ...VOICE_TOOLS,
-].map(({ name, description }) => ({ name, description }));
+];
+
+export const EVAL_TOOLS: RouterTool[] = TOOL_DECLARATIONS.map(({ name, description }) => ({ name, description }));
 
 export const OPTIONS: string[] = [...EVAL_TOOLS.map((tool) => tool.name), NONE];
 

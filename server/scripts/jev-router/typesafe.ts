@@ -21,18 +21,18 @@ import type { Router, RouterDecision } from './routers.ts';
 
 const ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
 export const MODEL = 'jev-1.13.0';
-const USD_PER_INPUT_TOKEN = 0.042 / 1_000_000;
+export const USD_PER_INPUT_TOKEN = 0.042 / 1_000_000;
 const RETRYABLE = new Set([429, 529]);
 const MAX_ATTEMPTS = 4;
 
-interface ChoiceAnswer {
+export interface ChoiceAnswer {
   type: 'choice';
   choice: string;
   probabilities: Record<string, number>;
   confidence: number;
 }
 
-interface SystemOneResponse {
+export interface SystemOneResponse {
   model: string;
   answers: Record<string, ChoiceAnswer>;
   usage: { input_tokens: number; output_tokens: number };
@@ -63,24 +63,29 @@ export function fromResponse(body: SystemOneResponse, questionId: string): Route
   };
 }
 
-export function typesafeRouter(): Router {
+/** One POST to /v1/systemone, retrying 429/529 with backoff as the docs ask. */
+export async function postSystemOne(request: unknown): Promise<SystemOneResponse> {
   const apiKey = process.env.TYPESAFE_API_KEY;
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (apiKey) headers.authorization = `Bearer ${apiKey}`;
+  const body = JSON.stringify(request);
+  for (let attempt = 1; ; attempt += 1) {
+    const response = await fetch(ENDPOINT, { method: 'POST', headers, body });
+    if (response.ok) return (await response.json()) as SystemOneResponse;
+    if (!RETRYABLE.has(response.status) || attempt >= MAX_ATTEMPTS) {
+      // The error body describes the offending field; it never echoes the key.
+      throw new Error(`TypeSafe ${response.status}: ${(await response.text()).slice(0, 300)}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+  }
+}
+
+export function typesafeRouter(): Router {
   return {
     name: 'typesafe-jev',
     remote: true,
     async decide(state, question) {
-      const body = JSON.stringify(toRequest(state, question));
-      for (let attempt = 1; ; attempt += 1) {
-        const response = await fetch(ENDPOINT, { method: 'POST', headers, body });
-        if (response.ok) return fromResponse((await response.json()) as SystemOneResponse, question.id);
-        if (!RETRYABLE.has(response.status) || attempt >= MAX_ATTEMPTS) {
-          // The error body describes the offending field; it never echoes the key.
-          throw new Error(`TypeSafe ${response.status}: ${(await response.text()).slice(0, 300)}`);
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
-      }
+      return fromResponse(await postSystemOne(toRequest(state, question)), question.id);
     },
   };
 }
