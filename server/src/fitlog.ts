@@ -299,6 +299,9 @@ interface FitlogWeeklyRaw {
     avgKcalWithAlcohol?: number | null;
     alcohol?: { days: number; pureAlcoholG: number; kcal: number; carbG: number; purineMg: number };
     targetKcal: number | null;
+    /** 食事記録のある日の「基本目標＋運動日の追加分」の平均。古いサーバーでは無い。 */
+    avgTargetKcal?: number | null;
+    avgBonusKcal?: number | null;
     weightStart: number | null;
     weightEnd: number | null;
     weightDays: number;
@@ -779,6 +782,11 @@ export function summarizeFitlogWeekly(raw: FitlogWeeklyRaw): Record<string, unkn
         ? { 飲酒日数: `${f.alcohol.days}日`, 純アルコール合計: `${f.alcohol.pureAlcoholG}g`, お酒のkcal合計: `${f.alcohol.kcal}kcal` }
         : '不明',
       基本目標: f.targetKcal != null ? `${f.targetKcal}kcal/日` : '未設定',
+      // 日次の「目標」と同じ式（基本目標＋ジム日の固定額＋屋外運動の実測kcal）を、食事記録のある日で平均したもの。
+      運動日の追加分込みの目標:
+        f.avgTargetKcal != null
+          ? `${f.avgTargetKcal}kcal/日（運動日の追加分は平均${f.avgBonusKcal ?? 0}kcal/日）`
+          : '不明（基本目標だけで比べない）',
     },
     体重: {
       測定日数: `${f.weightDays}日`,
