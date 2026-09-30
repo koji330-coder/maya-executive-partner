@@ -116,8 +116,9 @@ KEY_ENCRYPTION_KEY
    キーチェーンに置く利用者キーは、別々の保存場所として管理する必要がある。
 5. **暗号化D1をSecret Vaultとして扱わない。** これは既存アプリの動作であり、
    Registryへ暗号化済みデータや実値を取り込んではいけない。
-6. **Repository調査は段階的に実施中。** 列挙した残り32作業ツリーは、同じScannerを
-   実行するまで「調査済み」にしない。
+6. **Repositoryのdry-run Scannerは37作業ツリーへ実行済み。** 12 Repositoryから
+   671件の参照候補を検出した。この数字はCredential実体数ではなく、同じ参照の重複を
+   含む確認前の検出件数である。
 
 ## Git管理の確認
 
@@ -133,5 +134,5 @@ Git対象外になっている。確認したdotenvファイルについては�
 1. Cloudflare Workers Secrets、EAS Environment、GitHub Actions Secrets、
    Apps Script Propertiesから、値ではなく**登録名だけ**を取得する。
 2. Account別名とProject別名を作り、提案した確認フローで各Credential参照へ紐付ける。
-3. 列挙したすべてのRepositoryへScannerを実行し、実行日、Commit SHA、除外パスを残す。
+3. Scanner結果をRegistryへ一括取り込みし、同名変数の候補を人が確認する。
 4. 所有者、用途、最終確認日のいずれかを確認できないCredentialは、ローテーション候補にする。

@@ -131,8 +131,10 @@ VoiceBox、HAKSAI Central、TypeSafe を登録する。
 3. ローカル Scanner を dry-run で実装し、出力に値が含まれないことを検証する。完了：
    `credential-registry/scripts/repository-scanner.mjs` はdotenvを開かず、参照名・
    パス・行番号・検出方法だけを出力する。偽の値を含むfixtureで出力漏れを検証している。
-4. 確認・紐付けフローと重複候補の警告を追加する。
-5. 列挙済みの37作業ツリーをすべてスキャンし、その後 Cloudflare／EAS／GitHub を
-   名前だけ取得する情報源として接続する。
+4. 確認・紐付けフローと重複候補の警告を追加する。完了：複数のScanner JSONを
+   一括取り込みでき、同名変数が複数Repositoryにある場合は自動統合せず候補表示する。
+5. 列挙済みの37作業ツリーをすべてスキャンする。完了：dotenvを開かないdry-runを
+   37件へ実行し、12 Repositoryから671件の参照候補を検出した。次に
+   Cloudflare／EAS／GitHubを、名前だけ取得する情報源として接続する。
 6. `last_verified_at` によるローテーション確認を追加する。ソース履歴から
    Credential の作成日や経過日数を推測しない。
