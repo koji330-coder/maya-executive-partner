@@ -99,8 +99,12 @@ VoiceBox、HAKSAI Central、TypeSafe を登録する。
 - Application画面：`CredentialUsage` と未解決の検出結果を使い、
   「このアプリを動かすために何が必要か」を逆引きできるようにする。
 - Account／Project画面：それぞれに紐付く利用先を逆引きできるようにする。
+- Service／Account詳細：対象を失効した場合に影響するApplicationと認証情報を
+  逆引きできるようにする。
 - Needs Review画面：質問、確度、根拠、推定Providerを表示し、人が明示的に
   解決操作を行えるようにする。
+- Review Wizard：回答を保存したら次の項目へ進み、閉じてもブラウザ内の進捗から
+  再開できるようにする。
 - Scanner画面：Repository、Commit／実行日、除外パス、検出結果、Scannerの
   バージョンを表示する。ソース本文は保存しない。
 

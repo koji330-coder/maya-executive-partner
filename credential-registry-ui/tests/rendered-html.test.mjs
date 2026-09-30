@@ -19,5 +19,6 @@ test("Credential Registryを日本語で表示する", async () => {
   assert.match(html, /開発環境の認証情報台帳/);
   assert.match(html, /要確認/);
   assert.match(html, /メタデータのみ/);
+  assert.match(html, /今やること/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
 });
