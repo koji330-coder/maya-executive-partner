@@ -136,11 +136,13 @@ const OUTDOOR_LABELS: Record<string, string> = {
 
 export interface FitlogTodayRaw {
   status: string;
-  kcal?: { eaten: number; target: number };
+  /** eatenは食事のみ。alcohol（お酒由来）とtotal（合算）は画面と同じ値で、古いサーバーでは無い。 */
+  kcal?: { eaten: number; target: number; alcohol?: number; total?: number };
   kcalBonus?: { gym: number; outdoor: number; total: number };
   protein?: { g: number; target: number };
   fat?: { g: number; target: number };
-  carb?: { g: number; target: number };
+  carb?: { g: number; target: number; alcohol?: number; total?: number };
+  alcoholTotals?: { pureAlcoholG: number; kcal: number; carbG: number; purineMg: number };
   meals?: {
     id: string;
     time: string;
@@ -538,6 +540,8 @@ function alcoholCondition(raw: FitlogTodayRaw): Record<string, unknown> {
     記録: 'あり',
     件数: logs.length,
     純アルコール合計: `${round1(logs.reduce((sum, log) => sum + log.pureAlcoholG, 0))}g`,
+    お酒のkcal: raw.alcoholTotals ? `${raw.alcoholTotals.kcal}kcal（摂取kcalに含む）` : '不明',
+    お酒の糖質: raw.alcoholTotals ? `${raw.alcoholTotals.carbG}g（炭水化物に含む）` : '不明',
     内訳: logs.map(
       (log) => `${log.time ? `${log.time} ` : ''}${log.label} ${log.volumeMl}ml（${log.abvPercent}%・純アルコール${round1(log.pureAlcoholG)}g）`,
     ),
@@ -575,7 +579,13 @@ function mealQualityCondition(raw: FitlogTodayRaw): Record<string, unknown> {
 
 /** 日次レスポンスを、出所と欠測を失わずにモデル向けへ圧縮する。 */
 export function summarizeFitlogDay(raw: FitlogTodayRaw, date: string): Record<string, unknown> {
-  const eatenKcal = raw.kcal?.eaten ?? 0;
+  // 画面と同じく、お酒のkcal・糖質を合算した値を「摂取」として扱う（実測TDEEの摂取量も同じ合算）。
+  const mealKcal = raw.kcal?.eaten ?? 0;
+  const alcoholKcal = raw.kcal?.alcohol ?? 0;
+  const eatenKcal = raw.kcal?.total ?? mealKcal + alcoholKcal;
+  const mealCarbG = raw.carb?.g ?? 0;
+  const alcoholCarbG = raw.carb?.alcohol ?? 0;
+  const totalCarbG = raw.carb?.total ?? mealCarbG + alcoholCarbG;
   const targetKcal = raw.kcal?.target ?? 0;
   const remainingKcal = targetKcal - eatenKcal;
   const meta = raw.bodyMetricsMeta;
@@ -642,7 +652,7 @@ export function summarizeFitlogDay(raw: FitlogTodayRaw, date: string): Record<st
     },
     食事と栄養: {
       カロリー: {
-        摂取: `${eatenKcal}kcal`,
+        摂取: `${eatenKcal}kcal（食事${mealKcal}kcal＋お酒${alcoholKcal}kcal）`,
         目標: `${targetKcal}kcal`,
         運動日の追加分: raw.kcalBonus ?? { gym: 0, outdoor: 0, total: 0 },
         残り: remainingKcal >= 0 ? `${remainingKcal}kcal` : `超過${Math.abs(remainingKcal)}kcal`,
@@ -650,8 +660,9 @@ export function summarizeFitlogDay(raw: FitlogTodayRaw, date: string): Record<st
       PFC: {
         たんぱく質: `${raw.protein?.g ?? 0}g / 目標${raw.protein?.target ?? 0}g`,
         脂質: `${raw.fat?.g ?? 0}g / 目標${raw.fat?.target ?? 0}g`,
-        炭水化物: `${raw.carb?.g ?? 0}g / 目標${raw.carb?.target ?? 0}g`,
+        炭水化物: `${totalCarbG}g / 目標${raw.carb?.target ?? 0}g（食事${mealCarbG}g＋お酒の糖質${alcoholCarbG}g）`,
       },
+      注記: '摂取kcalと炭水化物はお酒の分を含みます（FIT LOGの画面と同じ）。食事一覧は食事のみの内訳です。',
       食事一覧: meals.length ? meals : '記録なし',
     },
     コンディション: {

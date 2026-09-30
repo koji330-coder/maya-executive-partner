@@ -205,6 +205,38 @@ describe('FIT LOG summaries', () => {
     ]);
   });
 
+  it('reports intake kcal and carbs including alcohol, matching the app', () => {
+    const summary = summarizeFitlogDay(
+      {
+        status: 'ok',
+        kcal: { eaten: 2836, target: 3000, alcohol: 617, total: 3453 },
+        protein: { g: 120, target: 140 },
+        fat: { g: 60, target: 70 },
+        carb: { g: 276, target: 300, alcohol: 37, total: 313 },
+        alcoholTotals: { pureAlcoholG: 67.6, kcal: 617, carbG: 37, purineMg: 0 },
+        alcohol: [
+          { id: 'a1', time: '20:00', drinkKey: 'beer_500', label: 'ビール', volumeMl: 500, abvPercent: 5, pureAlcoholG: 67.6 },
+        ],
+      },
+      '2026-09-30',
+    );
+    const nutrition = summary['食事と栄養'] as Record<string, Record<string, unknown>>;
+    expect(nutrition['カロリー']['摂取']).toBe('3453kcal（食事2836kcal＋お酒617kcal）');
+    expect(nutrition['カロリー']['残り']).toBe('超過453kcal');
+    expect(nutrition['PFC']['炭水化物']).toBe('313g / 目標300g（食事276g＋お酒の糖質37g）');
+    const alcohol = (summary['コンディション'] as Record<string, Record<string, unknown>>)['飲酒'];
+    expect(alcohol['お酒のkcal']).toContain('617kcal');
+  });
+
+  it('falls back to meal-only values when the server has no alcohol totals', () => {
+    const summary = summarizeFitlogDay(
+      { status: 'ok', kcal: { eaten: 1800, target: 2300 }, carb: { g: 200, target: 250 } },
+      '2026-09-30',
+    );
+    const nutrition = summary['食事と栄養'] as Record<string, Record<string, unknown>>;
+    expect(nutrition['カロリー']['摂取']).toBe('1800kcal（食事1800kcal＋お酒0kcal）');
+  });
+
   it('returns a dated condition snapshot without exposing steps or double-counting alcohol tags', () => {
     const summary = summarizeFitlogDay(
       {
