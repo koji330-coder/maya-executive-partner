@@ -134,7 +134,7 @@ VoiceBox、HAKSAI Central、TypeSafe を登録する。
 4. 確認・紐付けフローと重複候補の警告を追加する。完了：複数のScanner JSONを
    一括取り込みでき、同名変数が複数Repositoryにある場合は自動統合せず候補表示する。
 5. 列挙済みの37作業ツリーをすべてスキャンする。完了：dotenvを開かないdry-runを
-   37件へ実行し、12 Repositoryから671件の参照候補を検出した。次に
+   37件へ実行し、11 Repositoryから206件の参照候補を検出した。入れ子のGit作業ツリーは親側で再走査せず、同じRepositoryの再取込は旧結果を置き換える。次に
    Cloudflare／EAS／GitHubを、名前だけ取得する情報源として接続する。
 6. `last_verified_at` によるローテーション確認を追加する。ソース履歴から
    Credential の作成日や経過日数を推測しない。

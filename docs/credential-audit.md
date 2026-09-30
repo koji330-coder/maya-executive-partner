@@ -117,7 +117,7 @@ KEY_ENCRYPTION_KEY
 5. **暗号化D1をSecret Vaultとして扱わない。** これは既存アプリの動作であり、
    Registryへ暗号化済みデータや実値を取り込んではいけない。
 6. **Repositoryのdry-run Scannerは37作業ツリーへ実行済み。** 12 Repositoryから
-   671件の参照候補を検出した。この数字はCredential実体数ではなく、同じ参照の重複を
+   206件の参照候補を11 Repositoryから検出した。入れ子のGit作業ツリーを親側で再走査しないよう修正し、二重計上465件を除いた。この数字はCredential実体数ではなく、同じ参照の重複を
    含む確認前の検出件数である。
 
 ## Git管理の確認
