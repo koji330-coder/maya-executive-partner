@@ -124,13 +124,13 @@ VoiceBox、HAKSAI Central、TypeSafe を登録する。
 
 ## 実装順序
 
-初版Web UIの実装場所は `credential-registry-ui/`。確認結果はブラウザ内に保存し、
+初版Web UIの実装場所は[独立したCredential Registryリポジトリ](https://github.com/koji330-coder/credential-registry)。確認結果はブラウザ内に保存し、
 専用Worker／D1へ移る前の操作検証に使う。
 
 1. Schema、API入力検証、変更不能な確認履歴、手動登録UIを実装する。
 2. 今回の監査結果を Application と未解決の検出結果として初期登録する。
 3. ローカル Scanner を dry-run で実装し、出力に値が含まれないことを検証する。完了：
-   `credential-registry-ui/scripts/repository-scanner.mjs` はdotenvを開かず、参照名・
+   `credential-registry/scripts/repository-scanner.mjs` はdotenvを開かず、参照名・
    パス・行番号・検出方法だけを出力する。偽の値を含むfixtureで出力漏れを検証している。
 4. 確認・紐付けフローと重複候補の警告を追加する。
 5. 列挙済みの37作業ツリーをすべてスキャンし、その後 Cloudflare／EAS／GitHub を

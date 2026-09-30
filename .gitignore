@@ -14,8 +14,9 @@ __pycache__/
 build/
 server/scripts/jev-router/results/
 
+# Legacy Sites initializer scratch directory; the active Registry lives in its own repository.
+/credential-registry/
+
 # /brag video output — kept locally, not part of the app
 brag-output/
 
-# Sites initializer scratch copy. The tracked app is credential-registry-ui/.
-/credential-registry/

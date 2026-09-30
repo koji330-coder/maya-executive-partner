@@ -116,9 +116,9 @@ Read in this order:
 15. `docs/ACCEPTANCE_CRITERIA.md`
 16. `CODEX_BOOTSTRAP.md`
 
-Credential Registry の調査・設計・初版Web UIは、次を参照してください。
+Credential Registry の調査・設計はこのリポジトリに残し、実装は独立リポジトリで管理します。
 
 - `docs/credential-audit.md`
 - `docs/credential-architecture.md`
 - `docs/credential-data-model.md`
-- `credential-registry-ui/`
+- [Credential Registry 実装リポジトリ](https://github.com/koji330-coder/credential-registry)

@@ -483,8 +483,7 @@ flowchart LR
 ## Credential RegistryはMAYAから分離する（2026-09-30）
 
 開発プロジェクトが使う外部サービス、Account、認証情報名、保存場所を確認するため、
-`credential-registry-ui/` に独立したWeb UIを置きました。これはMAYAの会話機能ではなく、
-開発環境を忘れないための管理台帳です。
+[独立したCredential Registryリポジトリ](https://github.com/koji330-coder/credential-registry) にWeb UIを置きました。これはMAYAの会話機能ではなく、開発環境を忘れないための管理台帳です。
 
 初版は `docs/credential-audit.md` の確認済み範囲を初期データにし、確認結果をブラウザの
 Local Storageへ保存します。MAYAのD1、実行時のSecret、端末キーチェーンには接続しません。
