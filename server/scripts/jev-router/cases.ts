@@ -60,6 +60,11 @@ const SALES_CONTEXT: Turn[] = [
   { role: 'maya', text: '今月はここまで売上 412,000円、粗利 98,000円です（テスト値）。' },
 ];
 
+const NIGHT_CONTEXT: Turn[] = [
+  { role: 'user', text: '先週末、飲みすぎて終電逃したんだよね' },
+  { role: 'maya', text: '確認します。' },
+];
+
 export const CASES: RouterCase[] = [
   // A. 明確な単一Tool
   { id: 'A01', category: 'A_single', message: '今日の体重と食事どうだった？', expected: 'fitlog_day' },
@@ -104,6 +109,10 @@ export const CASES: RouterCase[] = [
   { id: 'A16', category: 'A_single', message: '9月に一番利益が出た商品は？', expected: 'haksai_sales' },
   { id: 'A17', category: 'A_single', message: '卓上ベルを1480円に下げたら粗利どうなる？', expected: 'haksai_market' },
   { id: 'A18', category: 'A_single', message: '採用について以前どんな方針にしたか確認したい', expected: 'search_memory' },
+  { id: 'A19', category: 'A_single', message: '直近の帰宅支援の記録を見せて', expected: 'fitlog_nights' },
+  { id: 'A20', category: 'A_single', message: '自分の危険ラインってどれくらい？', expected: 'fitlog_night_danger' },
+  { id: 'A21', category: 'A_single', message: '今年、帰りのタクシー代っていくら使った？', expected: 'fitlog_night_danger', why: '今年の集計は fitlog_night_danger の costYenThisYear。' },
+  { id: 'A22', category: 'A_single', message: '先週末、家に帰れなかった夜があったよね？', expected: 'fitlog_nights', why: '特定の夜の記録を探している。' },
 
   // B. none
   { id: 'B01', category: 'B_none', message: '粗利率って何？', expected: 'none' },
@@ -131,6 +140,7 @@ export const CASES: RouterCase[] = [
   { id: 'B07', category: 'B_none', message: 'Amazon広告のACoSって何を見ればいい？', expected: 'none' },
   { id: 'B08', category: 'B_none', message: '会議を短くするコツある？', expected: 'none' },
   { id: 'B09', category: 'B_none', message: 'おはよう', expected: 'none' },
+  { id: 'B10', category: 'B_none', message: '始発の電車ってだいたい何時ごろ動き出す？', expected: 'none', why: '一般的な始発の時間の話で、本人の帰宅記録とは関係ない。' },
 
   // C. 紛らわしいケース
   { id: 'C01', category: 'C_confusing', message: '昨日食べすぎた気がするんだけど、どう？', expected: 'fitlog_day' },
@@ -166,6 +176,22 @@ export const CASES: RouterCase[] = [
   },
   { id: 'C07', category: 'C_confusing', message: '在庫の話が出た会議ってあった？', expected: 'voice_search', why: '在庫数ではなく会議を探している。' },
   { id: 'C08', category: 'C_confusing', message: 'Amazonの売上目標、前に何て決めた？', expected: 'search_memory', why: '売上の実績ではなく過去の決定。' },
+  {
+    id: 'C09',
+    category: 'C_confusing',
+    message: '昨日ビールを飲みすぎて、家に帰った記憶があいまいなんだけど',
+    expected: 'fitlog_nights',
+    acceptable: ['fitlog_day', 'fitlog_night_danger'],
+    why: '「飲みすぎ」「記憶があいまい」は帰宅支援寄り。体調としての飲酒記録（fitlog_day）に寄っても実害は小さい。',
+  },
+  {
+    id: 'C10',
+    category: 'C_confusing',
+    message: '最近ちょっと危ない気がするんだけど、大丈夫かな',
+    expected: 'fitlog_night_danger',
+    acceptable: ['fitlog_nights'],
+    why: '「危ない」は自分の危険ラインとの比較が先。個別の夜の記録は補足になる。',
+  },
 
   // D. follow-up
   {
@@ -220,6 +246,27 @@ export const CASES: RouterCase[] = [
     ],
     expected: 'haksai_sales',
     why: '一般知識の話から、自社の実データへ移った。',
+  },
+  {
+    id: 'D07',
+    category: 'D_followup',
+    message: 'じゃあ今年はトータルでいくら使った？',
+    context: NIGHT_CONTEXT,
+    expected: 'fitlog_night_danger',
+    contextSufficient: false,
+    why: '「今年トータル」は集計値。fitlog_night_danger の costYenThisYear。',
+  },
+  {
+    id: 'D08',
+    category: 'D_followup',
+    message: 'それって危ないライン超えてる？',
+    context: [
+      { role: 'user', text: '昨日の夜、飲んだ量どれくらいだった？' },
+      { role: 'maya', text: '純アルコール54gでした（テスト値）。' },
+    ],
+    expected: 'fitlog_night_danger',
+    contextSufficient: false,
+    why: '量は直前の回答にあるが、比較する危険ラインの値がまだ無い。',
   },
 
   // E. adversarial — 同じ短文を文脈なし / ありで
@@ -278,6 +325,16 @@ export const CASES: RouterCase[] = [
     contextSufficient: true,
     why: '必要な実データは state にある。',
   },
+  { id: 'E17', category: 'E_adversarial', message: '大丈夫だった？', expected: 'none', ambiguous: true, why: '対象が無い。夜の話か体調の話か分からない。' },
+  {
+    id: 'E18',
+    category: 'E_adversarial',
+    message: '大丈夫だった？',
+    context: NIGHT_CONTEXT,
+    expected: 'fitlog_nights',
+    acceptable: ['fitlog_night_danger'],
+    contextSufficient: false,
+  },
 
   // P. 答えに必須ではないが、本人のデータがあると答えが良くなる（E2E v2）
   { id: 'P01', category: 'P_personal', message: 'ジムに行くなら週何回くらいがいい？', expected: 'none', useful: 'fitlog_weekly', usefulAcceptable: ['fitlog_progress'] },
@@ -292,6 +349,22 @@ export const CASES: RouterCase[] = [
   { id: 'P10', category: 'P_personal', message: '疲れが抜けないんだけど、何が原因だと思う？', expected: 'none', useful: 'fitlog_day', usefulAcceptable: ['fitlog_progress', 'fitlog_weekly'] },
   { id: 'P11', category: 'P_personal', message: '今週やることの優先順位ってどうつければいい？', expected: 'none', useful: 'voice_actions' },
   { id: 'P12', category: 'P_personal', message: '筋トレと有酸素、どっちを増やすべき？', expected: 'none', useful: 'fitlog_progress', usefulAcceptable: ['fitlog_weekly'] },
+  {
+    id: 'P13',
+    category: 'P_personal',
+    message: '飲み会の翌日、体を早く回復させるコツある？',
+    expected: 'none',
+    useful: 'fitlog_night_danger',
+    usefulAcceptable: ['fitlog_day'],
+  },
+  {
+    id: 'P14',
+    category: 'P_personal',
+    message: '終電を逃さないコツってある？',
+    expected: 'none',
+    useful: 'fitlog_night_danger',
+    why: '過去にどのパターンで乗り過ごしているか（敗因タグ）を踏まえられる。',
+  },
 
   // X. 必要な事実は直前の会話にある（E2E v2）
   {
@@ -326,5 +399,17 @@ export const CASES: RouterCase[] = [
     ],
     expected: 'none',
     contextSufficient: true,
+  },
+  {
+    id: 'X04',
+    category: 'X_context',
+    message: 'じゃあ来月から気をつければいいってこと？',
+    context: [
+      { role: 'user', text: '自分の危険ラインってどれくらい？' },
+      { role: 'maya', text: '純アルコール60g、ペース40g/時です（テスト値、まだ仮の値です）。' },
+    ],
+    expected: 'none',
+    contextSufficient: true,
+    why: '危険ラインの数字は直前の回答にある。',
   },
 ];
