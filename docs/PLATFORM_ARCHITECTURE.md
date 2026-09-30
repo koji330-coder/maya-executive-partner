@@ -485,12 +485,11 @@ flowchart LR
 開発プロジェクトが使う外部サービス、Account、認証情報名、保存場所を確認するため、
 [独立したCredential Registryリポジトリ](https://github.com/koji330-coder/credential-registry) にWeb UIを置きました。これはMAYAの会話機能ではなく、開発環境を忘れないための管理台帳です。
 
-初版は `docs/credential-audit.md` の確認済み範囲を初期データにし、確認結果をブラウザの
-Local Storageへ保存します。MAYAのD1、実行時のSecret、端末キーチェーンには接続しません。
+初版は `docs/credential-audit.md` の確認済み範囲を初期データにし、確認結果を専用D1へ
+利用者ごとに保存します。ブラウザのLocal Storageは通信できない場合の控えです。MAYAのD1、実行時のSecret、端末キーチェーンには接続しません。
 APIキーやトークンの値を入力・表示する欄もありません。
 
-将来は専用Workerと専用D1へ移しますが、MAYAのD1とは分離したままにします。Repository
-Scannerから受け取るのも、変数名、利用箇所、判定区分などのメタデータだけです。
+専用Workerと専用D1はMAYAのD1と分離したままです。Repository Scannerから受け取るのも、変数名、利用箇所、判定区分などのメタデータだけです。
 詳細は `docs/credential-architecture.md` と `docs/credential-data-model.md` を正本とします。
 
 ## 採らない設計

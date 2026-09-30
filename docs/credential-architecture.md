@@ -28,7 +28,7 @@ Credential Registry API + 専用 D1 データベース
         +-- Provider / Account / Project / Credential / Application 画面
 ```
 
-Cloudflare Access で保護した専用の Cloudflare Worker と D1 データベースを使う。
+Cloudflare Access で保護した専用の Cloudflare Worker と D1 データベースを使う。初版Web UIは専用D1へ、サインインした利用者ごとのメタデータ状態を保存する。
 MAYA の D1 をバインドせず、MAYA の実行環境用 `Env` を取り込まず、実行時の
 Credential 値を受け取らない。Scanner が送信するのは変数名、ソースパス、
 リポジトリのメタデータ、判定区分だけとする。
@@ -113,8 +113,7 @@ VoiceBox、HAKSAI Central、TypeSafe を登録する。
 - `value`、`secret`、`token`、`password`、`authorization`、`ciphertext`、
   `credential_value` という名前のキーを含む入力は、入れ子になっていても拒否する。
 - アプリのログと監査データの書き出しでは、上記に該当する項目をマスクする。
-- Registry の UI／API は Cloudflare Access で認証する。更新権限は閲覧権限と
-  分けて認可する。
+- Registry の UI／API は Cloudflare Access で認証する。現在の非公開UIでは利用者IDごとに状態を分離する。将来、閲覧者を追加するときは更新権限を閲覧権限と分けて認可する。
 - 実在する dotenv ファイルは読まない。無視対象の dotenv ファイルが存在する
   ことだけは記録できるが、内容は取得しない。
 - Provider API を呼び出してキーを「テスト」しない。実施すると Registry 自体が
@@ -127,7 +126,7 @@ VoiceBox、HAKSAI Central、TypeSafe を登録する。
 初版Web UIの実装場所は[独立したCredential Registryリポジトリ](https://github.com/koji330-coder/credential-registry)。確認結果はブラウザ内に保存し、
 専用Worker／D1へ移る前の操作検証に使う。
 
-1. Schema、API入力検証、変更不能な確認履歴、手動登録UIを実装する。
+1. SchemaとAPI入力検証、手動登録UIを実装する。完了：専用D1の`registry_snapshots`へ、許可したメタデータ構造だけを利用者単位で保存する。禁止キーは入れ子でも拒否する。変更不能な確認履歴は次段階。
 2. 今回の監査結果を Application と未解決の検出結果として初期登録する。
 3. ローカル Scanner を dry-run で実装し、出力に値が含まれないことを検証する。完了：
    `credential-registry/scripts/repository-scanner.mjs` はdotenvを開かず、参照名・
