@@ -16,3 +16,6 @@ server/scripts/jev-router/results/
 
 # /brag video output — kept locally, not part of the app
 brag-output/
+
+# Sites initializer scratch copy. The tracked app is credential-registry-ui/.
+/credential-registry/

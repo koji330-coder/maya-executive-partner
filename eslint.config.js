@@ -14,6 +14,9 @@ module.exports = defineConfig([
       'node_modules/*',
       'server/node_modules/*',
       'server/.wrangler/*',
+      // This independent Sites app runs its own lint configuration.
+      'credential-registry/**',
+      'credential-registry-ui/**',
     ],
   },
 ]);

@@ -120,6 +120,9 @@ VoiceBox、HAKSAI Central、TypeSafe を登録する。
 
 ## 実装順序
 
+初版Web UIの実装場所は `credential-registry-ui/`。確認結果はブラウザ内に保存し、
+専用Worker／D1へ移る前の操作検証に使う。
+
 1. Schema、API入力検証、変更不能な確認履歴、手動登録UIを実装する。
 2. 今回の監査結果を Application と未解決の検出結果として初期登録する。
 3. ローカル Scanner を dry-run で実装し、出力に値が含まれないことを検証する。

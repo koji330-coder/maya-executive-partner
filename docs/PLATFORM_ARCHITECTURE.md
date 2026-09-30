@@ -480,6 +480,20 @@ flowchart LR
 - **Cloudflare Access で守る**: スマホからの通信と同様、Cloudflare Access で外部を遮断します
 - **サービストークンでどのエージェントからも読めるようにする**: PC上の環境変数等に Access のサービストークンを設定することで、Antigravity、Claude Code、Codexなど、PC上のどのAIエージェントからでも安全に MAYAサーバーのエンドポイントを叩けるようにします
 
+## Credential RegistryはMAYAから分離する（2026-09-30）
+
+開発プロジェクトが使う外部サービス、Account、認証情報名、保存場所を確認するため、
+`credential-registry-ui/` に独立したWeb UIを置きました。これはMAYAの会話機能ではなく、
+開発環境を忘れないための管理台帳です。
+
+初版は `docs/credential-audit.md` の確認済み範囲を初期データにし、確認結果をブラウザの
+Local Storageへ保存します。MAYAのD1、実行時のSecret、端末キーチェーンには接続しません。
+APIキーやトークンの値を入力・表示する欄もありません。
+
+将来は専用Workerと専用D1へ移しますが、MAYAのD1とは分離したままにします。Repository
+Scannerから受け取るのも、変数名、利用箇所、判定区分などのメタデータだけです。
+詳細は `docs/credential-architecture.md` と `docs/credential-data-model.md` を正本とします。
+
 ## 採らない設計
 
 別のAIが提案した記憶の設計をレビューした結論です。方向は同じですが、次の点は

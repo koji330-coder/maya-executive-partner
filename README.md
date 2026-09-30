@@ -115,3 +115,10 @@ Read in this order:
 14. `docs/IMPLEMENTATION_PLAN.md`
 15. `docs/ACCEPTANCE_CRITERIA.md`
 16. `CODEX_BOOTSTRAP.md`
+
+Credential Registry の調査・設計・初版Web UIは、次を参照してください。
+
+- `docs/credential-audit.md`
+- `docs/credential-architecture.md`
+- `docs/credential-data-model.md`
+- `credential-registry-ui/`
