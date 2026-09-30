@@ -1,132 +1,137 @@
-# Credential Audit
+# Credential 利用状況調査
 
-Date: 2026-09-30  
-Classification: metadata-only audit. Secret values, token values, passwords,
-cookies, and authorization-header values were neither read nor recorded.
+調査日：2026-09-30
+区分：メタデータのみの調査。APIキー、トークン、パスワード、Cookie、
+Authorization ヘッダーなどの値は読み取らず、記録もしていない。
 
-## Scope and method
+## 調査範囲と方法
 
-The accessible `Documents` workspace contains 37 local Git worktrees. Their
-names/remotes were enumerated without treating them as proof of deployment or
-ownership. Static inspection then prioritized the applications that the MAYA
-server directly calls: MAYA, Fit-Log / Fit-Log D1, VoiceBox, HAKSAI Central,
-and Character Motion Studio. `.env*` contents, local secret stores, and
-Cloudflare/GitHub dashboards were deliberately out of scope.
+アクセス可能な `Documents` 配下から、ローカルの Git 作業ツリーを37件確認した。
+名前とRemoteは列挙したが、それだけをデプロイ状況や所有権の証拠にはしていない。
 
-Evidence levels used below:
+静的調査では、MAYAサーバーが直接連携している次のアプリを優先した。
 
-- **CONFIRMED** — a declaration or use site exists in checked-out source.
-- **INFERRED** — a purpose follows directly from the surrounding code/comments.
-- **UNKNOWN** — source cannot establish it.
-- **NEEDS_REVIEW** — requires dashboard/account-owner confirmation.
+- MAYA
+- Fit-Log / Fit-Log D1
+- VoiceBox
+- HAKSAI Central
+- Character Motion Studio
 
-## Summary
+`.env*` の内容、ローカルのSecret Store、Cloudflare／GitHubの管理画面は
+意図的に調査対象から外した。
 
-| Measure | Result | Evidence level |
+判定区分は次のとおり。
+
+- **CONFIRMED**：チェックアウト済みコードに宣言または利用箇所がある
+- **INFERRED**：周辺のコードやコメントから用途を直接推定できる
+- **UNKNOWN**：コードからは判断できない
+- **NEEDS_REVIEW**：管理画面またはアカウント所有者による確認が必要
+
+## 集計
+
+| 項目 | 結果 | 判定 |
 | --- | ---: | --- |
-| Local Git worktrees enumerated | 37 | CONFIRMED |
-| Priority applications statically inspected | 5 | CONFIRMED |
-| Providers/services with credential references | 7 | CONFIRMED |
-| MAYA Worker secret variable names | 13 | CONFIRMED |
-| Direct client public configuration names | 2 | CONFIRMED |
-| Repositories with an ignored local dotenv file found in priority scan | 2 | CONFIRMED |
-| GitHub Actions workflow files in MAYA | 0 | CONFIRMED |
-| Credential identities mapped to an account/project | 0 | CONFIRMED |
+| 列挙したローカルGit作業ツリー | 37 | CONFIRMED |
+| 優先して静的調査したアプリ | 5 | CONFIRMED |
+| Credential参照が見つかったProvider／Service | 7 | CONFIRMED |
+| MAYA WorkerのSecret変数名 | 13 | CONFIRMED |
+| クライアントへ直接埋め込む公開設定名 | 2 | CONFIRMED |
+| 優先調査中に無視対象のローカルdotenvを確認したRepository | 2 | CONFIRMED |
+| MAYA内のGitHub Actions Workflow | 0 | CONFIRMED |
+| Account／Projectまで紐付けを確定できたCredential | 0 | CONFIRMED |
 
-The counts are **references**, not counts of unique secret values. Two variables
-with the same name must not be assumed to contain the same credential.
+ここで数えているのはCredentialの実体数ではなく、コード上の**参照数**である。
+同じ変数名があっても、同じCredentialが入っているとは断定しない。
 
-## Providers and applications
+## ProviderとApplication
 
-| Application | Provider/service | Credential reference | Environment / location | Runtime | Purpose | Status |
+| Application | Provider／Service | Credential参照 | Environment／保存場所 | Runtime | 用途 | 状態 |
 | --- | --- | --- | --- | --- | --- | --- |
-| MAYA | Google Gemini | `GEMINI_API_KEY_FREE`, `GEMINI_API_KEY_PAID` | Cloudflare Worker secret; client may also keep user-entered keys in device keychain | Worker / Expo | Chat generation, tier fallback | NEEDS_REVIEW |
-| MAYA | Cloudflare | `KEY_ENCRYPTION_KEY` | Cloudflare Worker secret | Worker + D1 | Encrypts user-entered provider keys before D1 storage | CONFIRMED |
-| MAYA | Fit Log | `FITLOG_API_KEY` or `FITLOG_CLIENT_ID` + `FITLOG_CLIENT_SECRET` | Cloudflare Worker secret | Worker | Read health/fitness data | CONFIRMED |
-| MAYA | HAKSAI Central | `HAKSAI_MCP_CLIENT_ID` + `HAKSAI_MCP_CLIENT_SECRET` | Cloudflare Worker secret | Worker | Read-only MCP calls | CONFIRMED |
-| MAYA | Keepa via HAKSAI | `HAKSAI_KEEPA_CLIENT_ID` + `HAKSAI_KEEPA_CLIENT_SECRET`, or HAKSAI fallback pair | Cloudflare Worker secret | Worker | Product-data MCP calls | CONFIRMED |
-| MAYA | VoiceBox | `VOICEBOX_VAULT_CLIENT_ID` + `VOICEBOX_VAULT_CLIENT_SECRET` | Cloudflare Worker secret | Worker | Read-only vault access | CONFIRMED |
-| MAYA | TypeSafe / Jev | `TYPESAFE_API_KEY` | Cloudflare Worker secret; encrypted user entry may take precedence in D1 | Worker | Tool-route classification | CONFIRMED |
-| Fit-Log D1 | Google Gemini | `GEMINI_API_KEY` | Worker secret / local development secret file | Cloudflare Worker | AI text generation | CONFIRMED |
-| Fit-Log D1 | MAYA / internal client | `FITLOG_API_KEY` | Worker secret | Cloudflare Worker | API request authentication | CONFIRMED |
-| Fit-Log D1 | GPS Log | `GPS_LOG_WEBHOOK_KEY` | Worker secret | Cloudflare Worker | Webhook authentication | CONFIRMED |
-| Fit-Log (Apps Script) | Google Gemini | `Gemini_API_KEY` | Apps Script Properties Service | Apps Script | Text/comment generation | CONFIRMED |
-| Character Motion Studio | Google Gemini | `GEMINI_API_KEY` | local `.env.local` (ignored); `.env.example` tracked | Node CLI | Image-generation pipeline | CONFIRMED |
-| VoiceBox | Cloudflare Access | `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | deployment/local configuration, exact location UNKNOWN | Worker / app | Authenticated vault access | INFERRED |
+| MAYA | Google Gemini | `GEMINI_API_KEY_FREE`, `GEMINI_API_KEY_PAID` | Cloudflare Worker Secret。利用者入力のキーを端末キーチェーンへ保存する経路もある | Worker / Expo | 会話生成、無料／有料枠の切替 | NEEDS_REVIEW |
+| MAYA | Cloudflare | `KEY_ENCRYPTION_KEY` | Cloudflare Worker Secret | Worker + D1 | D1へ保存する利用者入力キーの暗号化 | CONFIRMED |
+| MAYA | Fit Log | `FITLOG_API_KEY` または `FITLOG_CLIENT_ID` + `FITLOG_CLIENT_SECRET` | Cloudflare Worker Secret | Worker | 健康・トレーニングデータの読み取り | CONFIRMED |
+| MAYA | HAKSAI Central | `HAKSAI_MCP_CLIENT_ID` + `HAKSAI_MCP_CLIENT_SECRET` | Cloudflare Worker Secret | Worker | 読み取り専用MCPの呼び出し | CONFIRMED |
+| MAYA | HAKSAI経由のKeepa | `HAKSAI_KEEPA_CLIENT_ID` + `HAKSAI_KEEPA_CLIENT_SECRET`、またはHAKSAI用の組を流用 | Cloudflare Worker Secret | Worker | 商品データMCPの呼び出し | CONFIRMED |
+| MAYA | VoiceBox | `VOICEBOX_VAULT_CLIENT_ID` + `VOICEBOX_VAULT_CLIENT_SECRET` | Cloudflare Worker Secret | Worker | 保管庫の読み取り専用アクセス | CONFIRMED |
+| MAYA | TypeSafe / Jev | `TYPESAFE_API_KEY` | Cloudflare Worker Secret。D1に暗号化保存した利用者入力値が優先される場合もある | Worker | Tool経路の判定 | CONFIRMED |
+| Fit-Log D1 | Google Gemini | `GEMINI_API_KEY` | Worker Secret／ローカル開発用Secretファイル | Cloudflare Worker | AIテキスト生成 | CONFIRMED |
+| Fit-Log D1 | MAYA／内部クライアント | `FITLOG_API_KEY` | Worker Secret | Cloudflare Worker | APIリクエスト認証 | CONFIRMED |
+| Fit-Log D1 | GPS Log | `GPS_LOG_WEBHOOK_KEY` | Worker Secret | Cloudflare Worker | Webhook認証 | CONFIRMED |
+| Fit-Log（Apps Script） | Google Gemini | `Gemini_API_KEY` | Apps Script Properties Service | Apps Script | テキスト／コメント生成 | CONFIRMED |
+| Character Motion Studio | Google Gemini | `GEMINI_API_KEY` | ローカル `.env.local`（Git対象外）。`.env.example`のみ追跡 | Node CLI | 画像生成パイプライン | CONFIRMED |
+| VoiceBox | Cloudflare Access | `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | デプロイ／ローカル設定。正確な保存場所はUNKNOWN | Worker / App | 認証付き保管庫アクセス | INFERRED |
 
-`EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_ENV` are configuration, not secrets.
-They are intentionally bundled into the client and are not registry credentials.
+`EXPO_PUBLIC_API_BASE_URL` と `EXPO_PUBLIC_ENV` はSecretではなく公開設定である。
+意図的にクライアントへ埋め込まれるため、Registry上のCredentialにはしない。
 
-## Credential relationship detail: MAYA
+## MAYAの利用関係
 
 ```text
-Credential reference
-  -> MAYA Worker component
-  -> purpose
+Credential参照
+  -> MAYA Workerの利用コンポーネント
+  -> 用途
 
 GEMINI_API_KEY_FREE / GEMINI_API_KEY_PAID
-  -> server/src/chat.ts and server/src/memory/apiKeys.ts
-  -> Gemini conversation requests; Worker values are fallback when no encrypted
-     per-user key is saved.
+  -> server/src/chat.ts、server/src/memory/apiKeys.ts
+  -> Geminiへの会話リクエスト。暗号化保存された利用者キーがない場合は
+     Worker Secretを予備として使う。
 
-FITLOG_API_KEY or FITLOG_CLIENT_ID + FITLOG_CLIENT_SECRET
+FITLOG_API_KEY または FITLOG_CLIENT_ID + FITLOG_CLIENT_SECRET
   -> server/src/fitlog.ts
-  -> server-to-server Fit Log requests.
+  -> Fit Logへのサーバー間リクエスト。
 
 HAKSAI_MCP_CLIENT_ID + HAKSAI_MCP_CLIENT_SECRET
   -> server/src/haksai.ts
-  -> Cloudflare Access-authenticated, read-only HAKSAI MCP calls.
+  -> Cloudflare Accessで認証された、読み取り専用のHAKSAI MCP呼び出し。
 
 VOICEBOX_VAULT_CLIENT_ID + VOICEBOX_VAULT_CLIENT_SECRET
   -> server/src/voicebox.ts
-  -> Cloudflare Access-authenticated, read-only VoiceBox vault calls.
+  -> Cloudflare Accessで認証された、読み取り専用のVoiceBox保管庫呼び出し。
 
 KEY_ENCRYPTION_KEY
-  -> server/src/memory/apiKeys.ts and server/src/memory/typesafeKey.ts
-  -> encryption key for registry-adjacent, user-entered keys held in D1.
+  -> server/src/memory/apiKeys.ts、server/src/memory/typesafeKey.ts
+  -> 利用者が入力し、D1へ保存されるキーを暗号化するための鍵。
 ```
 
-## Account and project mapping
+## AccountとProjectの対応
 
-| Provider | Account | Project | Mapping status | Required human action |
+| Provider | Account | Project | 対応状況 | 人による確認作業 |
 | --- | --- | --- | --- | --- |
-| Google / Gemini (MAYA) | UNKNOWN | UNKNOWN | NEEDS_REVIEW | Map each free/paid key reference to an account alias and project alias in Google AI Studio / Cloud Console. |
-| Google / Gemini (Fit-Log D1) | UNKNOWN | UNKNOWN | NEEDS_REVIEW | Confirm the labels configured for tier/project/billing are current; do not infer from variable names. |
-| Google / Gemini (Apps Script / motion studio) | UNKNOWN | UNKNOWN | NEEDS_REVIEW | Identify the account and project that created each deployed key. |
-| Cloudflare | UNKNOWN | MAYA D1 database is configured, account UNKNOWN | NEEDS_REVIEW | Add a Cloudflare account alias and Worker/project aliases. |
-| GitHub | UNKNOWN | repositories enumerated locally | NEEDS_REVIEW | Inspect organization/user secrets and Actions environments separately. |
+| Google / Gemini（MAYA） | UNKNOWN | UNKNOWN | NEEDS_REVIEW | 無料／有料それぞれのキー参照を、Google AI Studio／Cloud Console上のAccount別名・Project別名へ紐付ける |
+| Google / Gemini（Fit-Log D1） | UNKNOWN | UNKNOWN | NEEDS_REVIEW | Tier／Project／Billingの表示用ラベルが現在も正しいか確認する。変数名から推測しない |
+| Google / Gemini（Apps Script／Motion Studio） | UNKNOWN | UNKNOWN | NEEDS_REVIEW | 配置済みの各キーを発行したAccountとProjectを確認する |
+| Cloudflare | UNKNOWN | MAYA用D1の設定は確認済み。AccountはUNKNOWN | NEEDS_REVIEW | Cloudflare Accountの別名とWorker／Projectの別名を登録する |
+| GitHub | UNKNOWN | ローカルRepositoryは列挙済み | NEEDS_REVIEW | Organization／User SecretとActions Environmentを別途確認する |
 
-## Risks and review queue
+## リスクと確認待ち
 
-1. **Account and project identity are unknown for every credential reference.**
-   Source names cannot prove who created a key or which account owns it.
-2. **Same-variable-name collision.** `GEMINI_API_KEY` occurs in more than one
-   application. It is a *possible duplicate*, never proof that one key is reused.
-3. **Secret-location coverage is incomplete.** This audit can confirm source
-   contracts, but cannot list actual Cloudflare Secrets, EAS secrets, GitHub
-   Secrets, Google Secret Manager entries, or Apps Script property values.
-4. **MAYA has two legitimate key paths.** A Worker fallback and a device-keychain
-   user key are distinct locations and must be represented separately.
-5. **Encrypted D1 is not a vault substitute.** It is an existing application
-   behavior. A registry must store only metadata and location records, never
-   the encrypted key blob or its value.
-6. **Repository coverage is staged.** The remaining 32 enumerated local
-   worktrees need the same scanner before they are marked “scanned”.
+1. **すべてのCredential参照で、AccountとProjectの実体が未確認。**
+   ソースコード上の名前だけでは、発行者や所有Accountを証明できない。
+2. **同名変数が複数アプリに存在する。** `GEMINI_API_KEY` が複数箇所にあるが、
+   同じCredentialを使い回している証拠ではない。「重複の可能性」として確認する。
+3. **保存場所の調査は未完了。** ソースコード上の契約は確認できるが、実際の
+   Cloudflare Secrets、EAS Secrets、GitHub Secrets、Google Secret Manager、
+   Apps Script Propertiesの登録名一覧は取得していない。
+4. **MAYAには正当な2種類のキー経路がある。** Worker側の予備キーと、端末の
+   キーチェーンに置く利用者キーは、別々の保存場所として管理する必要がある。
+5. **暗号化D1をSecret Vaultとして扱わない。** これは既存アプリの動作であり、
+   Registryへ暗号化済みデータや実値を取り込んではいけない。
+6. **Repository調査は段階的に実施中。** 列挙した残り32作業ツリーは、同じScannerを
+   実行するまで「調査済み」にしない。
 
-## Git hygiene
+## Git管理の確認
 
-MAYA's `.gitignore` excludes `.env` and `.env.*` while allowing `.env.example`.
-Its template contains public Expo configuration only. Character Motion Studio
-tracks only `.env.example`; its local `.env.local` is ignored. No change was
-made because the inspected ignore rules cover these known local dotenv files.
+MAYAの `.gitignore` は `.env` と `.env.*` を除外し、`.env.example` だけを許可している。
+テンプレートに含まれるのは公開用のExpo設定だけである。
 
-## Next verification steps
+Character Motion Studioも `.env.example` だけを追跡し、ローカルの `.env.local` は
+Git対象外になっている。確認したdotenvファイルについては現在の除外規則で対応できて
+いるため、`.gitignore` は変更していない。
 
-1. Export **names only** from Cloudflare Workers secrets, EAS environments,
-   GitHub Actions secrets, and Apps Script properties; do not export values.
-2. Create account aliases and project aliases, then attach each credential
-   reference through the proposed review workflow.
-3. Run the future scanner over every enumerated repository and record scan date,
-   commit SHA, and excluded paths.
-4. Rotate any credential whose owner, purpose, or last verification date cannot
-   be established after review.
+## 次に確認すること
+
+1. Cloudflare Workers Secrets、EAS Environment、GitHub Actions Secrets、
+   Apps Script Propertiesから、値ではなく**登録名だけ**を取得する。
+2. Account別名とProject別名を作り、提案した確認フローで各Credential参照へ紐付ける。
+3. 列挙したすべてのRepositoryへScannerを実行し、実行日、Commit SHA、除外パスを残す。
+4. 所有者、用途、最終確認日のいずれかを確認できないCredentialは、ローテーション候補にする。
