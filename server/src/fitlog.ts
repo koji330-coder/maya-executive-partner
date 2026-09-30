@@ -296,6 +296,8 @@ interface FitlogWeeklyRaw {
     mealDays: number;
     proteinHitDays: number;
     avgKcal: number | null;
+    avgKcalWithAlcohol?: number | null;
+    alcohol?: { days: number; pureAlcoholG: number; kcal: number; carbG: number; purineMg: number };
     targetKcal: number | null;
     weightStart: number | null;
     weightEnd: number | null;
@@ -765,7 +767,17 @@ export function summarizeFitlogWeekly(raw: FitlogWeeklyRaw): Record<string, unkn
     食事: {
       記録日数: `${f.mealDays}/7日`,
       たんぱく質目標9割以上: `${f.proteinHitDays}日`,
-      平均摂取: f.avgKcal != null ? `${f.avgKcal}kcal/日` : '記録なし',
+      // お酒込みが画面・実測TDEEと同じ定義。古いサーバーでは食事のみにフォールバックする。
+      平均摂取: (() => {
+        const withAlcohol = f.avgKcalWithAlcohol ?? f.avgKcal;
+        if (withAlcohol == null) return '記録なし';
+        return f.avgKcal != null && f.avgKcalWithAlcohol != null
+          ? `${withAlcohol}kcal/日（お酒込み。食事のみでは${f.avgKcal}kcal/日）`
+          : `${withAlcohol}kcal/日`;
+      })(),
+      飲酒: f.alcohol
+        ? { 飲酒日数: `${f.alcohol.days}日`, 純アルコール合計: `${f.alcohol.pureAlcoholG}g`, お酒のkcal合計: `${f.alcohol.kcal}kcal` }
+        : '不明',
       基本目標: f.targetKcal != null ? `${f.targetKcal}kcal/日` : '未設定',
     },
     体重: {

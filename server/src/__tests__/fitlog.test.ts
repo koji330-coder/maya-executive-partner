@@ -364,6 +364,8 @@ describe('FIT LOG summaries', () => {
         mealDays: 7,
         proteinHitDays: 5,
         avgKcal: 2100,
+        avgKcalWithAlcohol: 2300,
+        alcohol: { days: 2, pureAlcoholG: 90, kcal: 1400, carbG: 50, purineMg: 0 },
         targetKcal: 2200,
         weightStart: 70,
         weightEnd: 69.5,
@@ -373,6 +375,9 @@ describe('FIT LOG summaries', () => {
     expect((summary['運動'] as Record<string, unknown>)['ジム']).toBe('3日（前週2日）');
     expect((summary['体重'] as Record<string, unknown>)['変化']).toBe('-0.5kg');
     expect(summary['注意']).toContain('AIコメント');
+    const meals = summary['食事'] as Record<string, unknown>;
+    expect(meals['平均摂取']).toBe('2300kcal/日（お酒込み。食事のみでは2100kcal/日）');
+    expect((meals['飲酒'] as Record<string, unknown>)['お酒のkcal合計']).toBe('1400kcal');
   });
 
   it('keeps exercise history compact', () => {
