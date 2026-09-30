@@ -1,0 +1,72 @@
+name: Deploy MAYA server
+
+# main に入ったとき（server が読む src/ も含む）と、GitHub の画面からの手動実行で
+# Cloudflare Workers（maya-server）へデプロイする。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      apply_migrations:
+        description: 'デプロイ前にD1のmigrationを本番へ適用する（server/migrations に新しいファイルを足したときだけON）'
+        type: boolean
+        default: false
+
+# 同時に2本走らせない。先に走っているデプロイは止めずに待たせる。
+concurrency:
+  group: deploy-maya-server
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      # server は ../src（アプリ側の共有コード）を読むので、ルートの依存も要る。
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck server
+        working-directory: server
+        run: npm run typecheck
+
+      - name: Test server
+        run: npx jest server/src
+
+      - name: Apply D1 migrations (manual runs only, when requested)
+        if: github.event_name == 'workflow_dispatch' && inputs.apply_migrations
+        working-directory: server
+        run: npx wrangler d1 migrations apply MAYA_DB --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy to Cloudflare Workers
+        working-directory: server
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
