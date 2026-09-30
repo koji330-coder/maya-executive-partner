@@ -11,7 +11,7 @@ import {
 } from '../jevRouter';
 import { JEV_RULES, matchRule } from '../jevRules';
 
-const TOOLS = ['search_memory', 'haksai_sales', 'fitlog_day', 'fitlog_progress', 'fitlog_exercise', 'voice_search'];
+const TOOLS = ['search_memory', 'haksai_sales', 'fitlog_day', 'fitlog_progress', 'fitlog_exercise', 'fitlog_night_danger', 'voice_search'];
 
 function decision(partial: Partial<JevDecision>): JevDecision {
   return {
@@ -60,6 +60,13 @@ describe('planRoute', () => {
     expect(result.route).toBe('direct_rule');
     expect(result.prefetch).toEqual([{ tool: 'fitlog_day', args: {} }]);
     expect(result.rule?.id).toBe('fitness-own-data');
+  });
+
+  it('applies the fixed rule to a night-out question Jev thought needs no data', () => {
+    const result = plan({ required: 'none', confidence: 0.99, period: 'not_stated' }, 'そろそろ飲みすぎな気がする');
+    expect(result.route).toBe('direct_rule');
+    expect(result.prefetch).toEqual([{ tool: 'fitlog_night_danger', args: {} }]);
+    expect(result.rule?.id).toBe('night-out-own-data');
   });
 
   it('reads the tool first when Jev is sure and code can fill its arguments', () => {
@@ -202,5 +209,18 @@ describe('fixed rules', () => {
   it('stay quiet on other topics and when FIT LOG is not connected', () => {
     expect(matchRule({ message: '粗利率って何？', period: 'not_stated', today: '2026-09-28', available: TOOLS })).toBeNull();
     expect(matchRule({ message: '睡眠を良くするコツは？', period: 'not_stated', today: '2026-09-28', available: ['haksai_sales'] })).toBeNull();
+  });
+
+  it('reads the danger line for a night-out question', () => {
+    expect(matchRule({ message: '昨日また記憶があいまいだった', period: 'not_stated', today: '2026-09-28', available: TOOLS })).toEqual({
+      rule: expect.objectContaining({ id: 'night-out-own-data', tool: 'fitlog_night_danger' }),
+      args: {},
+    });
+  });
+
+  it('stays quiet on a night-out question when fitlog_night_danger is not connected', () => {
+    expect(
+      matchRule({ message: '帰宅支援の記録を振り返りたい', period: 'not_stated', today: '2026-09-28', available: ['haksai_sales'] }),
+    ).toBeNull();
   });
 });

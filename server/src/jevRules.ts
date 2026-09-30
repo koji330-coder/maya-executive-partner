@@ -13,7 +13,7 @@
  * To add one: append to JEV_RULES, give it an id that will not change (logs
  * and saved conversations refer to it), and add a case to jevRules.test.ts.
  */
-import { refersToFitness } from './fitlog';
+import { refersToFitness, refersToNightOut } from './fitlog';
 
 export interface RuleContext {
   message: string;
@@ -54,6 +54,16 @@ export const JEV_RULES: JevRule[] = [
       if (!refersToFitness(message)) return null;
       return period === 'yesterday' ? { date: yesterday(today) } : {};
     },
+  },
+  {
+    id: 'night-out-own-data',
+    title: '飲み会・帰宅の相談には、危険ラインを添える',
+    description:
+      '「データ不要」と判断された質問でも、飲み会・帰宅支援・乗り過ごし・危険ラインの話（従来と同じ言葉の判定）なら、' +
+      'fitlog_night_danger を先に読んでから答えます。' +
+      '「そろそろ飲みすぎ？」に、一般論ではなく Gakky 自身の危険ラインで答えるためのルールです。',
+    tool: 'fitlog_night_danger',
+    match: ({ message }) => (refersToNightOut(message) ? {} : null),
   },
 ];
 
