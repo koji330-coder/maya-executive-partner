@@ -27,4 +27,14 @@ npm run dev
 npm run build
 ```
 
-初版はLocal Storageを使います。専用D1とRepository Scannerは次の段階です。
+初版はLocal Storageを使います。専用D1への移行は次の段階です。
+
+## Repository Scanner（dry-run）
+
+コード上の認証情報**参照**だけをJSONで出力します。dotenv、Gitメタデータ、依存
+パッケージ、テストfixture、ビルド出力は開かず、出力にソース本文や値は含めません。
+書き込みや外部API呼び出しは行いません。
+
+```bash
+npm run scan -- ../target-repository
+```
