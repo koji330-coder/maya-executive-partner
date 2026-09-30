@@ -221,6 +221,7 @@ export function argumentsFor(tool: string, period: string, today: string): Recor
       return null;
     case 'fitlog_progress':
     case 'fitlog_weekly':
+    case 'fitlog_night_danger':
     case 'voice_recent':
     case 'voice_actions':
       return {};

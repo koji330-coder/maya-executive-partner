@@ -5,18 +5,27 @@ import {
   fitlogConfigured,
   FITLOG_DAY_TOOL,
   FITLOG_EXERCISE_TOOL,
+  FITLOG_NIGHT_DANGER_TOOL,
+  FITLOG_NIGHTS_TOOL,
   FITLOG_PROGRESS_TOOL,
   FITLOG_WEEKLY_TOOL,
   readFitlogDayArgs,
   readFitlogExerciseArgs,
+  readFitlogNightsArgs,
   readFitlogProgressArgs,
   readFitlogWeeklyArgs,
   refersToFitness,
+  refersToNightOut,
   refusalHint,
   runFitlogDayTool,
+  runFitlogNightDangerTool,
+  runFitlogNightsTool,
   runFitlogWeeklyTool,
   summarizeFitlogDay,
   summarizeFitlogExercise,
+  summarizeFitlogNight,
+  summarizeFitlogNightDanger,
+  summarizeFitlogNights,
   summarizeFitlogProgress,
   summarizeFitlogWeekly,
   type FitlogTodayRaw,
@@ -37,13 +46,22 @@ describe('fitlog configuration and declarations', () => {
     expect(fitlogConfigured({ FITLOG_API_URL: 'https://fitlog.example.com' } as Env)).toBe(false);
   });
 
-  it('exposes four purpose-specific read tools', () => {
-    const offered = [FITLOG_DAY_TOOL.name, FITLOG_PROGRESS_TOOL.name, FITLOG_WEEKLY_TOOL.name, FITLOG_EXERCISE_TOOL.name];
+  it('exposes six purpose-specific read tools', () => {
+    const offered = [
+      FITLOG_DAY_TOOL.name,
+      FITLOG_PROGRESS_TOOL.name,
+      FITLOG_WEEKLY_TOOL.name,
+      FITLOG_EXERCISE_TOOL.name,
+      FITLOG_NIGHTS_TOOL.name,
+      FITLOG_NIGHT_DANGER_TOOL.name,
+    ];
     expect(offered).toEqual([
       'fitlog_day',
       'fitlog_progress',
       'fitlog_weekly',
       'fitlog_exercise',
+      'fitlog_nights',
+      'fitlog_night_danger',
     ]);
     expect(FITLOG_TOOL.serverTools).toEqual(offered);
   });
@@ -68,7 +86,26 @@ describe('fitness routing and argument validation', () => {
       expect(refersToFitness(message)).toBe(true);
     }
     expect(refersToFitness('Amazonの売上はどう？')).toBe(false);
-    for (const question of FITLOG_TOOL.ask) expect(refersToFitness(question)).toBe(true);
+    // ask の例は fitlog_* のどれかに向くことが目的で、必ずしも refersToFitness 単体で拾う必要はない
+    // （帰宅支援の例は refersToNightOut が拾う）。
+    for (const question of FITLOG_TOOL.ask) {
+      expect(refersToFitness(question) || refersToNightOut(question)).toBe(true);
+    }
+  });
+
+  it('detects night-out vocabulary separately from body/diet vocabulary', () => {
+    for (const message of [
+      '飲み会でどれくらい乗り過ごしてる？',
+      '帰宅支援の記録を見せて',
+      '自分の危険ラインは？',
+      '終電逃したときの記録ある？',
+      'タクシー代いくら使った？',
+      '昨日また記憶があいまいだった',
+    ]) {
+      expect(refersToNightOut(message)).toBe(true);
+    }
+    expect(refersToNightOut('今日の体重は？')).toBe(false);
+    expect(refersToNightOut('Amazonの売上はどう？')).toBe(false);
   });
 
   it('uses safe defaults for malformed tool arguments', () => {
@@ -94,6 +131,12 @@ describe('fitness routing and argument validation', () => {
       tdeeWindowDays: 180,
     });
     expect(readFitlogExerciseArgs({ name: '  ベンチプレス  ' })).toEqual({ name: 'ベンチプレス' });
+    expect(readFitlogNightsArgs({})).toEqual({ scope: 'recent', limit: 30 });
+    expect(readFitlogNightsArgs({ scope: 'all' })).toEqual({ scope: 'all', limit: 30 });
+    expect(readFitlogNightsArgs({ scope: 'bogus' })).toEqual({ scope: 'recent', limit: 30 });
+    expect(readFitlogNightsArgs({ limit: 5 })).toEqual({ scope: 'recent', limit: 5 });
+    expect(readFitlogNightsArgs({ limit: 999 })).toEqual({ scope: 'recent', limit: 30 });
+    expect(readFitlogNightsArgs({ limit: -3 })).toEqual({ scope: 'recent', limit: 30 });
   });
 });
 
@@ -317,6 +360,101 @@ describe('FIT LOG summaries', () => {
     expect(summary['自己ベスト']).toBe('80kg×8回（2026-09-20）');
     expect(summary['直近28日ボリューム']).toBe('5000kg');
   });
+
+  it('narrows a night to quantity, outcome, return method, cost and failure cause, with station names but no venue area', () => {
+    const summary = summarizeFitlogNight({
+      night_date: '2026-09-29',
+      outcome: 'overshoot',
+      memory: 'hazy',
+      hangover: 'heavy',
+      extra_drinks: 1,
+      drinks_count: 4,
+      pure_alcohol_g: 72,
+      kcal: 1200,
+      max_pace_g_per_h: 45,
+      water_count: 1,
+      return_method: 'taxi',
+      return_cost_yen: 3200,
+      failure_cause: '飲むペースが速すぎた',
+      failure_tags: ['pace', 'no_water'],
+      farthest_station: '町田',
+      prompts_total: 4,
+      prompts_answered: 1,
+      max_alert_level: 3,
+      answered_at: 1234567890,
+      dismissed_at: null,
+      report: { train: { alightedBy: '橋本' } },
+    });
+    expect(JSON.stringify(summary)).not.toContain('venue');
+    expect((summary['量'] as Record<string, unknown>)['純アルコール合計']).toBe('72g');
+    expect((summary['結果'] as Record<string, unknown>)['種別']).toBe('乗り過ごした');
+    expect((summary['結果'] as Record<string, unknown>)['記憶']).toBe('あいまい');
+    expect((summary['帰り方'] as Record<string, unknown>)['方法']).toBe('タクシー');
+    expect((summary['帰り方'] as Record<string, unknown>)['最遠到達駅']).toBe('町田');
+    expect((summary['帰り方'] as Record<string, unknown>)['実際に降りた駅']).toBe('橋本');
+    expect(summary['費用']).toBe('3200円');
+    expect((summary['敗因'] as Record<string, unknown>)['内容']).toBe('飲むペースが速すぎた');
+  });
+
+  it('does not treat an unanswered night as a bad or good outcome', () => {
+    const summary = summarizeFitlogNight({
+      night_date: '2026-09-30',
+      outcome: 'normal',
+      memory: null,
+      hangover: null,
+      extra_drinks: null,
+      drinks_count: 2,
+      pure_alcohol_g: 24,
+      kcal: 400,
+      max_pace_g_per_h: null,
+      water_count: 0,
+      return_method: null,
+      return_cost_yen: null,
+      failure_cause: null,
+      failure_tags: [],
+      farthest_station: null,
+      prompts_total: null,
+      prompts_answered: null,
+      max_alert_level: null,
+      answered_at: null,
+      dismissed_at: null,
+      report: null,
+    });
+    expect(summary['回答状況']).toBe('未回答（翌朝のふりかえり待ち）');
+    expect((summary['結果'] as Record<string, unknown>)['記憶']).toBe('未回答');
+    expect(summary['費用']).toBe('未回答');
+    expect((summary['敗因'] as Record<string, unknown>)['タグ']).toBe('なし');
+  });
+
+  it('labels a full night list with its scope', () => {
+    const summary = summarizeFitlogNights([], '直近30件');
+    expect(summary['対象範囲']).toBe('直近30件');
+    expect(summary['件数']).toBe(0);
+    expect(summary['夜ごと']).toEqual([]);
+  });
+
+  it('summarizes the danger line with whether it is learned yet, and never claims a medical judgment', () => {
+    const summary = summarizeFitlogNightDanger({
+      lineG: 60,
+      lineLearned: false,
+      paceLine: 40,
+      paceLearned: false,
+      nights: 5,
+      badNights: 2,
+      above: { nights: 2, bad: 2 },
+      below: { nights: 3, bad: 0 },
+      waterNights: { nights: 1, bad: 0 },
+      costYenThisYear: 8400,
+      tags: [{ tag: 'pace', count: 2 }],
+      sleepLastNightMin: 240,
+      sleepShort: true,
+      todayLineG: 48,
+    });
+    expect((summary['危険ライン'] as Record<string, unknown>)['学習済みか']).toContain('仮の値');
+    expect((summary['危険ライン'] as Record<string, unknown>)['今日の危険ライン']).toBe('48g（前夜の睡眠不足のため8割に下げています）');
+    expect(summary['今年の帰宅費用']).toBe('8400円');
+    expect(summary['注意']).toContain('医学的な判断ではありません');
+  });
 });
 
 describe('read-only HTTP calls', () => {
@@ -372,5 +510,54 @@ describe('read-only HTTP calls', () => {
     const result = await runFitlogDayTool(env, { name: FITLOG_DAY_TOOL.name, args: {} }, '2026-09-26');
     expect(result).toHaveProperty('error');
     expect(String(result.error)).toContain('APIキー');
+  });
+
+  it('reads recent nights from GET /nights with a bounded limit, never /nights/pending', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 'ok', nights: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+    const result = await runFitlogNightsTool(env, { name: FITLOG_NIGHTS_TOOL.name, args: {} });
+    expect(result).toHaveProperty('対象範囲', '直近30件');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('https://fitlog.example.com/nights?limit=30', expect.objectContaining({ method: 'GET' }));
+    const calledUrl = fetchMock.mock.calls[0]?.[0];
+    expect(String(calledUrl)).not.toContain('/nights/pending');
+  });
+
+  it('reads the full history from GET /nights/export when scope is "all"', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ status: 'ok', exportedAt: '2026-09-30T00:00:00Z', note: '', stats: {}, nights: [] }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    const result = await runFitlogNightsTool(env, { name: FITLOG_NIGHTS_TOOL.name, args: { scope: 'all' } });
+    expect(result).toHaveProperty('対象範囲', '全期間');
+    expect(fetchMock).toHaveBeenCalledWith('https://fitlog.example.com/nights/export?', expect.objectContaining({ method: 'GET' }));
+  });
+
+  it('reads the danger line from GET /nights/stats', async () => {
+    const stats = {
+      lineG: 60,
+      lineLearned: true,
+      paceLine: 40,
+      paceLearned: true,
+      nights: 10,
+      badNights: 3,
+      above: { nights: 3, bad: 3 },
+      below: { nights: 7, bad: 0 },
+      waterNights: { nights: 2, bad: 0 },
+      costYenThisYear: 15000,
+      tags: [],
+      sleepLastNightMin: 400,
+      sleepShort: false,
+      todayLineG: 60,
+    };
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 'ok', stats }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+    const result = await runFitlogNightDangerTool(env);
+    expect((result['危険ライン'] as Record<string, unknown>)['純アルコール']).toBe('60g');
+    expect(fetchMock).toHaveBeenCalledWith('https://fitlog.example.com/nights/stats?', expect.objectContaining({ method: 'GET' }));
   });
 });

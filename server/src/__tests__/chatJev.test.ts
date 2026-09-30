@@ -101,7 +101,14 @@ describe('Jev routing in chat.ts', () => {
     const reply = await ask('今日の体重は？');
     expect(mockAskJev).not.toHaveBeenCalled();
     const options = sent();
-    expect(names(options)).toEqual(['fitlog_day', 'fitlog_progress', 'fitlog_weekly', 'fitlog_exercise']);
+    expect(names(options)).toEqual([
+      'fitlog_day',
+      'fitlog_progress',
+      'fitlog_weekly',
+      'fitlog_exercise',
+      'fitlog_nights',
+      'fitlog_night_danger',
+    ]);
     expect(options.requireToolFirst).toBe(true);
     expect(options.systemPrompt).not.toContain('取得済みのデータ');
     expect(reply.route).toMatchObject({ mode: 'off', route: 'legacy', prefetched: [] });

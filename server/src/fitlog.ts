@@ -27,6 +27,13 @@ export function refersToFitness(message: string): boolean {
   );
 }
 
+/** 帰宅支援（飲み会モード）の相談かを保守的に判定する。飲酒そのものは refersToFitness 側が拾う。 */
+export function refersToNightOut(message: string): boolean {
+  return /(飲み会|飲み会モード|帰宅支援|危険ライン|乗り過ごし|乗過ごし|終電|始発待ち|タクシー代|ネットカフェ|ネカフェ|飲みすぎ|飲み過ぎ|家に帰れ|帰れなかった|記憶が(ない|なかった|あいまい)|二日酔い)/.test(
+    message,
+  );
+}
+
 export const FITLOG_DAY_TOOL: ToolDeclaration = {
   name: 'fitlog_day',
   description:
@@ -88,7 +95,37 @@ export const FITLOG_EXERCISE_TOOL: ToolDeclaration = {
   },
 };
 
-export const FITLOG_TOOLS = [FITLOG_DAY_TOOL, FITLOG_PROGRESS_TOOL, FITLOG_WEEKLY_TOOL, FITLOG_EXERCISE_TOOL];
+export const FITLOG_NIGHTS_TOOL: ToolDeclaration = {
+  name: 'fitlog_nights',
+  description:
+    'FIT LOGの帰宅支援（飲み会モード）から、夜ごとの記録を調べます。飲んだ量、乗り過ごし・家に着けたかの結果、' +
+    '帰り方（方法・最遠到達駅・実際に降りた駅）、翌朝答えた費用・敗因をまとめて返します。' +
+    'scopeを省略または"recent"にすると直近の記録（既定30件、最大30件）、"all"にすると全期間の記録です。読み取り専用です。',
+  parameters: {
+    type: 'object',
+    properties: {
+      scope: { type: 'string', description: '"recent"（直近、既定）または"all"（全期間）。' },
+      limit: { type: 'number', description: 'scopeが"recent"のときの件数上限。既定30、最大30。' },
+    },
+  },
+};
+
+export const FITLOG_NIGHT_DANGER_TOOL: ToolDeclaration = {
+  name: 'fitlog_night_danger',
+  description:
+    'FIT LOGの帰宅支援から、自分の「危険ライン」（これを超えると乗り過ごし・記憶が曖昧などの悪い結果になりやすい純アルコール量とペース）、' +
+    '昨夜の睡眠、今年の帰宅費用、敗因タグの傾向を調べます。悪い夜が3晩たまるまでは仮の値です。読み取り専用です。',
+  parameters: { type: 'object', properties: {} },
+};
+
+export const FITLOG_TOOLS = [
+  FITLOG_DAY_TOOL,
+  FITLOG_PROGRESS_TOOL,
+  FITLOG_WEEKLY_TOOL,
+  FITLOG_EXERCISE_TOOL,
+  FITLOG_NIGHTS_TOOL,
+  FITLOG_NIGHT_DANGER_TOOL,
+];
 
 const OUTDOOR_LABELS: Record<string, string> = {
   walking: 'ウォーキング',
@@ -290,6 +327,63 @@ interface FitlogExerciseRaw {
   }[];
 }
 
+interface FitlogNightRaw {
+  night_date: string;
+  outcome: string;
+  memory: string | null;
+  hangover: string | null;
+  extra_drinks: number | null;
+  drinks_count: number;
+  pure_alcohol_g: number;
+  kcal: number | null;
+  max_pace_g_per_h: number | null;
+  water_count: number;
+  return_method: string | null;
+  return_cost_yen: number | null;
+  failure_cause: string | null;
+  failure_tags: string[];
+  farthest_station: string | null;
+  prompts_total: number | null;
+  prompts_answered: number | null;
+  max_alert_level: number | null;
+  answered_at: number | null;
+  dismissed_at: number | null;
+  report?: { train?: { alightedBy?: string | null } | null } | null;
+}
+
+interface FitlogNightsListRaw {
+  status: string;
+  nights?: FitlogNightRaw[];
+}
+
+interface FitlogDangerStatsRaw {
+  lineG: number;
+  lineLearned: boolean;
+  paceLine: number;
+  paceLearned: boolean;
+  nights: number;
+  badNights: number;
+  above: { nights: number; bad: number };
+  below: { nights: number; bad: number };
+  waterNights: { nights: number; bad: number };
+  costYenThisYear: number;
+  tags: { tag: string; count: number }[];
+  sleepLastNightMin: number | null;
+  sleepShort: boolean;
+  todayLineG: number;
+}
+
+interface FitlogNightsExportRaw {
+  status: string;
+  nights?: FitlogNightRaw[];
+  stats?: FitlogDangerStatsRaw;
+}
+
+interface FitlogNightStatsRaw {
+  status: string;
+  stats?: FitlogDangerStatsRaw;
+}
+
 export function cleanCredential(raw: string): string {
   const trimmed = raw.trim();
   const stripped = trimmed.replace(/^[\w-]+:\s*/i, '').trim();
@@ -344,6 +438,14 @@ export function readFitlogWeeklyArgs(raw: unknown, defaultDate: string): { refer
 export function readFitlogExerciseArgs(raw: unknown): { name: string } {
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   return { name: typeof obj.name === 'string' ? obj.name.trim().slice(0, 100) : '' };
+}
+
+export function readFitlogNightsArgs(raw: unknown): { scope: 'recent' | 'all'; limit: number } {
+  const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const scope = obj.scope === 'all' ? 'all' : 'recent';
+  const limitNum = Number(obj.limit);
+  const limit = Number.isFinite(limitNum) && limitNum > 0 ? Math.min(30, Math.round(limitNum)) : 30;
+  return { scope, limit };
 }
 
 async function fetchFitlogJson<T>(env: Env, path: string, params: Record<string, string>): Promise<T> {
@@ -696,6 +798,93 @@ export function summarizeFitlogExercise(raw: FitlogExerciseRaw, askedName: strin
   };
 }
 
+const NIGHT_OUTCOME_LABELS: Record<string, string> = {
+  normal: '普通に帰宅',
+  overshoot: '乗り過ごした',
+  not_home: '家に着かなかった',
+};
+const NIGHT_MEMORY_LABELS: Record<string, string> = { full: 'しっかりある', hazy: 'あいまい', none: 'ない' };
+const NIGHT_HANGOVER_LABELS: Record<string, string> = { none: 'なし', light: '軽い', heavy: '重い' };
+const NIGHT_RETURN_LABELS: Record<string, string> = {
+  train_back: '電車で戻った',
+  taxi: 'タクシー',
+  carshare: 'カーシェア',
+  walk: '歩いた',
+  netcafe: 'ネットカフェ',
+  first_train: '始発待ち',
+  other: 'その他',
+};
+
+/** 夜1件を、量・結果・帰り方・費用・敗因に絞って圧縮する。店の周辺地名（venue_label）は渡さない。 */
+export function summarizeFitlogNight(n: FitlogNightRaw): Record<string, unknown> {
+  return {
+    日付: n.night_date,
+    回答状況: n.dismissed_at != null ? '対象外（飲んでいない夜として除外）' : n.answered_at != null ? '翌朝のふりかえり回答済み' : '未回答（翌朝のふりかえり待ち）',
+    量: {
+      飲酒回数: n.drinks_count,
+      純アルコール合計: `${n.pure_alcohol_g}g`,
+      最大ペース: n.max_pace_g_per_h != null ? `${n.max_pace_g_per_h}g/時` : '算出不可（飲酒記録なし）',
+      記録漏れ: n.extra_drinks != null ? `${n.extra_drinks}杯` : '未回答',
+      水: `${n.water_count}杯`,
+      kcal: n.kcal ?? '記録なし',
+    },
+    結果: {
+      種別: NIGHT_OUTCOME_LABELS[n.outcome] ?? n.outcome,
+      記憶: n.memory ? (NIGHT_MEMORY_LABELS[n.memory] ?? n.memory) : '未回答',
+      二日酔い: n.hangover ? (NIGHT_HANGOVER_LABELS[n.hangover] ?? n.hangover) : '未回答',
+      通知への応答: n.prompts_total != null ? `${n.prompts_answered ?? 0}/${n.prompts_total}件` : '記録なし',
+      最大警戒レベル: n.max_alert_level ?? '記録なし',
+    },
+    帰り方: {
+      方法: n.return_method ? (NIGHT_RETURN_LABELS[n.return_method] ?? n.return_method) : '未回答',
+      最遠到達駅: n.farthest_station ?? '記録なし',
+      実際に降りた駅: n.report?.train?.alightedBy ?? '記録なし',
+    },
+    費用: n.return_cost_yen != null ? `${n.return_cost_yen}円` : '未回答',
+    敗因: {
+      内容: n.failure_cause ?? '未回答',
+      タグ: n.failure_tags.length ? n.failure_tags : 'なし',
+    },
+  };
+}
+
+/** 夜のリストを、範囲の説明つきで圧縮する。 */
+export function summarizeFitlogNights(nights: FitlogNightRaw[], rangeLabel: string): Record<string, unknown> {
+  return {
+    対象範囲: rangeLabel,
+    件数: nights.length,
+    夜ごと: nights.length ? nights.map(summarizeFitlogNight) : [],
+    注意:
+      '店のあたりの地名は含めていません。駅名は本人の同意のもとで含めています（2026-09-30）。' +
+      '悪い結果＝乗り過ごし・家に着かなかった・記憶が曖昧またはない、のいずれかです。医療的な診断には使いません。',
+    出所: 'FIT LOG D1（帰宅支援の夜ごとの記録）',
+  };
+}
+
+/** 危険ラインの集計を、根拠つきで圧縮する。 */
+export function summarizeFitlogNightDanger(stats: FitlogDangerStatsRaw): Record<string, unknown> {
+  return {
+    危険ライン: {
+      純アルコール: `${stats.lineG}g`,
+      学習済みか: stats.lineLearned ? `学習済み（悪い夜${stats.badNights}晩から算出）` : '仮の値（悪い夜が3晩たまるまでの目安。WHOの一時多量飲酒60gを暫定採用）',
+      ペース: `${stats.paceLine}g/時`,
+      ペース学習済みか: stats.paceLearned ? '学習済み' : '仮の値（暫定40g/時）',
+      今日の危険ライン: `${stats.todayLineG}g${stats.sleepShort ? '（前夜の睡眠不足のため8割に下げています）' : ''}`,
+    },
+    昨夜の睡眠: stats.sleepLastNightMin != null ? formatMinutes(stats.sleepLastNightMin) : '未記録',
+    記録件数: { 回答済みの夜: stats.nights, 悪い結果の夜: stats.badNights },
+    ラインとの関係: {
+      ライン以上だった夜: `${stats.above.nights}晩中、悪い結果${stats.above.bad}晩`,
+      ライン未満だった夜: `${stats.below.nights}晩中、悪い結果${stats.below.bad}晩`,
+      水を飲んだ夜: `${stats.waterNights.nights}晩中、悪い結果${stats.waterNights.bad}晩`,
+    },
+    今年の帰宅費用: `${stats.costYenThisYear}円`,
+    敗因タグの傾向: stats.tags.length ? stats.tags.map((t) => `${t.tag}: ${t.count}回`) : '記録なし',
+    注意: '悪い結果＝乗り過ごし・家に着かなかった・記憶が曖昧またはない、のいずれかです。仮の値は自分の記録からの目安で、医学的な判断ではありません。',
+    出所: 'FIT LOG D1（帰宅支援の危険ライン集計）',
+  };
+}
+
 function toolFailure(error: unknown, context: Record<string, unknown>): Record<string, unknown> {
   return { error: error instanceof FitlogError ? error.message : 'FIT LOGのデータを取得できませんでした。', ...context };
 }
@@ -740,5 +929,30 @@ export async function runFitlogExerciseTool(env: Env, call: ToolCall): Promise<R
     return summarizeFitlogExercise(await fetchFitlogJson<FitlogExerciseRaw>(env, '/machines/detail', { name }), name);
   } catch (error) {
     return toolFailure(error, { 種目: name });
+  }
+}
+
+// /nights/pending は呼ばない。GPS Logからの取り込みが走るアプリ専用の窓なので、読むのはここまで。
+export async function runFitlogNightsTool(env: Env, call: ToolCall): Promise<Record<string, unknown>> {
+  const { scope, limit } = readFitlogNightsArgs(call.args);
+  try {
+    if (scope === 'all') {
+      const raw = await fetchFitlogJson<FitlogNightsExportRaw>(env, '/nights/export', {});
+      return summarizeFitlogNights(raw.nights ?? [], '全期間');
+    }
+    const raw = await fetchFitlogJson<FitlogNightsListRaw>(env, '/nights', { limit: String(limit) });
+    return summarizeFitlogNights(raw.nights ?? [], `直近${limit}件`);
+  } catch (error) {
+    return toolFailure(error, {});
+  }
+}
+
+export async function runFitlogNightDangerTool(env: Env): Promise<Record<string, unknown>> {
+  try {
+    const raw = await fetchFitlogJson<FitlogNightStatsRaw>(env, '/nights/stats', {});
+    if (!raw.stats) return { error: '危険ラインを算出できませんでした。' };
+    return summarizeFitlogNightDanger(raw.stats);
+  } catch (error) {
+    return toolFailure(error, {});
   }
 }

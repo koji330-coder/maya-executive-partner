@@ -131,15 +131,17 @@ export const AMAZON_TOOLS: ConnectedTool[] = [
 
 export const FITLOG_TOOL: ConnectedTool = {
   id: 'fitlog',
-  serverTools: ['fitlog_day', 'fitlog_progress', 'fitlog_weekly', 'fitlog_exercise'],
+  serverTools: ['fitlog_day', 'fitlog_progress', 'fitlog_weekly', 'fitlog_exercise', 'fitlog_nights', 'fitlog_night_danger'],
   label: 'FIT LOG',
   icon: 'fitness-outline',
-  summary: '体調・食事・運動の記録を、日付・期間・種目から確認',
+  summary: '体調・食事・運動・帰宅支援の記録を、日付・期間・種目から確認',
   can: [
     '指定日の睡眠・飲酒・腹囲・食事の質・歩数・体組成・運動',
     '最近の体重・体脂肪・実測TDEE・筋力の変化',
     '直前に完了した1週間の運動・食事・体重・自己ベスト',
     '指定した筋トレ種目の前回記録・自己ベスト・推定1RM',
+    '帰宅支援（飲み会モード）の夜ごとの記録（量・結果・帰り方・費用・敗因）',
+    '帰宅支援の「危険ライン」（超えると乗り過ごしやすい飲酒量・ペース）と今年の帰宅費用',
   ],
   ask: [
     '9/18日のコンディションは？',
@@ -147,12 +149,16 @@ export const FITLOG_TOOL: ConnectedTool = {
     '先週の運動を振り返って',
     'ベンチプレスの前回の筋トレ記録は？',
     '今日はどれくらい歩いた？',
+    '最近、飲み会でどれくらい乗り過ごしてる？',
+    '自分の危険ラインってどれくらい？',
   ],
   notes: [
     '読むだけです。MAYAから記録の追加・変更・削除はできません',
     '体の写真と、FIT LOG側のAIコメントは読みません',
     '記録が無い項目を0や「問題なし」とは扱わず、医療的な診断もしません',
     '歩数は、複数の提供元（スマホ本体・スマートウォッチ等）による二重計上を解消済みです（2026-09-27）',
+    '帰宅支援の記録には、乗り過ごした先や降りた駅の名前が含まれます（本人の同意のもと、2026-09-30）',
+    '帰宅支援の危険ラインは自分の記録からの目安で、悪い夜が3晩たまるまでは仮の値です',
   ],
   source: 'FIT LOG。相談されたときに、専用APIから必要な日・期間だけを読みます',
 };

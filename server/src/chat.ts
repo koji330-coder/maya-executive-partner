@@ -25,12 +25,17 @@ import {
   fitlogConfigured,
   FITLOG_DAY_TOOL,
   FITLOG_EXERCISE_TOOL,
+  FITLOG_NIGHT_DANGER_TOOL,
+  FITLOG_NIGHTS_TOOL,
   FITLOG_PROGRESS_TOOL,
   FITLOG_TOOLS,
   FITLOG_WEEKLY_TOOL,
   refersToFitness,
+  refersToNightOut,
   runFitlogDayTool,
   runFitlogExerciseTool,
+  runFitlogNightDangerTool,
+  runFitlogNightsTool,
   runFitlogProgressTool,
   runFitlogWeeklyTool,
 } from './fitlog';
@@ -184,9 +189,10 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   const voiceReady = voiceConfigured(env);
   const askingAboutAmazon = amazonReady && refersToAmazon(request.message);
   // 「じゃあ先週は？」のような短い続きだけは、直近の会話も判定に含める。
-  const recentFitnessContext = request.history.slice(-4).some((exchange) => refersToFitness(exchange.text));
+  const recentFitnessContext = request.history.slice(-4).some((exchange) => refersToFitness(exchange.text) || refersToNightOut(exchange.text));
   const fitnessFollowUp = /^(じゃあ|では|それ|その|先週|今週|昨日|最近|前回|どう|もっと|詳しく)/.test(request.message.trim());
-  const askingAboutFitness = fitlogReady && (refersToFitness(request.message) || (fitnessFollowUp && recentFitnessContext));
+  const askingAboutFitness =
+    fitlogReady && (refersToFitness(request.message) || refersToNightOut(request.message) || (fitnessFollowUp && recentFitnessContext));
   const askingAboutRememberedConversation = /覚えて|話した|言ってた|決めた|決めてた|経緯/.test(request.message);
 
   // 利用可能なツール群を準備（未接続の道具は見せない）
@@ -217,6 +223,8 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     if (call.name === FITLOG_PROGRESS_TOOL.name) return runFitlogProgressTool(env, call, presidentDate());
     if (call.name === FITLOG_WEEKLY_TOOL.name) return runFitlogWeeklyTool(env, call, presidentDate());
     if (call.name === FITLOG_EXERCISE_TOOL.name) return runFitlogExerciseTool(env, call);
+    if (call.name === FITLOG_NIGHTS_TOOL.name) return runFitlogNightsTool(env, call);
+    if (call.name === FITLOG_NIGHT_DANGER_TOOL.name) return runFitlogNightDangerTool(env);
     if (
       call.name === VOICE_RECENT_TOOL.name ||
       call.name === VOICE_SEARCH_TOOL.name ||
