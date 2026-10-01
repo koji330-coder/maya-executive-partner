@@ -380,6 +380,7 @@ describe('FIT LOG summaries', () => {
     const meals = summary['食事'] as Record<string, unknown>;
     expect(meals['平均摂取']).toBe('2300kcal/日（お酒込み。食事のみでは2100kcal/日）');
     expect((meals['飲酒'] as Record<string, unknown>)['お酒のkcal合計']).toBe('1400kcal');
+    expect(meals['注記']).toContain('すでに加算');
     expect(meals['運動日の追加分込みの目標']).toBe('2350kcal/日（運動日の追加分は平均150kcal/日）');
   });
 

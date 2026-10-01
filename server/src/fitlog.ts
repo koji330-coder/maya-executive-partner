@@ -768,6 +768,10 @@ export function summarizeFitlogWeekly(raw: FitlogWeeklyRaw): Record<string, unkn
       自己ベスト: f.prs.length ? f.prs.map((pr) => `${pr.date} ${pr.name} ${pr.weight}kg×${pr.reps}回`) : 'なし',
     },
     食事: {
+      注記:
+        '比べるのは「平均摂取（お酒込み）」と「運動日の追加分込みの目標」のペアです。' +
+        '目標には運動の消費分がすでに加算されているので、運動kcalをさらに足し引きしません。' +
+        '食事のみの平均を基本目標と比べて評価することもしません。',
       記録日数: `${f.mealDays}/7日`,
       たんぱく質目標9割以上: `${f.proteinHitDays}日`,
       // お酒込みが画面・実測TDEEと同じ定義。古いサーバーでは食事のみにフォールバックする。
