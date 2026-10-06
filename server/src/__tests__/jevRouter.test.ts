@@ -116,6 +116,10 @@ describe('argumentsFor', () => {
   it('turns periods into dates in code', () => {
     expect(argumentsFor('fitlog_day', 'yesterday', '2026-10-01')).toEqual({ date: '2026-09-30' });
     expect(argumentsFor('haksai_sales', 'last_month', '2026-01-15')).toEqual({ month: '2025-12' });
+    expect(argumentsFor('haksai_ads', 'yesterday', '2026-10-07')).toEqual({ from: '2026-10-06', to: '2026-10-06' });
+    expect(argumentsFor('haksai_ads', 'last_month', '2026-10-07')).toEqual({ from: '2026-09-01', to: '2026-09-30' });
+    expect(argumentsFor('haksai_ads', 'last_month', '2026-03-07')).toEqual({ from: '2026-02-01', to: '2026-02-28' });
+    expect(argumentsFor('haksai_ads', 'other', '2026-10-07')).toBeNull();
     expect(argumentsFor('fitlog_day', 'other', '2026-09-28')).toBeNull();
     expect(argumentsFor('haksai_inventory', 'today', '2026-09-28')).toBeNull();
   });

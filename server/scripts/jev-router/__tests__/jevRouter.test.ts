@@ -45,7 +45,7 @@ describe('jev router cases', () => {
   });
 
   it('offers every production tool plus none', () => {
-    expect(OPTIONS).toHaveLength(15);
+    expect(OPTIONS).toHaveLength(16);
     expect(OPTIONS).toContain('none');
   });
 

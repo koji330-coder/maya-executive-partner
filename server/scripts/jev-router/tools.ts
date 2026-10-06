@@ -5,7 +5,7 @@
  * here runs a tool.
  */
 import { FITLOG_TOOLS } from '../../src/fitlog.ts';
-import { HAKSAI_INVENTORY_TOOL, HAKSAI_MARKET_TOOL, HAKSAI_SALES_TOOL } from '../../src/haksai.ts';
+import { HAKSAI_ADS_TOOL, HAKSAI_INVENTORY_TOOL, HAKSAI_MARKET_TOOL, HAKSAI_SALES_TOOL } from '../../src/haksai.ts';
 import { SEARCH_MEMORY_TOOL } from '../../src/memory/search.ts';
 import { VOICE_TOOLS } from '../../src/voicebox.ts';
 import type { ToolDeclaration } from '@/services/llm/geminiClient';
@@ -22,6 +22,7 @@ export const TOOL_DECLARATIONS: ToolDeclaration[] = [
   SEARCH_MEMORY_TOOL,
   HAKSAI_INVENTORY_TOOL,
   HAKSAI_SALES_TOOL,
+  HAKSAI_ADS_TOOL,
   HAKSAI_MARKET_TOOL,
   ...FITLOG_TOOLS,
   ...VOICE_TOOLS,

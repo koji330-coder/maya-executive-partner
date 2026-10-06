@@ -52,7 +52,7 @@ export const HAKSAI_INVENTORY_TOOL: ToolDeclaration = {
  * answers that it cannot see the data and asks to be shown the screen. A wrong
  * guess costs one call, about a second; a miss costs that refusal.
  */
-const AMAZON_MARKERS = /在庫|発注|補充|欠品|仕入れ|売上|売り上げ|粗利|広告費|ACOS|Amazon|アマゾン|セラー|FBA|ASIN|売れ筋|売れて|売れた|売れ行き|競合|ライバル|Keepa|ランキング|値下げ|セール/i;
+const AMAZON_MARKERS = /在庫|発注|補充|欠品|仕入れ|売上|売り上げ|粗利|広告費|広告|キャンペーン|クリック率|ACOS|Amazon|アマゾン|セラー|FBA|ASIN|売れ筋|売れて|売れた|売れ行き|競合|ライバル|Keepa|ランキング|値下げ|セール/i;
 
 export function refersToAmazon(message: string): boolean {
   return AMAZON_MARKERS.test(message);
@@ -84,7 +84,7 @@ export function readInventoryArgs(args: Record<string, unknown>): InventoryArgs 
 
 interface Envelope {
   data?: Record<string, unknown> | null;
-  meta?: { warnings?: unknown };
+  meta?: { warnings?: unknown; period?: unknown };
   error?: unknown;
   message?: unknown;
 }
@@ -503,7 +503,7 @@ export function summarizeMonth(envelope: Envelope): Record<string, unknown> {
       広告費: yen(item.adSpend),
     })),
     注意: [...warnings, '利益の数字は、原価が確定した商品だけの計算です。'],
-    出所: 'HAKSAI Central（売上レポートの手動取込。画面と同じ計算）',
+    出所: 'HAKSAI Central（売上は、Amazonの精算データ SP-API。広告費は、広告API。画面と同じ計算）',
   };
 }
 
@@ -518,6 +518,170 @@ export async function runHaksaiSalesTool(env: Env, call: ToolCall, today: string
     return summarizeMonth(envelope);
   } catch (error) {
     return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の売上を読めませんでした。' };
+  }
+}
+
+export const HAKSAI_ADS_TOOL: ToolDeclaration = {
+  name: 'haksai_ads',
+  description:
+    'Amazon（HAKSAI Central）の広告（広告API由来）の実績を、任意の日・任意の期間（最大190日。1日だけでも可）で調べます。' +
+    '広告費・広告経由の売上・注文・クリック・ACOS を返します。商品（asin）を決めないと、全商品の合計の推移と、広告費の大きい商品・キャンペーンの上位です。' +
+    'asin を渡すと、その商品の実績と、紐付くキャンペーン、検索語の上位です。' +
+    '「昨日の広告費は？」「10/1〜10/6の広告費の合計と上位5商品」「この商品の広告のACOSは？」のように、日や期間を指定する広告の相談で使います。' +
+    '月の売上と広告費をまとめて見たいときは haksai_sales を使います。読み取りだけで、広告の変更はできません。',
+  parameters: {
+    type: 'object',
+    properties: {
+      from: { type: 'string', description: '期間の最初の日（YYYY-MM-DD）。1日だけなら、to と同じ日。省略すると、今月の1日。' },
+      to: { type: 'string', description: '期間の最後の日（YYYY-MM-DD）。省略すると、今日。' },
+      asin: { type: 'string', description: '商品の ASIN（B から始まる10文字）。省略すると、全商品の合計と上位。' },
+      top: { type: 'number', description: '上位の商品・キャンペーンの数（asin を省略したとき）。既定5、最大20。' },
+      sort_by: {
+        type: 'string',
+        enum: ['spend', 'sales', 'orders', 'acos'],
+        description: '上位の商品の並び順（asin を省略したとき）。既定は spend（広告費）。acos は高い順。',
+      },
+    },
+  },
+};
+
+export interface AdsArgs {
+  from: string;
+  to: string;
+  asin: string | null;
+  top: number;
+  sortBy: string;
+  granularity: 'day' | 'week' | 'month';
+}
+
+const DAY = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+const AD_SORTS = ['spend', 'sales', 'orders', 'acos'];
+
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+}
+
+/**
+ * Reads the model's arguments defensively. No dates means this month so far, in
+ * the president's calendar; a lone date is a one-day or open-ended range; dates
+ * given backwards are turned round rather than refused. A malformed ASIN is an
+ * error, not a reason to quietly answer for every product.
+ */
+export function readAdsArgs(args: Record<string, unknown>, today: string): AdsArgs | { error: string } {
+  const day = (value: unknown): string | null => (typeof value === 'string' && DAY.test(value.trim()) ? value.trim() : null);
+  let from = day(args.from);
+  let to = day(args.to);
+  if (!from && !to) {
+    from = `${today.slice(0, 7)}-01`;
+    to = today;
+  } else if (!to) {
+    to = today;
+  } else if (!from) {
+    from = to;
+  }
+  if (from! > to!) [from, to] = [to, from];
+  const rawAsin = typeof args.asin === 'string' ? args.asin.trim().toUpperCase() : '';
+  if (rawAsin && !ASIN.test(rawAsin)) {
+    return { error: `ASIN「${rawAsin}」は、Bから始まる10文字の形ではありません。商品名しか分からないときは、先に haksai_inventory などで ASIN を調べてください。` };
+  }
+  const asked = Number(args.top);
+  const top = Number.isFinite(asked) ? Math.min(Math.max(Math.trunc(asked), 1), 20) : 5;
+  const sortBy = typeof args.sort_by === 'string' && AD_SORTS.includes(args.sort_by) ? args.sort_by : 'spend';
+  const span = daysBetween(from!, to!);
+  return { from: from!, to: to!, asin: rawAsin || null, top, sortBy, granularity: span <= 14 ? 'day' : span <= 92 ? 'week' : 'month' };
+}
+
+const percent = (ratio: unknown): string | null => {
+  const n = num(ratio);
+  return n === null ? null : `${(n * 100).toFixed(1)}%`;
+};
+
+/** One row of ad results: the yen as they are said, the ratios as percentages, the counts as they are. */
+function adRow(item: unknown): Record<string, unknown> {
+  const row = obj(item);
+  return {
+    広告費: yenLabel(row.adSpend),
+    広告経由の売上: yenLabel(row.adSales),
+    注文数: num(row.orders),
+    クリック数: num(row.clicks),
+    表示回数: num(row.impressions),
+    ACOS: percent(row.acos),
+    データのある日数: num(row.daysWithData),
+  };
+}
+
+/**
+ * Keeps what a decision needs. Amounts are turned into the spoken form here, once,
+ * because a small model slips a digit when it divides by ten thousand.
+ */
+export function summarizeAds(envelope: Envelope): Record<string, unknown> {
+  const data = obj(envelope.data);
+  const period = obj((envelope.meta as { period?: unknown } | undefined)?.period);
+  const warnings = Array.isArray(envelope.meta?.warnings)
+    ? (envelope.meta.warnings as unknown[]).filter((item): item is string => typeof item === 'string')
+    : [];
+  const topProducts = list(obj(data.topProducts).rows);
+  const topCampaigns = list(obj(data.topCampaigns).rows);
+  const campaigns = list(data.campaigns);
+  const terms = list(data.topSearchTermsByCampaign);
+  const asin = str(obj(data.scope).asin);
+  return {
+    範囲: asin ? `商品 ${asin}` : '全商品の合計',
+    期間: { 開始: str(period.from), 終了: str(period.to) },
+    集計の単位: str(data.granularity),
+    合計: adRow(data.totals),
+    推移: list(data.periods).map((item) => ({ 開始日: str(obj(item).periodStart), ...adRow(item) })),
+    ...(topProducts.length
+      ? {
+          上位の商品: topProducts.map((item) => ({ 商品: str(obj(item).title), ASIN: str(obj(item).asin), ...adRow(item) })),
+          上位の商品の並び順: str(obj(data.topProducts).sortedBy),
+        }
+      : {}),
+    ...(topCampaigns.length
+      ? { 上位のキャンペーン: topCampaigns.map((item) => ({ キャンペーン: str(obj(item).campaign), 予算到達日数: num(obj(item).daysAtBudget), ...adRow(item) })) }
+      : {}),
+    ...(campaigns.length
+      ? { 紐付くキャンペーン: campaigns.map((item) => ({ キャンペーン: str(obj(item).campaign), 予算到達日数: num(obj(item).daysAtBudget), ...adRow(item) })) }
+      : {}),
+    ...(terms.length
+      ? {
+          検索語の上位: terms.map((item) => ({
+            検索語: str(obj(item).term),
+            キャンペーン: str(obj(item).campaign),
+            クリック数: num(obj(item).clicks),
+            広告費: yenLabel(obj(item).adSpend),
+            広告経由の売上: yenLabel(obj(item).adSales),
+            注文数: num(obj(item).orders),
+            ACOS: percent(obj(item).acos),
+          })),
+        }
+      : {}),
+    注意: [
+      ...warnings,
+      'ACOS は広告経由の売上に対する広告費の比率です。全体の売上に対する割合ではありません。',
+    ],
+    出所: 'HAKSAI Central（広告API。毎日自動取込。売上・注文は、クリックから7日間の値）。検索語だけは、手動取込のレポート',
+  };
+}
+
+export async function runHaksaiAdsTool(env: Env, call: ToolCall, today: string): Promise<unknown> {
+  const read = readAdsArgs(call.args, today);
+  if ('error' in read) return { error: read.error };
+  const { from, to, asin, top, sortBy, granularity } = read;
+  try {
+    const envelope = await callMcp(env, 'haksai_get_ad_performance', {
+      from,
+      to,
+      granularity,
+      ...(asin ? { asin } : { top, sort_by: sortBy }),
+    });
+    if (envelope.data == null) {
+      const reason = typeof envelope.error === 'string' ? envelope.error : typeof envelope.message === 'string' ? envelope.message : '';
+      return { error: `${from}〜${to} の広告を読めませんでした。${reason}`.trim() };
+    }
+    return summarizeAds(envelope);
+  } catch (error) {
+    return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の広告を読めませんでした。' };
   }
 }
 

@@ -10,6 +10,7 @@ import {
   historyNeeds,
   keepaFetchConfigured,
   HaksaiError,
+  HAKSAI_ADS_TOOL,
   HAKSAI_INVENTORY_TOOL,
   HAKSAI_MARKET_TOOL,
   HAKSAI_SALES_TOOL,
@@ -18,8 +19,11 @@ import {
   readMarketArgs,
   refusalHint,
   refersToAmazon,
+  readAdsArgs,
   readSalesArgs,
+  runHaksaiAdsTool,
   runHaksaiMarketTool,
+  summarizeAds,
   runHaksaiSalesTool,
   summarizeMarket,
   unitProfit,
@@ -281,6 +285,86 @@ describe('runHaksaiSalesTool', () => {
   });
 });
 
+const adsEnvelope = {
+  data: {
+    scope: { level: 'account' },
+    granularity: 'day',
+    totals: { daysWithData: 6, impressions: 90000, clicks: 700, adSpend: 37039, adSales: 210000, orders: 55, units: 60, acos: 0.1764 },
+    periods: [{ periodStart: '2026-10-01', adSpend: 6000, adSales: 30000, orders: 8, clicks: 100, impressions: 15000, acos: 0.2, daysWithData: 1 }],
+    topProducts: { sortedBy: 'spend', rows: [{ asin: 'B0FXTQPGSB', title: '卓上ベル', adSpend: 12000, adSales: 80000, orders: 20, clicks: 200, acos: 0.15, daysWithData: 6 }] },
+    topCampaigns: { sortedBy: 'spend', rows: [{ campaign: 'SP-自動', adSpend: 9000, adSales: 40000, orders: 10, clicks: 150, acos: 0.225, daysAtBudget: 2, daysWithData: 6 }] },
+  },
+  meta: { period: { from: '2026-10-01', to: '2026-10-06' }, warnings: ['売上・注文は、広告がクリックされてから7日間の値です。'] },
+};
+
+describe('readAdsArgs', () => {
+  it('means this month so far when no dates are given', () => {
+    expect(readAdsArgs({}, '2026-10-07')).toMatchObject({ from: '2026-10-01', to: '2026-10-07', asin: null, top: 5, sortBy: 'spend', granularity: 'day' });
+  });
+  it('takes one date as one day, or as the start of an open range', () => {
+    expect(readAdsArgs({ from: '2026-10-05', to: '2026-10-05' }, '2026-10-07')).toMatchObject({ from: '2026-10-05', to: '2026-10-05' });
+    expect(readAdsArgs({ from: '2026-10-05' }, '2026-10-07')).toMatchObject({ from: '2026-10-05', to: '2026-10-07' });
+    expect(readAdsArgs({ to: '2026-10-05' }, '2026-10-07')).toMatchObject({ from: '2026-10-05', to: '2026-10-05' });
+  });
+  it('turns backwards dates round, and drops what is not a date', () => {
+    expect(readAdsArgs({ from: '2026-10-06', to: '2026-10-01' }, '2026-10-07')).toMatchObject({ from: '2026-10-01', to: '2026-10-06' });
+    expect(readAdsArgs({ from: '昨日', to: 'abc' }, '2026-10-07')).toMatchObject({ from: '2026-10-01', to: '2026-10-07' });
+  });
+  it('widens the unit with the length of the period', () => {
+    expect(readAdsArgs({ from: '2026-09-01', to: '2026-09-30' }, '2026-10-07')).toMatchObject({ granularity: 'week' });
+    expect(readAdsArgs({ from: '2026-01-01', to: '2026-09-30' }, '2026-10-07')).toMatchObject({ granularity: 'month' });
+  });
+  it('reads top and sort_by defensively, and refuses a malformed ASIN instead of answering for every product', () => {
+    expect(readAdsArgs({ top: 99, sort_by: 'drop table' }, '2026-10-07')).toMatchObject({ top: 20, sortBy: 'spend' });
+    expect(readAdsArgs({ asin: 'b0fxtqpgsb' }, '2026-10-07')).toMatchObject({ asin: 'B0FXTQPGSB' });
+    expect(readAdsArgs({ asin: '卓上ベル' }, '2026-10-07')).toHaveProperty('error');
+  });
+});
+
+describe('summarizeAds', () => {
+  it('speaks the yen and the ratios, and names the period', () => {
+    const out = summarizeAds(adsEnvelope) as Record<string, any>;
+    expect(out.範囲).toBe('全商品の合計');
+    expect(out.期間).toEqual({ 開始: '2026-10-01', 終了: '2026-10-06' });
+    expect(out.合計.広告費).toBe('3.7万円');
+    expect(out.合計.ACOS).toBe('17.6%');
+    expect(out.上位の商品[0]).toMatchObject({ 商品: '卓上ベル', ASIN: 'B0FXTQPGSB', 広告費: '1.2万円', ACOS: '15.0%' });
+    expect(out.上位のキャンペーン[0]).toMatchObject({ キャンペーン: 'SP-自動', 予算到達日数: 2 });
+    expect(out.注意).toContain('売上・注文は、広告がクリックされてから7日間の値です。');
+  });
+  it('says which product it is when one was asked for, and leaves a missing number null', () => {
+    const out = summarizeAds({ data: { scope: { asin: 'B0FXTQPGSB' }, totals: {}, campaigns: [{ campaign: 'A', adSpend: 100 }] }, meta: {} }) as Record<string, any>;
+    expect(out.範囲).toBe('商品 B0FXTQPGSB');
+    expect(out.合計.ACOS).toBeNull();
+    expect(out.紐付くキャンペーン[0].広告費).toBe('100円');
+  });
+});
+
+describe('runHaksaiAdsTool', () => {
+  it('asks the account-level way when no ASIN is given', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply(adsEnvelope));
+    const out = (await runHaksaiAdsTool(env(), { name: 'haksai_ads', args: { from: '2026-10-01', to: '2026-10-06', top: 5 } }, '2026-10-07')) as Record<string, any>;
+    const sent = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string).params;
+    expect(sent).toMatchObject({ name: 'haksai_get_ad_performance', arguments: { from: '2026-10-01', to: '2026-10-06', granularity: 'day', top: 5, sort_by: 'spend' } });
+    expect(sent.arguments).not.toHaveProperty('asin');
+    expect(out.合計.広告費).toBe('3.7万円');
+  });
+  it('passes the ASIN, and not the account-level options, when one is given', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply({ data: { scope: { asin: 'B0FXTQPGSB' }, totals: {} }, meta: {} }));
+    await runHaksaiAdsTool(env(), { name: 'haksai_ads', args: { asin: 'B0FXTQPGSB' } }, '2026-10-07');
+    const sent = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string).params;
+    expect(sent.arguments).toMatchObject({ asin: 'B0FXTQPGSB' });
+    expect(sent.arguments).not.toHaveProperty('top');
+  });
+  it('tells the model when the source has nothing, and when the ASIN is malformed', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply({ data: null, error: '期間が長すぎます。' }));
+    const out = (await runHaksaiAdsTool(env(), { name: 'haksai_ads', args: {} }, '2026-10-07')) as { error: string };
+    expect(out.error).toContain('広告を読めませんでした');
+    expect(out.error).toContain('期間が長すぎます');
+    expect(await runHaksaiAdsTool(env(), { name: 'haksai_ads', args: { asin: 'ベル' } }, '2026-10-07')).toEqual({ error: expect.stringContaining('ASIN') });
+  });
+});
+
 describe('refersToAmazon', () => {
   it.each(['パジャマの在庫、発注はどれが急ぎ?', '9月の売上を教えて', '今月の粗利は?', 'ACOSが高い商品は', 'Amazonの売れ筋を知りたい', '欠品しそうなのは?', '卓上ベルの競合が値下げしてる', 'ランキングは動いてる?'])(
     'catches "%s"',
@@ -333,7 +417,7 @@ describe('refusalHint', () => {
 
 describe('the tool manual in the app', () => {
   it('names only tools the server really offers, and offers none it does not describe', () => {
-    const offered = [HAKSAI_INVENTORY_TOOL.name, HAKSAI_SALES_TOOL.name, HAKSAI_MARKET_TOOL.name].sort();
+    const offered = [HAKSAI_INVENTORY_TOOL.name, HAKSAI_SALES_TOOL.name, HAKSAI_ADS_TOOL.name, HAKSAI_MARKET_TOOL.name].sort();
     const readyAmazonCards = AMAZON_TOOLS.filter((tool) => tool.serverTools.length > 0);
     expect(readyAmazonCards.flatMap((tool) => tool.serverTools).sort()).toEqual(offered);
     expect(readyAmazonCards).toHaveLength(offered.length);
