@@ -660,7 +660,7 @@ export function summarizeAds(envelope: Envelope): Record<string, unknown> {
       ...warnings,
       'ACOS は広告経由の売上に対する広告費の比率です。全体の売上に対する割合ではありません。',
     ],
-    出所: 'HAKSAI Central（広告API。毎日自動取込。売上・注文は、クリックから7日間の値）。検索語だけは、手動取込のレポート',
+    出所: 'HAKSAI Central（広告API。毎日自動取込。売上・注文は、クリックから7日間の値）。検索語も広告API（直近約60日分まで）',
   };
 }
 
