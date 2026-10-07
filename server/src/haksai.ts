@@ -390,7 +390,7 @@ export async function runHaksaiInventoryTool(env: Env, call: ToolCall): Promise<
 
     return {
       ...summarize(measured, ASIN.test(query.toUpperCase()) ? query.toUpperCase() : commonTitle(items), snapshotDate, warnings),
-      出所: 'HAKSAI Central（FBA在庫レポートの手動取込。画面と同じ計算）',
+      出所: 'HAKSAI Central（FBA在庫・補充レポート。SP-APIで1日4回、自動で更新。画面と同じ計算）',
     };
   } catch (error) {
     return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の在庫を読めませんでした。' };
