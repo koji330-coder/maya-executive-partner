@@ -10,7 +10,9 @@ import {
   historyNeeds,
   keepaFetchConfigured,
   HaksaiError,
+  HAKSAI_AD_CHANGES_TOOL,
   HAKSAI_ADS_TOOL,
+  HAKSAI_FORECAST_TOOL,
   HAKSAI_INVENTORY_TOOL,
   HAKSAI_MARKET_TOOL,
   HAKSAI_SALES_TOOL,
@@ -19,11 +21,17 @@ import {
   readMarketArgs,
   refusalHint,
   refersToAmazon,
+  readAdChangesArgs,
   readAdsArgs,
+  readForecastArgs,
   readSalesArgs,
+  runHaksaiAdChangesTool,
   runHaksaiAdsTool,
+  runHaksaiForecastTool,
   runHaksaiMarketTool,
+  summarizeAdChanges,
   summarizeAds,
+  summarizeForecast,
   runHaksaiSalesTool,
   summarizeMarket,
   unitProfit,
@@ -365,6 +373,82 @@ describe('runHaksaiAdsTool', () => {
   });
 });
 
+const changesEnvelope = {
+  data: {
+    count: 2,
+    changes: [
+      { campaign: '卓上ベル 自動', changeTypeLabel: '日予算', title: '[自動] 日予算を ¥3,000 → ¥4,500', effectiveDate: '2026-10-07', source: 'auto(自動で検知)', beforeValue: 3000, afterValue: 4500, statusLabel: '確定', verdictLabel: '改善', overlappedWithOtherChanges: false, summary: '判定: 改善。',
+        before7days: { adSpend: 3500, adSales: 14000, orders: 7, clicks: 70, acos: 0.25, daysWithData: 7 }, after7days: { adSpend: 5000, adSales: 22000, orders: 11, clicks: 90, acos: 0.227, daysWithData: 7 }, asin: 'B0FXTQPGSB' },
+      { campaign: 'ハンドベル', changeTypeLabel: '入札・掲載位置・戦略', title: '手で記録', effectiveDate: '2026-10-09', source: 'manual(手で記録)', statusLabel: '測定中(後7日がそろっていません)', verdictLabel: null, overlappedWithOtherChanges: true, summary: null },
+    ],
+  },
+  meta: { period: { from: '2026-09-10', to: '2026-10-10' }, warnings: ['変更の時刻は、最大6時間の誤差があります。'] },
+};
+
+describe('広告の変更の道具', () => {
+  it('reads the arguments defensively: bad dates are dropped, a bad ASIN is an error, % and _ are stripped from the campaign', () => {
+    expect(readAdChangesArgs({ from: '2026-10-01', to: '昨日', campaign: '卓上%ベル_', limit: 999 })).toEqual({ from: '2026-10-01', to: null, campaign: '卓上ベル', asin: null, limit: 50 });
+    expect(readAdChangesArgs({ asin: 'ベル' })).toHaveProperty('error');
+    expect(readAdChangesArgs({})).toMatchObject({ from: null, to: null, asin: null, limit: 20 });
+  });
+  it('keeps the state of the measurement next to the verdict, and speaks the yen', () => {
+    const out = summarizeAdChanges(changesEnvelope) as Record<string, any>;
+    expect(out.件数).toBe(2);
+    expect(out.変更[0]).toMatchObject({ 効果測定の状態: '確定', 効果の判定: '改善', 変更前: 3000, 変更後: 4500, 記録の元: 'auto(自動で検知)' });
+    expect(out.変更[0].変更の後7日).toMatchObject({ 広告費: '5,000円', 広告経由の売上: '2.2万円', ACOS: '22.7%' });
+    expect(out.変更[1]).toMatchObject({ 効果測定の状態: '測定中(後7日がそろっていません)', 効果の判定: null, 他の変更と重なっている: true });
+    expect(out.変更[1].変更の前7日).toBeNull();
+    expect(out.注意.join('')).toContain('言い切りません');
+  });
+  it('asks the source with only the dates and filters that were given', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply(changesEnvelope));
+    await runHaksaiAdChangesTool(env(), { name: 'haksai_ad_changes', args: { campaign: '卓上ベル' } });
+    const sent = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string).params;
+    expect(sent).toMatchObject({ name: 'haksai_get_ad_changes', arguments: { campaign: '卓上ベル', limit: 20 } });
+    expect(sent.arguments).not.toHaveProperty('from');
+    expect(await runHaksaiAdChangesTool(env(), { name: 'haksai_ad_changes', args: { asin: 'ベル' } })).toEqual({ error: expect.stringContaining('ASIN') });
+  });
+});
+
+const forecastEnvelope = {
+  data: {
+    month: '2026-10', dataUntil: '2026-10-06', elapsedDays: 6, remainingDays: 25, daysInMonth: 31,
+    actualSoFar: { salesTaxIn: 700000, netAfterAmazonFees: 560000, grossProfit: 224000, adSpend: 70000, operatingProfit: 154000 },
+    projectedMonthEnd: {
+      salesTaxIn: { mid: 3100000, low: 2900000, high: 3300000 }, netAfterAmazonFees: { mid: 2480000, low: 2300000, high: 2600000 },
+      grossProfit: { mid: 992000, low: 900000, high: 1080000 }, adSpend: 310000, operatingProfit: { mid: 682000, low: 590000, high: 770000 },
+    },
+    expectedSalesPerRemainingDay: 96000,
+    target: { salesTaxIn: 3000000, remaining: 2300000, neededPerRemainingDay: 92000, chanceOfReaching: 0.62 },
+    summaryLines: ['売上(税込) 約¥3,100,000'],
+  },
+  meta: { warnings: ['在庫の欠品による取りこぼしは、入っていません。'] },
+};
+
+describe('月末の見立ての道具', () => {
+  it('reads the optional target defensively', () => {
+    expect(readForecastArgs({})).toEqual({ targetSales: null });
+    expect(readForecastArgs({ target_sales: 3500000.4 })).toEqual({ targetSales: 3500000 });
+    expect(readForecastArgs({ target_sales: -5 })).toEqual({ targetSales: null });
+    expect(readForecastArgs({ target_sales: 'たくさん' })).toEqual({ targetSales: null });
+  });
+  it('speaks the yen once, here, with the band and the chance of reaching the target', () => {
+    const out = summarizeForecast(forecastEnvelope) as Record<string, any>;
+    expect(out.月末の見込み.売上税込).toEqual({ 見込み: '310.0万円', 下限: '290.0万円', 上限: '330.0万円' });
+    expect(out.月末の見込み.営業利益_粗利から広告費を引いた額.見込み).toBe('68.2万円');
+    expect(out.売上目標).toEqual({ 目標: '300.0万円', 目標までの残り: '230.0万円', 残りの日の必要な1日の売上: '9.2万円', 届く見込み: '62%' });
+    expect(out.残りの日の1日あたりの売上の見込み).toBe('9.6万円');
+    expect(out.注意.join('')).toContain('保証ではありません');
+  });
+  it('asks without a target by default, and reports a source that has no answer', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply(forecastEnvelope));
+    await runHaksaiForecastTool(env(), { name: 'haksai_forecast', args: {} });
+    expect(JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string).params).toMatchObject({ name: 'haksai_get_month_forecast', arguments: {} });
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(mcpReply({ data: null, error: '2026-10 の売上データが、D1にありません。' }));
+    expect(await runHaksaiForecastTool(env(), { name: 'haksai_forecast', args: {} })).toEqual({ error: expect.stringContaining('月末の見立てを読めませんでした') });
+  });
+});
+
 describe('refersToAmazon', () => {
   it.each(['パジャマの在庫、発注はどれが急ぎ?', '9月の売上を教えて', '今月の粗利は?', 'ACOSが高い商品は', 'Amazonの売れ筋を知りたい', '欠品しそうなのは?', '卓上ベルの競合が値下げしてる', 'ランキングは動いてる?'])(
     'catches "%s"',
@@ -417,7 +501,7 @@ describe('refusalHint', () => {
 
 describe('the tool manual in the app', () => {
   it('names only tools the server really offers, and offers none it does not describe', () => {
-    const offered = [HAKSAI_INVENTORY_TOOL.name, HAKSAI_SALES_TOOL.name, HAKSAI_ADS_TOOL.name, HAKSAI_MARKET_TOOL.name].sort();
+    const offered = [HAKSAI_INVENTORY_TOOL.name, HAKSAI_SALES_TOOL.name, HAKSAI_ADS_TOOL.name, HAKSAI_AD_CHANGES_TOOL.name, HAKSAI_FORECAST_TOOL.name, HAKSAI_MARKET_TOOL.name].sort();
     const readyAmazonCards = AMAZON_TOOLS.filter((tool) => tool.serverTools.length > 0);
     expect(readyAmazonCards.flatMap((tool) => tool.serverTools).sort()).toEqual(offered);
     expect(readyAmazonCards).toHaveLength(offered.length);

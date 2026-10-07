@@ -52,7 +52,7 @@ export const HAKSAI_INVENTORY_TOOL: ToolDeclaration = {
  * answers that it cannot see the data and asks to be shown the screen. A wrong
  * guess costs one call, about a second; a miss costs that refusal.
  */
-const AMAZON_MARKERS = /在庫|発注|補充|欠品|仕入れ|売上|売り上げ|粗利|広告費|広告|キャンペーン|クリック率|ACOS|Amazon|アマゾン|セラー|FBA|ASIN|売れ筋|売れて|売れた|売れ行き|競合|ライバル|Keepa|ランキング|値下げ|セール/i;
+const AMAZON_MARKERS = /在庫|発注|補充|欠品|仕入れ|売上|売り上げ|粗利|広告費|広告|キャンペーン|クリック率|月末の|着地|見立て|売上の予測|目標に届|ACOS|Amazon|アマゾン|セラー|FBA|ASIN|売れ筋|売れて|売れた|売れ行き|競合|ライバル|Keepa|ランキング|値下げ|セール/i;
 
 export function refersToAmazon(message: string): boolean {
   return AMAZON_MARKERS.test(message);
@@ -682,6 +682,162 @@ export async function runHaksaiAdsTool(env: Env, call: ToolCall, today: string):
     return summarizeAds(envelope);
   } catch (error) {
     return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の広告を読めませんでした。' };
+  }
+}
+
+export const HAKSAI_AD_CHANGES_TOOL: ToolDeclaration = {
+  name: 'haksai_ad_changes',
+  description:
+    'Amazon（HAKSAI Central）の広告の変更（日予算・停止・入札・除外キーワード・キーワードやターゲットの追加と削除）の一覧と、変更ごとの効果測定を調べます。' +
+    '広告の設定を、HAKSAIが1日3回自動で読み取って、前回との差から検知したものと、手で記録した施策が対象です。効果は、変更の前7日と後7日を、他のキャンペーンの増減で補正して比べます（測定中・暫定・確定）。' +
+    '「最近、広告をいじった？」「あの予算変更は効いた？」のように、広告の変更や調整の効果を聞かれたときに使います。自動で検知を始めたのは2026年10月7日からです。読み取りだけで、広告の変更はできません。',
+  parameters: {
+    type: 'object',
+    properties: {
+      from: { type: 'string', description: '変更の日の範囲の開始（YYYY-MM-DD）。省略すると、30日前。' },
+      to: { type: 'string', description: '変更の日の範囲の終了（YYYY-MM-DD）。省略すると、今日。' },
+      campaign: { type: 'string', description: 'キャンペーン名の一部（絞り込み）。' },
+      asin: { type: 'string', description: '商品のASIN（B から始まる10文字）。その商品に紐付く変更だけ。' },
+      limit: { type: 'number', description: '最大件数。既定20、最大50。' },
+    },
+  },
+};
+
+export interface AdChangesArgs { from: string | null; to: string | null; campaign: string | null; asin: string | null; limit: number }
+
+/** Reads the model's arguments defensively. A malformed date or ASIN is dropped (and reported), never guessed at. */
+export function readAdChangesArgs(args: Record<string, unknown>): AdChangesArgs | { error: string } {
+  const date = (value: unknown): string | null => (typeof value === 'string' && DAY.test(value.trim()) ? value.trim() : null);
+  const rawAsin = typeof args.asin === 'string' ? args.asin.trim().toUpperCase() : '';
+  if (rawAsin && !ASIN.test(rawAsin)) return { error: `ASIN「${rawAsin}」は、Bから始まる10文字の形ではありません。` };
+  const asked = Number(args.limit);
+  const campaign = typeof args.campaign === 'string' ? args.campaign.trim().replace(/[%_]/g, '').slice(0, 100) : '';
+  return { from: date(args.from), to: date(args.to), campaign: campaign || null, asin: rawAsin || null, limit: Number.isFinite(asked) ? Math.min(Math.max(Math.trunc(asked), 1), 50) : 20 };
+}
+
+function adTotals(value: unknown): Record<string, unknown> | null {
+  const t = obj(value);
+  if (!Object.keys(t).length) return null;
+  return { 広告費: yenLabel(t.adSpend), 広告経由の売上: yenLabel(t.adSales), 注文数: num(t.orders), クリック数: num(t.clicks), ACOS: percent(t.acos), データのある日数: num(t.daysWithData) };
+}
+
+/** 広告の変更を、答えに使う形にする。効果の判定は、数字と一緒に、状態(測定中・暫定・確定)を必ず渡す。 */
+export function summarizeAdChanges(envelope: Envelope): Record<string, unknown> {
+  const data = obj(envelope.data);
+  const period = obj((envelope.meta as { period?: unknown } | undefined)?.period);
+  const warnings = Array.isArray(envelope.meta?.warnings)
+    ? (envelope.meta.warnings as unknown[]).filter((item): item is string => typeof item === 'string')
+    : [];
+  return {
+    期間: { 開始: str(period.from), 終了: str(period.to) },
+    件数: num(data.count),
+    変更: list(data.changes).map((item) => {
+      const change = obj(item);
+      return {
+        キャンペーン: str(change.campaign),
+        変更の種類: str(change.changeTypeLabel),
+        内容: str(change.title),
+        変更日: str(change.effectiveDate),
+        記録の元: str(change.source),
+        変更前: num(change.beforeValue),
+        変更後: num(change.afterValue),
+        効果測定の状態: str(change.statusLabel),
+        効果の判定: str(change.verdictLabel),
+        他の変更と重なっている: change.overlappedWithOtherChanges === true,
+        説明: str(change.summary),
+        変更の前7日: adTotals(change.before7days),
+        変更の後7日: adTotals(change.after7days),
+        ASIN: str(change.asin),
+      };
+    }),
+    注意: [...warnings, '判定は目安です。「測定中」「暫定」のものは、効果があったとも無かったとも言い切りません。'],
+    出所: 'HAKSAI Central（広告APIの設定の取得。1日3回。自動で検知を始めたのは2026年10月7日から）',
+  };
+}
+
+export async function runHaksaiAdChangesTool(env: Env, call: ToolCall): Promise<unknown> {
+  const read = readAdChangesArgs(call.args);
+  if ('error' in read) return { error: read.error };
+  try {
+    const envelope = await callMcp(env, 'haksai_get_ad_changes', {
+      ...(read.from ? { from: read.from } : {}), ...(read.to ? { to: read.to } : {}),
+      ...(read.campaign ? { campaign: read.campaign } : {}), ...(read.asin ? { asin: read.asin } : {}), limit: read.limit,
+    });
+    if (envelope.data == null) {
+      const reason = typeof envelope.error === 'string' ? envelope.error : typeof envelope.message === 'string' ? envelope.message : '';
+      return { error: `広告の変更を読めませんでした。${reason}`.trim() };
+    }
+    return summarizeAdChanges(envelope);
+  } catch (error) {
+    return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の広告の変更を読めませんでした。' };
+  }
+}
+
+export const HAKSAI_FORECAST_TOOL: ToolDeclaration = {
+  name: 'haksai_forecast',
+  description:
+    'Amazon（HAKSAI Central）の、今月の月末の着地の見立てを調べます。売上・粗利・営業利益（粗利−広告費）の月末の見込み（ふつうの振れ幅つき）と、売上目標（既定は月300万円）までに必要な1日の売上、目標に届く見込みを返します。' +
+    '直近8週の曜日の傾向と、直近2週の勢いから見積もります。「今月はどこに着地する？」「目標に届きそう？」「1日いくら売ればいい？」のときに使います。今月だけで、読み取りのみです。',
+  parameters: {
+    type: 'object',
+    properties: {
+      target_sales: { type: 'number', description: '売上目標（税込・円）。省略すると月300万円。目標の話が無いときは、省略します。' },
+    },
+  },
+};
+
+export function readForecastArgs(args: Record<string, unknown>): { targetSales: number | null } {
+  const asked = Number(args.target_sales);
+  return { targetSales: Number.isFinite(asked) && asked >= 0 && asked <= 1_000_000_000 ? Math.round(asked) : null };
+}
+
+const band = (value: unknown): Record<string, unknown> | null => {
+  const b = obj(value);
+  return Object.keys(b).length ? { 見込み: yenLabel(b.mid), 下限: yenLabel(b.low), 上限: yenLabel(b.high) } : null;
+};
+
+/** 月末の見立て。金額は、読み上げの形(○○万円)にして渡す(小さなモデルは、桁を落とすため)。 */
+export function summarizeForecast(envelope: Envelope): Record<string, unknown> {
+  const data = obj(envelope.data);
+  const actual = obj(data.actualSoFar);
+  const projected = obj(data.projectedMonthEnd);
+  const target = obj(data.target);
+  const warnings = Array.isArray(envelope.meta?.warnings)
+    ? (envelope.meta.warnings as unknown[]).filter((item): item is string => typeof item === 'string')
+    : [];
+  return {
+    月: str(data.month),
+    データの最終日: str(data.dataUntil),
+    経過日数: num(data.elapsedDays),
+    残り日数: num(data.remainingDays),
+    // 声に出す書き方。金額は、この文字をそのまま使う。
+    今月のここまで: { 売上税込: yenLabel(actual.salesTaxIn), 粗利: yenLabel(actual.grossProfit), 広告費: yenLabel(actual.adSpend), 営業利益_粗利から広告費を引いた額: yenLabel(actual.operatingProfit) },
+    月末の見込み: {
+      売上税込: band(projected.salesTaxIn),
+      粗利: band(projected.grossProfit),
+      広告費: yenLabel(projected.adSpend),
+      営業利益_粗利から広告費を引いた額: band(projected.operatingProfit),
+    },
+    残りの日の1日あたりの売上の見込み: yenLabel(data.expectedSalesPerRemainingDay),
+    売上目標: Object.keys(target).length
+      ? { 目標: yenLabel(target.salesTaxIn), 目標までの残り: yenLabel(target.remaining), 残りの日の必要な1日の売上: yenLabel(target.neededPerRemainingDay), 届く見込み: target.chanceOfReaching === null ? null : `${Math.round(Number(target.chanceOfReaching) * 100)}%` }
+      : null,
+    注意: [...warnings, '振れ幅は、ふつうの範囲(おおよそ3回に2回は、この範囲に入る目安)です。保証ではありません。'],
+    出所: 'HAKSAI Central（売上は Amazon の精算データ、広告費は広告API。直近8週の曜日の傾向と、直近2週の勢いから見積もり）',
+  };
+}
+
+export async function runHaksaiForecastTool(env: Env, call: ToolCall): Promise<unknown> {
+  const { targetSales } = readForecastArgs(call.args);
+  try {
+    const envelope = await callMcp(env, 'haksai_get_month_forecast', targetSales === null ? {} : { target_sales: targetSales });
+    if (envelope.data == null) {
+      const reason = typeof envelope.error === 'string' ? envelope.error : typeof envelope.message === 'string' ? envelope.message : '';
+      return { error: `月末の見立てを読めませんでした。${reason}`.trim() };
+    }
+    return summarizeForecast(envelope);
+  } catch (error) {
+    return { error: error instanceof HaksaiError ? error.message : 'HAKSAI の月末の見立てを読めませんでした。' };
   }
 }
 

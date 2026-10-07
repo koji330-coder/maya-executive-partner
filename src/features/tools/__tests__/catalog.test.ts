@@ -8,7 +8,7 @@ describe('the tool manual', () => {
 
   it('groups Amazon by job and keeps FIT LOG and VoiceBox as source cards', () => {
     expect(TOOL_GROUPS.map((group) => group.id)).toEqual(['amazon', 'records']);
-    expect(TOOL_GROUPS[0]?.tools.map((tool) => tool.id)).toEqual(['sales', 'inventory', 'market', 'ads']);
+    expect(TOOL_GROUPS[0]?.tools.map((tool) => tool.id)).toEqual(['sales', 'inventory', 'market', 'ads', 'forecast', 'adchanges']);
     expect(TOOL_GROUPS[1]?.tools.map((tool) => tool.id)).toEqual(['fitlog', 'voicebox']);
   });
 

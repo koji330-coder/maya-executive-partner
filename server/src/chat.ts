@@ -41,11 +41,15 @@ import {
 } from './fitlog';
 import {
   haksaiConfigured,
+  HAKSAI_AD_CHANGES_TOOL,
   HAKSAI_ADS_TOOL,
+  HAKSAI_FORECAST_TOOL,
   HAKSAI_INVENTORY_TOOL,
   HAKSAI_MARKET_TOOL,
   HAKSAI_SALES_TOOL,
+  runHaksaiAdChangesTool,
   runHaksaiAdsTool,
+  runHaksaiForecastTool,
   runHaksaiInventoryTool,
   runHaksaiMarketTool,
   refersToAmazon,
@@ -200,7 +204,7 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   // 利用可能なツール群を準備（未接続の道具は見せない）
   const allAvailableTools = [SEARCH_MEMORY_TOOL];
   if (amazonReady) {
-    allAvailableTools.push(HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_ADS_TOOL, HAKSAI_MARKET_TOOL);
+    allAvailableTools.push(HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_ADS_TOOL, HAKSAI_AD_CHANGES_TOOL, HAKSAI_FORECAST_TOOL, HAKSAI_MARKET_TOOL);
   }
   if (fitlogReady) {
     allAvailableTools.push(...FITLOG_TOOLS);
@@ -214,13 +218,15 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   if (askingAboutFitness && !askingAboutRememberedConversation && !askingAboutAmazon) {
     selectedTools = [...FITLOG_TOOLS];
   } else if (askingAboutAmazon && !refersToPast(request.message) && !askingAboutFitness) {
-    selectedTools = [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_ADS_TOOL, HAKSAI_MARKET_TOOL];
+    selectedTools = [HAKSAI_INVENTORY_TOOL, HAKSAI_SALES_TOOL, HAKSAI_ADS_TOOL, HAKSAI_AD_CHANGES_TOOL, HAKSAI_FORECAST_TOOL, HAKSAI_MARKET_TOOL];
   }
 
   const runTool = (call: ToolCall): Promise<unknown> => {
     if (call.name === HAKSAI_INVENTORY_TOOL.name) return runHaksaiInventoryTool(env, call);
     if (call.name === HAKSAI_SALES_TOOL.name) return runHaksaiSalesTool(env, call, presidentDate());
     if (call.name === HAKSAI_ADS_TOOL.name) return runHaksaiAdsTool(env, call, presidentDate());
+    if (call.name === HAKSAI_AD_CHANGES_TOOL.name) return runHaksaiAdChangesTool(env, call);
+    if (call.name === HAKSAI_FORECAST_TOOL.name) return runHaksaiForecastTool(env, call);
     if (call.name === HAKSAI_MARKET_TOOL.name) return runHaksaiMarketTool(env, call);
     if (call.name === FITLOG_DAY_TOOL.name) return runFitlogDayTool(env, call, presidentDate());
     if (call.name === FITLOG_PROGRESS_TOOL.name) return runFitlogProgressTool(env, call, presidentDate());

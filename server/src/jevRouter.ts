@@ -219,6 +219,9 @@ export function argumentsFor(tool: string, period: string, today: string): Recor
       if (period === 'this_month' || period === 'not_stated') return {};
       if (period === 'last_month') return { month: previousMonth(today) };
       return null;
+    case 'haksai_forecast':
+      // 今月の見立てだけ。期間の指定が無い、または、今月なら、引数なしで読める
+      return period === 'this_month' || period === 'not_stated' || period === 'today' ? {} : null;
     case 'haksai_ads': {
       // A period only; asin and the rest are the model's to write, so a vague one falls through to it.
       if (period === 'today') return { from: today, to: today };
