@@ -113,6 +113,8 @@ export const CASES: RouterCase[] = [
   { id: 'A20', category: 'A_single', message: '自分の危険ラインってどれくらい？', expected: 'fitlog_night_danger' },
   { id: 'A21', category: 'A_single', message: '今年、帰りのタクシー代っていくら使った？', expected: 'fitlog_night_danger', why: '今年の集計は fitlog_night_danger の costYenThisYear。' },
   { id: 'A22', category: 'A_single', message: '先週末、家に帰れなかった夜があったよね？', expected: 'fitlog_nights', why: '特定の夜の記録を探している。' },
+  { id: 'A23', category: 'A_single', message: 'CardScanを作ったきっかけって何だっけ？', expected: 'search_memory', why: 'CONTENT_LOGにある過去の開発経緯を探す。' },
+  { id: 'A24', category: 'A_single', message: '前に似た問題を別のアプリで解決してなかった？', expected: 'search_memory', why: 'プロジェクト横断の過去活動を探す。' },
 
   // B. none
   { id: 'B01', category: 'B_none', message: '粗利率って何？', expected: 'none' },

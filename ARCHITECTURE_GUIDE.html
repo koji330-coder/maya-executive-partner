@@ -462,7 +462,7 @@
 
   <div class="wide">
     <figure>
-      <svg viewBox="0 0 880 540" role="img" aria-label="スマホはCloudflare Accessの認証を通ってMAYAサーバーに相談を送り、サーバーがGeminiに問い合わせD1データベースを読み書きする。設定でONにしたときだけ、サーバーはGeminiの前にTypeSafeのJevへどのデータが要るかを訊く。サーバーはサービストークンでHAKSAIの在庫と売上を読み、APIキーでFIT LOGの体重・筋トレ・食事も直接読む。GitHubなどをD1へ写す同期ジョブはまだ作られていない。VoiceBoxから録音した会話の要約だけをサーバーへ送る経路は、受け口までできていて、送る側はこれから">
+      <svg viewBox="0 0 880 540" role="img" aria-label="スマホはCloudflare Accessの認証を通ってMAYAサーバーに相談を送り、サーバーがGeminiに問い合わせD1データベースを読み書きする。設定でONにしたときだけ、サーバーはGeminiの前にTypeSafeのJevへどのデータが要るかを訊く。サーバーはサービストークンでHAKSAIの在庫と売上を読み、APIキーでFIT LOGの体重・筋トレ・食事も直接読む。Content HubのCONTENT_LOGはPCから手動でD1へ同期でき、GitHubの同期はまだ作られていない。VoiceBoxから録音した会話の要約だけをサーバーへ送る経路は、受け口までできていて、送る側はこれから">
         <defs>
           <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
@@ -575,6 +575,7 @@
         右側のHAKSAIとFIT LOGは、それぞれのデータが<strong>すでに置いてある場所をそのまま読む</strong>経路です。MAYAのデータベースに写して溜め直さないため、点線の夜間同期ジョブから外れました。
         VoiceBox（音声メモ・会議録音）は独立したサービスで、MAYAは、その読み取り専用の窓から、採用した要約・議事録だけを必要なときに読みに行きます（HAKSAIやFIT LOGと同じ向きです。点線は、まだ本番でつながっていないことを示します）。原文と音声は、窓にありません。
         FIT LOG（食事・筋トレ・体重・屋外運動）は連携済みです。日ごとの記録に加え、長期の体組成、実測TDEE、週次実績、種目別の成長も必要なときだけ読めます。
+        Content HubのCONTENT_LOG同期も実装済みです。PCのダッシュボードから手動で、検査済みのhome/business 254件をD1へ写し、全件揃った世代だけを検索します。本番D1への反映はまだです。
         右上の Jev は、相談の前に「どのデータが要るか」を判定させる外部のモデルです。仕組みはできていますが<strong>既定は OFF</strong>で、設定画面で ON にしたときだけ使います（点線）。
       </figcaption>
     </figure>
@@ -820,7 +821,12 @@
           <tr>
             <td>過去を検索する道具</td>
             <td><span class="pill on">動く</span></td>
-            <td>Flash Liteは自分では探さなかったので、過去を指す言葉で探させる。架空の記録で、見つける・無いと言うの両方を確認</td>
+            <td>CONTENT_LOG・Journal・話題・判断をD1から最大8件、各400字で読む。Flash Liteは自分では探さなかったので、過去を指す言葉で探させる。架空の記録で、見つける・無いと言うの両方を確認</td>
+          </tr>
+          <tr>
+            <td>Content Hubの活動ログを読む</td>
+            <td><span class="pill hold">本番反映待ち</span></td>
+            <td>57プロジェクト・254件をローカルD1で確認済み。home/businessを手動同期し、company/privateは送受信の両側で拒否。全件揃うまで現行世代を切り替えない。本番migration・Worker公開・実機確認がこれから</td>
           </tr>
           <tr>
             <td>添付を次のターン以降も覚える</td>

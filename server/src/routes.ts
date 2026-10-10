@@ -48,6 +48,14 @@ import {
   removeAlias,
   updateProject,
 } from './memory/projects';
+import {
+  activitySyncStatus,
+  completeActivitySync,
+  readActivityChunk,
+  readActivitySyncStart,
+  startActivitySync,
+  writeActivityChunk,
+} from './memory/activity';
 
 type Handler = (ctx: { request: Request; env: Env; params: string[]; url: URL }) => Promise<Response>;
 
@@ -80,6 +88,38 @@ const ROUTES: Route[] = [
     method: 'POST',
     pattern: /^\/v1\/chat$/,
     handle: async ({ request, env }) => json(await answer(env, parseChatRequest(await readJson(request)))),
+  },
+
+  // ---- CONTENT_LOG activity snapshots
+  // The PC uploads a new immutable snapshot in chunks. The current pointer is
+  // moved only after the expected number of entries arrived, so chat never
+  // reads a half-finished import.
+  {
+    method: 'GET',
+    pattern: /^\/v1\/activity\/sync$/,
+    handle: async ({ env }) => json(await activitySyncStatus(env.MAYA_DB)),
+  },
+  {
+    method: 'POST',
+    pattern: /^\/v1\/activity\/sync$/,
+    handle: async ({ request, env }) => {
+      const input = readActivitySyncStart(await readJson(request));
+      await startActivitySync(env.MAYA_DB, input);
+      return json({ ok: true, snapshotId: input.snapshotId }, 201);
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: new RegExp(`^/v1/activity/sync/${ID}/entries$`),
+    handle: async ({ request, env, params }) => {
+      const entries = readActivityChunk(await readJson(request));
+      return json({ ok: true, received: await writeActivityChunk(env.MAYA_DB, params[0] ?? '', entries) });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: new RegExp(`^/v1/activity/sync/${ID}/complete$`),
+    handle: async ({ env, params }) => json(await completeActivitySync(env.MAYA_DB, params[0] ?? '')),
   },
 
   // ---- decisions

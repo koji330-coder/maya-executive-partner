@@ -1771,3 +1771,47 @@ Tool 選択を判定特化モデルに任せると、汎用 LLM の呼び出し�
 ### 素材
 
 `server/src/jevRouter.ts`、`server/src/jevRules.ts`、`src/features/chat/routeInfo.ts`、`src/features/settings/ServerJevSection.tsx`、`server/scripts/jev-router/assist.e2e.ts`、`server/scripts/jev-router/reports/2026-09-28-assist-e2e.json`
+
+---
+date: 2026-10-10
+tags: [MAYA, CONTENT_LOG, D1, 長期記憶, Cloudflare, Jev]
+sensitivity: business
+publishable: unclear
+sources: [server/migrations/0006_content_activity.sql, server/src/memory/activity.ts, server/src/memory/search.ts, server/src/routes.ts, src/features/chat/systemPrompt.ts]
+---
+
+### やったこと
+
+Content Hubが集めた57プロジェクト・254件のCONTENT_LOGを、MAYAのD1へスナップショット同期し、既存の`search_memory`から検索できるようにした。同期状態の確認、開始、40件単位の受信、完了のAPIを追加した。
+
+### なぜやった
+
+開発、Amazon商品開発、MAYA自身の改修などの活動記録はPC内にあり、Cloudflare上のMAYAサーバーから読めなかった。全記録を毎回プロンプトへ入れず、相談に必要なエピソードだけを探せる長期記憶にするため。
+
+### 解決方法
+
+各アップロードを不変のsnapshot IDで保存し、予定件数とD1の受信件数が一致したときだけ`activity_sync_state`の現行ポインタを切り替える。検索は現行世代だけを対象にし、最大8件・各400字を返す。同期できる機密区分は`home`と`business`に限定し、`company`と`private`は受信時にも拒否する。システムプロンプトには、`要確認`を事実扱いしないことと、活動者を勝手にGakkyと断定しないことを追加した。
+
+### 成果
+
+ローカルD1へ254件（home 206件、business 48件）を格納し、57プロジェクト、再同期の省略、キーワード検索を確認した。TypeScriptの型検査と390件の自動テストが成功した。本番D1へのmigration、Workerの公開、実機会話での確認は未実施。
+
+### 使用技術
+
+Cloudflare Workers、D1、TypeScript、原子的スナップショット、Gemini Function Calling、Jev（TypeSafe）ルーター。
+
+### 苦労・失敗
+
+保存件数の増加をそのまま応答時間の増加にしないよう、D1への全件保存と相談ごとの少数検索を分離した。D1の1リクエストあたりクエリ数とbind数を超えないよう、送信単位を40件にした。
+
+### 学び
+
+秘書の「全部知っている」は、全部を毎回読むことではない。正本を安全に写し、出所と鮮度を残し、質問に必要な記録だけを短く取り出す方が応答時間と根拠性を両立できる。
+
+### 素材
+
+Content Hub同期図、D1のactivityテーブル、`search_memory`の活動検索結果。
+
+### コンテンツ候補
+
+「AI秘書に254件の活動履歴を覚えさせても遅くしない、全件保存・必要時検索の長期記憶設計」（公開範囲は要確認）。

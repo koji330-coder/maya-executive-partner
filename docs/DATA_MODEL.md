@@ -126,6 +126,23 @@ Potential fields:
 - source_message_id
 - updated_at
 
+### activity_sync_runs / activity_entries / activity_sync_state
+
+Read-only copies of the Content Hub's validated `CONTENT_LOG` entries. The
+source of truth remains in each project and content-engine.
+
+- `activity_sync_runs` records an immutable upload generation, its expected
+  row count, and whether the upload is still in progress or complete.
+- `activity_entries` stores structured sections plus source metadata under a
+  `snapshot_id`. Only `home` and `business` are accepted.
+- `activity_sync_state` points `content-hub` at the one complete snapshot MAYA
+  may search. The pointer is changed only after the received count matches the
+  expected count, then older snapshots are removed.
+
+`search_text` is a normalized server-built search projection. Search returns at
+most eight records of at most 400 characters each; the whole table is never
+inserted into a consultation prompt.
+
 ## Local SQLite
 
 Client-side tables may mirror a subset:

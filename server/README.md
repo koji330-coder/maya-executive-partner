@@ -46,6 +46,15 @@ editing it; the key is read at start-up, not on reload.
 | `PATCH /v1/projects/:id` | Rename, pause, finish |
 | `POST /v1/projects/:id/aliases`, `DELETE .../aliases/:alias` | What the president calls it |
 | `POST /v1/projects/:id/sources` | `github`, `folder` or `dataset` |
+| `GET /v1/activity/sync` | 現在MAYAが読むCONTENT_LOGスナップショットの状態 |
+| `POST /v1/activity/sync` | スナップショットのアップロード開始 |
+| `PUT /v1/activity/sync/:snapshotId/entries` | 検査済み活動ログを最大40件ずつ受信 |
+| `POST /v1/activity/sync/:snapshotId/complete` | 全件一致を確認し、現行スナップショットを切り替える |
+
+Activity sync accepts only `home` and `business`. `company` and `private` are
+refused even if a client tries to send them. MAYA reads only the completed
+snapshot named by `activity_sync_state`; a failed upload is never partially
+visible to `search_memory`.
 
 `npm run check:api` exercises all of these against the running dev server
 without calling Gemini. To clear what it leaves in the local D1:
@@ -64,6 +73,9 @@ npx wrangler d1 execute MAYA_DB --local --command "DELETE FROM actions; DELETE F
   would be a second door
 - **The app only calls this when a server address is set** in its settings.
   Left empty, it calls Gemini directly as before
+- **CONTENT_LOG sync is implemented but not deployed by this change.** Apply
+  migration `0006_content_activity.sql`, deploy the Worker, then configure the
+  Content Hub with this Worker's URL and a Cloudflare Access service token.
 
 Deploy with `npx wrangler deploy`; schema changes with
 `npx wrangler d1 migrations apply MAYA_DB --remote`. Both act on the Cloudflare

@@ -1,6 +1,8 @@
 import type { JournalEntry } from '@/features/inbox/journal';
 import type { ToolCall, ToolDeclaration } from '@/services/llm/geminiClient';
 
+import { activityMemoryText, activitySyncStatus, type ActivityMemoryRow } from './activity';
+
 /**
  * The tool MAYA uses to look further back than the prompt carries.
  *
@@ -12,7 +14,8 @@ import type { ToolCall, ToolDeclaration } from '@/services/llm/geminiClient';
 export const SEARCH_MEMORY_TOOL: ToolDeclaration = {
   name: 'search_memory',
   description:
-    'Gakky の過去の記録を探します。Journal（活動と、そのとき決めたこと・考え）、保存した話題、記録した判断が対象です。' +
+    'Gakky の過去の記録を探します。CONTENT_LOG（各プロジェクトで実際に起きたこと・成果・失敗・学び）、' +
+    'Journal（そのとき決めたこと・考え）、保存した話題、記録した判断が対象です。' +
     'プロンプトにある最近の分より前のこと、または最近の分に無い細部が相談に必要なときだけ使います。',
   parameters: {
     type: 'object',
@@ -27,7 +30,7 @@ export const SEARCH_MEMORY_TOOL: ToolDeclaration = {
       to: { type: 'string', description: 'この日まで（YYYY-MM-DD）。省略可。' },
       kinds: {
         type: 'array',
-        items: { type: 'string', enum: ['journal', 'topic', 'decision'] },
+        items: { type: 'string', enum: ['activity', 'journal', 'topic', 'decision'] },
         description: '対象。省略するとすべて。',
       },
     },
@@ -41,13 +44,17 @@ export interface SearchArgs {
   kinds: Kind[];
 }
 
-type Kind = 'journal' | 'topic' | 'decision';
-const KINDS: readonly Kind[] = ['journal', 'topic', 'decision'];
+type Kind = 'activity' | 'journal' | 'topic' | 'decision';
+const KINDS: readonly Kind[] = ['activity', 'journal', 'topic', 'decision'];
 
 export interface MemoryHit {
   kind: Kind;
   date: string;
   text: string;
+  sourceId?: string;
+  project?: string;
+  sensitivity?: 'home' | 'business';
+  importedAt?: string;
 }
 
 /** How many records one search returns, and how long each may be. */
@@ -64,6 +71,9 @@ export function readSearchArgs(args: Record<string, unknown>): SearchArgs {
         .filter((k): k is string => typeof k === 'string')
         .map((k) => k.trim())
         .filter(Boolean)
+        // D1 limits a LIKE pattern to 50 bytes. Sixteen Japanese characters
+        // plus the two '%' wildcards stay within that boundary.
+        .map((k) => k.slice(0, 16))
         .slice(0, MAX_KEYWORDS)
     : [];
   const kinds = Array.isArray(args.kinds)
@@ -95,7 +105,7 @@ export function journalText(entry: JournalEntry): string {
 }
 
 /**
- * Searches journal entries, topics and decisions.
+ * Searches CONTENT_LOG activity, journal entries, topics and decisions.
  *
  * Plain `LIKE`, every keyword required. For one president's records, thousands
  * of rows, that is milliseconds, and it matches Japanese without a tokenizer,
@@ -103,8 +113,8 @@ export function journalText(entry: JournalEntry): string {
  * step if this ever shows up in the response time.
  */
 export async function searchMemory(db: D1Database, args: SearchArgs): Promise<MemoryHit[]> {
-  const where = (dateColumn: string, textColumns: string[]) => {
-    const clauses: string[] = [];
+  const where = (dateColumn: string, textColumns: string[], initialClauses: string[] = []) => {
+    const clauses: string[] = [...initialClauses];
     const binds: string[] = [];
     if (args.from) {
       clauses.push(`${dateColumn} >= ?`);
@@ -123,6 +133,34 @@ export async function searchMemory(db: D1Database, args: SearchArgs): Promise<Me
   };
 
   const queries: Promise<MemoryHit[]>[] = [];
+
+  if (args.kinds.includes('activity')) {
+    const { sql, binds } = where('date_sort', ['search_text'], [
+      "snapshot_id = (SELECT current_snapshot_id FROM activity_sync_state WHERE source = 'content-hub')",
+    ]);
+    queries.push(
+      db
+        .prepare(
+          `SELECT entry_id AS entryId, project, activity_date AS date, date_sort AS dateSort,
+                  sensitivity, sections_json AS sectionsJson, imported_at AS importedAt
+           FROM activity_entries ${sql}
+           ORDER BY date_sort DESC, source_entry DESC LIMIT ?;`,
+        )
+        .bind(...binds, SEARCH_LIMIT)
+        .all<ActivityMemoryRow>()
+        .then(({ results }) =>
+          results.map((row) => ({
+            kind: 'activity' as const,
+            date: row.date,
+            text: clip(activityMemoryText(row)),
+            sourceId: row.entryId,
+            project: row.project,
+            sensitivity: row.sensitivity,
+            importedAt: row.importedAt,
+          })),
+        ),
+    );
+  }
 
   if (args.kinds.includes('journal')) {
     const { sql, binds } = where('entry_date', ['entry_json']);
@@ -191,11 +229,15 @@ export async function runMemoryTool(db: D1Database, call: ToolCall): Promise<unk
     return { error: `知らない道具です: ${call.name}` };
   }
   const args = readSearchArgs(call.args);
-  const hits = await searchMemory(db, args);
+  const [hits, activitySource] = await Promise.all([
+    searchMemory(db, args),
+    args.kinds.includes('activity') ? activitySyncStatus(db) : Promise.resolve(undefined),
+  ]);
   return {
     searched: args,
     count: hits.length,
     hits,
+    ...(activitySource ? { activitySource } : {}),
     ...(hits.length === 0 ? { note: '該当する記録はありませんでした。記録に無いことを作らないでください。' } : {}),
   };
 }
@@ -208,7 +250,7 @@ export async function runMemoryTool(db: D1Database, call: ToolCall): Promise<unk
  * miss costs an invented or refused answer about something that is on record.
  */
 const PAST_MARKERS =
-  /前に|以前|去年|昨年|先月|先週|先日|この前|あの時|あのとき|当時|覚えて|決めてた|決めた(?:っけ|よね|けど)|言ってた|話した|だっけ|っけ|振り返|経緯|いつ(?:から|頃)/;
+  /前に|以前|去年|昨年|先月|先週|先日|この前|あの時|あのとき|当時|過去の|覚えて|決めてた|決めた(?:っけ|よね|けど)|言ってた|話した|作ったきっかけ|似た(?:問題|こと|経験)|だっけ|っけ|振り返|経緯|いつ(?:から|頃)/;
 
 export function refersToPast(message: string): boolean {
   return PAST_MARKERS.test(message);

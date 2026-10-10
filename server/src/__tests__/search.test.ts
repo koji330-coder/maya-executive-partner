@@ -15,7 +15,7 @@ describe('readSearchArgs', () => {
   });
 
   it('searches everything when no kinds are given', () => {
-    expect(readSearchArgs({}).kinds).toEqual(['journal', 'topic', 'decision']);
+    expect(readSearchArgs({}).kinds).toEqual(['activity', 'journal', 'topic', 'decision']);
   });
 });
 
@@ -62,7 +62,13 @@ describe('search guide in the prompt', () => {
 
 describe('refersToPast', () => {
   it('catches the ways the president points back', () => {
-    for (const message of ['去年の春、値上げについて何か決めてたっけ？', '前に採用の件で何を決めたか覚えてる？', '先月話した件']) {
+    for (const message of [
+      '去年の春、値上げについて何か決めてたっけ？',
+      '前に採用の件で何を決めたか覚えてる？',
+      '先月話した件',
+      'CardScanを作ったきっかけは？',
+      '似た問題を解いた経験はある？',
+    ]) {
       expect(refersToPast(message)).toBe(true);
     }
   });
