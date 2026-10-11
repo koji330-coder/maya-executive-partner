@@ -21,6 +21,10 @@ same D1 records with the same `searchMemory` implementation as MAYA, without an
 LLM or Jev call, and compares the current D1 snapshot with a compact local
 Content Hub observation. Observation metadata lives in a separate D1 so the
 inspector cannot write to MAYA's memory. The screen has no sync or edit action.
+It was deployed to the production Worker on 2026-10-11 (Version ID
+`95c9278e-7ca0-49da-9735-e6a2920253a6`) and verified with 254 entries across 57
+projects: all project fingerprints matched and a `CardScan` activity search
+returned seven records.
 
 ## Completed
 
