@@ -13,6 +13,12 @@ trivialな変更（typo・依存パッケージ更新のみ等）は記録不要
 記録ルールの詳細は `C:\Users\koji3\Documents\content-engine\docs\content-log-guidelines.md` を参照
 （アカウント名・APIキー・具体的な商品名・ブランド名は書かない等の制約あり）。
 
+### Journal interview（MAYAパイロット）
+
+ユーザーが「ジャーナルを書きたい」「短くインタビューして」「なぜそうしたかを残したい」と依頼した場合、`CONTENT_LOG.md`、README、Git履歴から確認できる事実を先に確認し、**動機を推測せず**本人へ1〜3問だけ質問する。回答後、中央の `C:\Users\koji3\Documents\content-engine\journal\inbox\` にテンプレート準拠のJournal Draftを作る。`related_projects`には `maya-executive-partner` を入れる。
+
+Draftは承認待ちであり、`journal/entries/`、`CONTENT_LOG.md`、MAYAのD1へ勝手に書き込まない。本人が承認した場合のみ、Content Hubの「Journal承認」画面で正式化・同期する。会社・private情報、認証情報、顧客名、非公開の具体的数値は質問・記録しない。
+
 ---
 
 ## 構成の手引き: ARCHITECTURE_GUIDE.html の更新ルール

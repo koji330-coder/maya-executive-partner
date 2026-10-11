@@ -1903,3 +1903,47 @@ AIの記憶を運用するには検索機能だけでなく、「何が入って
 ### コンテンツ候補
 
 「AI秘書の頭の中をのぞく――LLMを使わない長期記憶インスペクターと、本体D1を壊さない分離設計」（公開範囲は要確認）。
+
+---
+date: 2026-10-12
+tags: [Journal, Interview, Content Engine, MAYA]
+sensitivity: business
+publishable: unclear
+sources: [AGENTS.md, content-engine/journal/inbox/, content-engine/content-hub/]
+---
+
+### やったこと
+
+MAYAプロジェクトで、開発エージェントが本人の動機を記録したいときのJournalインタビュー手順を追加した。ユーザーが「ジャーナルを書きたい」「短くインタビューして」等と依頼すると、確認済みの事実を参照して1〜3問だけ質問し、中央Content EngineのJournal Inboxへ承認待ちDraftを作る。
+
+### なぜやった
+
+実装履歴から変更内容は追えても、設計を選んだ理由や本人の評価は自動では確定できない。毎回本人が文章を書く運用も続かないため、短い回答をJournal下書きへ構造化する入口が必要だった。
+
+### 解決方法
+
+Draftの作成先を`content-engine/journal/inbox/`へ限定し、`related_projects`へ`maya-executive-partner`を入れる。承認前の内容はこのPJのCONTENT_LOG、正式Journal、MAYA D1のいずれにも書き込まない。正式化とD1同期はContent Hubの明示操作に分離した。
+
+### 成果
+
+MAYAを最初のパイロット対象として、エージェントへ依頼する言葉と、承認前に記憶へ混ざらない境界を定義した。本番D1へのJournal書き込みは、この時点では未実行。
+
+### 使用技術
+
+Markdown、中央Content EngineのJournal Inbox、Content Hub。
+
+### 苦労・失敗
+
+要確認。
+
+### 学び
+
+本人の文脈を残す自動化では、質問の自動化と記憶への自動反映を同一視しない方がよい。面談は軽く自動化し、正式記憶への反映だけは承認で区切る。
+
+### 素材
+
+`AGENTS.md`のJournal interview節、Content HubのJournal承認画面。
+
+### コンテンツ候補
+
+「AIが開発の背景を聞く。ただし答えを勝手に秘書の記憶には入れない」（公開範囲は要確認）。
