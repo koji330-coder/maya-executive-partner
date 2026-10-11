@@ -140,9 +140,12 @@ export interface GenerateResult {
  * How many rounds of tool calls one turn may take before the model must answer.
  *
  * Each round is another full request, measured at three to four times a plain
- * turn. Two lets her search, then narrow once; past that she is looping.
+ * turn. Three lets her find a product, read its numbers, and narrow once.
+ * At two, a question that needed a third call (product name, then ASIN, then
+ * sales) had its tools withdrawn mid-plan and came back as "調べてみるね" or "…"
+ * (seen on a real phone, 2026-10-11). Past three she is looping.
  */
-export const MAX_TOOL_ROUNDS = 2;
+export const MAX_TOOL_ROUNDS = 3;
 
 function describeHttpError(status: number, body: unknown): LlmError {
   const error =

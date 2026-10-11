@@ -143,7 +143,7 @@
 
 <header class="top">
   <div class="wrap">
-    <p class="eyebrow">2026-10-10 / 検討用の資料</p>
+    <p class="eyebrow">2026-10-11 / 検討用の資料</p>
     <h1>MAYAの応答の仕組み</h1>
     <p class="standfirst">
       相談を送ってから、MAYAの答えと表情が画面に出るまでに、何を組み立てて、何を確かめているのか。
@@ -538,7 +538,7 @@ followUpQuestion
       <li><b>過去を指す言葉があるかを見る。</b> 「前に」「以前」「去年」「先月」「この前」「あのとき」「覚えて」「決めてた」「言ってた」「だっけ」「っけ」「振り返」「経緯」など。</li>
       <li><b>あれば、1往復目で検索を必ず呼ばせる。</b> このときだけ JSON の指定を外します。Gemini は「必ず呼ばせる」と「JSON で返す」を同時に受け付けないためです。</li>
       <li><b>サーバーが D1 を探す。</b> CONTENT_LOG・Journal・話題・判断から、語をすべて含む記録を新しい順に最大8件、1件400字まで。CONTENT_LOGは57プロジェクト・254件を保存しても、該当する少数だけがプロンプトに入る。</li>
-      <li><b>2往復目で結果を渡し、JSON で答えさせる。</b> 見つからなければ「記録に無いことを作らない」と一緒に返します。探す往復は1回の相談で2回まで。</li>
+      <li><b>2往復目で結果を渡し、JSON で答えさせる。</b> 見つからなければ「記録に無いことを作らない」と一緒に返します。道具を呼ぶ往復は1回の相談で3回まで（2回では、商品を探して数字を読む相談が途中で打ち切られ、「調べてみるね」「…」だけの返事になったため）。</li>
     </ol>
     <div class="note alert">
       <span class="tag">なぜ言葉のリストなのか</span>
@@ -689,7 +689,7 @@ followUpQuestion
   <footer>
     <p>
       この資料は <code>src/features/chat/systemPrompt.ts</code> などのソースから作っています。プロンプトの原文は自動で取り込んだもので、
-      作成時点（2026-10-10）の本番と同じです。元ファイルはリポジトリ直下の <code>RESPONSE_GUIDE.html</code>、
+      作成時点（2026-10-11）の本番と同じです。元ファイルはリポジトリ直下の <code>RESPONSE_GUIDE.html</code>、
       作り直しは <code>python tools/build_response_guide.py</code>。
     </p>
   </footer>
