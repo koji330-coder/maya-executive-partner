@@ -37,6 +37,33 @@ export interface ConnectedToolGroup {
   tools: ConnectedTool[];
 }
 
+export const MEMORY_TOOL: ConnectedTool = {
+  id: 'memory',
+  serverTools: ['search_memory'],
+  label: '過去の活動・判断',
+  icon: 'library-outline',
+  summary: 'CONTENT_LOG・Journal・保存した話題・判断から、以前の経緯を検索',
+  can: [
+    '各プロジェクトで実際に行ったこと、その理由、成果、失敗、学び',
+    'Journalに残した、そのときの考え・動機・決めたこと',
+    'MAYAに保存した話題と、判断の記録',
+    '複数の記録を手がかりにした、プロジェクトの経緯や技術の再利用例',
+  ],
+  ask: [
+    'CardScanを作ったきっかけは？',
+    '前にMAYAの開発で、どんな問題を解決したっけ？',
+    '過去のAmazon商品開発で、どんな試行錯誤をした？',
+    '以前決めたことを、その理由も含めて教えて',
+  ],
+  notes: [
+    '「前に」「以前」「作ったきっかけ」「覚えてる？」など、過去の記録を探したいと分かる聞き方をしてください',
+    '記録に見つからないことは推測しません。CONTENT_LOGに「要確認」とある内容も、確定した事実としては答えません',
+    'CONTENT_LOGはContent Hubから手動で同期します。新しい活動は、次に同期するまでMAYAには届きません',
+    '読むだけです。MAYAから元のCONTENT_LOG・Journal・判断を変更することはできません',
+  ],
+  source: 'Content Hubから同期した各プロジェクトのCONTENT_LOGと、MAYAに保存したJournal・話題・判断。相談されたときに必要な記録だけをD1から読みます',
+};
+
 export const AMAZON_TOOLS: ConnectedTool[] = [
   {
     id: 'sales',
@@ -258,6 +285,12 @@ export const VOICEBOX_TOOL: ConnectedTool = {
 export const RECORD_TOOLS: ConnectedTool[] = [FITLOG_TOOL, VOICEBOX_TOOL];
 
 export const TOOL_GROUPS: ConnectedToolGroup[] = [
+  {
+    id: 'memory',
+    label: '過去の記録',
+    description: '普段の活動や判断を、必要な相談のときだけ探します。',
+    tools: [MEMORY_TOOL],
+  },
   {
     id: 'amazon',
     label: 'Amazon運営',

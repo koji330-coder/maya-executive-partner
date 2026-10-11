@@ -42,7 +42,7 @@ export function ConnectedToolCard({ tool }: { tool: ConnectedTool }) {
           <Section title="できること" lines={tool.can} />
           <Section title="こう聞いてください" lines={tool.ask.map((line) => `「${line}」`)} />
           <Section title="知っておくこと" lines={tool.notes} />
-          <Text style={styles.source}>数字の出どころ: {tool.source}</Text>
+          <Text style={styles.source}>情報の出どころ: {tool.source}</Text>
         </View>
       ) : null}
     </View>

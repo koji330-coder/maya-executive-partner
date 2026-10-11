@@ -1815,3 +1815,47 @@ Content Hub同期図、D1のactivityテーブル、`search_memory`の活動検�
 ### コンテンツ候補
 
 「AI秘書に254件の活動履歴を覚えさせても遅くしない、全件保存・必要時検索の長期記憶設計」（公開範囲は要確認）。
+
+---
+date: 2026-10-11
+tags: [MAYA, ツール画面, CONTENT_LOG, 長期記憶, EAS Update]
+sensitivity: business
+publishable: unclear
+sources: [src/features/tools/catalog.ts, src/features/tools/ConnectedToolCard.tsx, src/features/tools/__tests__/catalog.test.ts]
+---
+
+### やったこと
+
+MAYAのツール画面に「過去の活動・判断」カードを追加し、CONTENT_LOG・Journal・保存した話題・判断を`search_memory`で探せることを利用者向けに説明した。できること、質問例、不確実な記録の扱い、手動同期、読み取り専用であること、情報源をカード内で確認できる。
+
+### なぜやった
+
+本番MAYAはすでにCONTENT_LOGを検索できたが、ツール画面にはAmazon・FIT LOG・VoiceBoxしか表示されておらず、利用者が新しい長期記憶の存在と聞き方を知る説明がなかったため。
+
+### 解決方法
+
+既存のツールカタログへ`search_memory`に対応するカードを追加し、「前に」「以前」「作ったきっかけ」など過去を示す質問例を載せた。記録にないことを推測しない、`要確認`を確定事実にしない、新しいCONTENT_LOGは次回の手動同期まで届かない、元記録は変更できない、という制約も同じカードに明記した。全カード共通の出所表示は、Amazon以外にも自然な「情報の出どころ」へ変更した。
+
+### 成果
+
+型検査・Lint・391件の自動テストが成功した。iOSの`preview`チャンネルへEAS Updateを公開した（Update group ID `eead7e6b-f61a-4adb-85f1-a1738b21f4b7`）。
+
+### 使用技術
+
+React Native、Expo Router、TypeScript、Jest、EAS Update。
+
+### 苦労・失敗
+
+要確認。
+
+### 学び
+
+道具を実装するだけでは、利用者は存在や有効な聞き方を知れない。検索対象・質問例・限界・情報源を同じ画面に置くことで、機能の発見と回答の信頼性確認を両立できる。
+
+### 素材
+
+MAYAのツール画面に追加した「過去の活動・判断」カード。
+
+### コンテンツ候補
+
+「AI秘書の長期記憶を、機能だけでなく“どう聞けば使えるか”までアプリ内で説明する」（公開範囲は要確認）。

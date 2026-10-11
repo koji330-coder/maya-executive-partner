@@ -6,12 +6,15 @@ Phase 5 — Decisions and conversation sessions: complete. Verified on a device 
 
 v0.2 started 2026-09-13. Steps 1-3 done and verified on a device the same day: the MAYA server (`server/`) runs on the PC, holds memory in a local D1, and the app uses it when a server address is set in settings. Step 4 done 2026-09-14: the server is deployed to Cloudflare Workers (workers.dev) behind Cloudflare Access with a service token, D1 in APAC, the free key as a Worker secret; the phone connected to it. Steps and status: `docs/PLATFORM_ARCHITECTURE.md` "v0.2 の進め方".
 
-CONTENT_LOG memory was implemented on 2026-10-10. Content Hub uploads a
-validated immutable snapshot; the Worker exposes sync endpoints and
+CONTENT_LOG memory was implemented and deployed on 2026-10-10. Content Hub
+uploads a validated immutable snapshot; the Worker exposes sync endpoints and
 `search_memory` searches the current snapshot alongside Journal, topics and
-decisions. Local D1 verification imported 254 entries from 57 projects (206
-home, 48 business), and a repeated upload was skipped by snapshot hash. Remote
-migration/deploy and device verification are intentionally still pending.
+decisions. Production D1 holds 254 entries from 57 projects (206 home, 48
+business). A real consultation selected `search_memory`, returned the recorded
+CardScan origin, and left an ordinary greeting on the no-tool route. On
+2026-10-11 the Tools tab gained a user-facing manual for this memory source and
+was published to the iOS `preview` channel (update group
+`eead7e6b-f61a-4adb-85f1-a1738b21f4b7`).
 
 ## Completed
 
