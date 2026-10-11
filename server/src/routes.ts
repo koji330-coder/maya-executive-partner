@@ -56,6 +56,15 @@ import {
   startActivitySync,
   writeActivityChunk,
 } from './memory/activity';
+import {
+  inspectorProjects,
+  inspectorSearch,
+  inspectorSummary,
+  readInspectorObservation,
+  requireInspectorDb,
+  saveInspectorObservation,
+} from './memory/inspector';
+import { memorySite } from './memory/inspectorSite';
 
 type Handler = (ctx: { request: Request; env: Env; params: string[]; url: URL }) => Promise<Response>;
 
@@ -120,6 +129,34 @@ const ROUTES: Route[] = [
     method: 'POST',
     pattern: new RegExp(`^/v1/activity/sync/${ID}/complete$`),
     handle: async ({ env, params }) => json(await completeActivitySync(env.MAYA_DB, params[0] ?? '')),
+  },
+
+  // ---- read-only memory inspector
+  // Search and D1 comparisons read the exact stores MAYA reads. Only the PC's
+  // latest local observation is written, and it goes to a separate database.
+  {
+    method: 'GET',
+    pattern: /^\/v1\/memory-inspector\/summary$/,
+    handle: async ({ env }) => json(await inspectorSummary(env.MAYA_DB, requireInspectorDb(env.INSPECTOR_DB))),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/v1\/memory-inspector\/projects$/,
+    handle: async ({ env }) => json(await inspectorProjects(env.MAYA_DB, requireInspectorDb(env.INSPECTOR_DB))),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/v1\/memory-inspector\/search$/,
+    handle: async ({ env, url }) => json(await inspectorSearch(env.MAYA_DB, url)),
+  },
+  {
+    method: 'POST',
+    pattern: /^\/v1\/memory-inspector\/observation$/,
+    handle: async ({ request, env }) => {
+      const observation = readInspectorObservation(await readJson(request));
+      const saved = await saveInspectorObservation(requireInspectorDb(env.INSPECTOR_DB), observation);
+      return json({ ok: true, ...saved }, 201);
+    },
   },
 
   // ---- decisions
@@ -409,6 +446,10 @@ async function jevSettings(env: Env) {
 
 export async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+  if (request.method === 'GET') {
+    const site = memorySite(url.pathname);
+    if (site) return site;
+  }
   for (const r of ROUTES) {
     if (r.method !== request.method) continue;
     const match = url.pathname.match(r.pattern);

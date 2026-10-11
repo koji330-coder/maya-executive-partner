@@ -75,6 +75,14 @@
       // Created on Cloudflare 2026-09-13 in APAC. An id, not a secret.
       "database_id": "11ed662b-5540-43ca-80cb-3b6c9654404e",
       "migrations_dir": "migrations"
+    },
+    {
+      // `/memory/` が比較するPC側の観測値だけを置く。MAYA_DBへの書込み権限を
+      // インスペクターへ与えないため、記憶本体とは別のD1にする。
+      "binding": "INSPECTOR_DB",
+      "database_name": "maya-memory-inspector",
+      "database_id": "93da10b0-5a4e-4826-8a4d-30fb5d4ff59d",
+      "migrations_dir": "inspector-migrations"
     }
   ]
 }

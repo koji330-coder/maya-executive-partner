@@ -413,12 +413,23 @@ flowchart LR
   API --> Pending[(D1 upload snapshot)]
   Pending -->|254件一致後だけ切替| Current[(D1 current snapshot)]
   Current --> Search[search_memory<br/>最大8件 × 400字]
+  Hub -->|索引の世代・件数だけ観測| Inspector[(Inspector専用D1)]
+  Browser[スマホ / PC<br/>/memory/] -->|LLMなしで検索・照合| API
+  API -->|SELECTのみ| Current
+  API -->|ローカル観測値を読む| Inspector
 ```
 
 スナップショットは索引のSHA-256で識別し、40件ずつ送ります。通信が途中で止まっても
 現行ポインタは動かないため、MAYAが半端な世代を読むことはありません。送信側と受信側の
 両方が`company`と`private`を拒否します。全254件を毎回プロンプトへ入れず、相談で
 必要になったときだけ既存の`search_memory`が該当記録を読みます。
+
+2026-10-11に、同じWorkerの`/memory/`へ「記憶インスペクター」を追加しました。Cloudflare
+Accessで守られたPWAで、スマホとPCから直接開けます。検索はMAYAと同じ`searchMemory`
+関数と同じD1を使いますが、GeminiもJevも呼びません。Content Hubの最新索引を
+`maya_sync.py observe`で観測し、スナップショット全体とプロジェクト別の件数・ハッシュを
+本番D1と照合します。この観測値は専用D1 `maya-memory-inspector`に置き、MAYAの記憶D1には
+書きません。画面には同期開始・記憶変更の操作を設けず、診断は読み取り専用です。
 
 ### 待っていること
 

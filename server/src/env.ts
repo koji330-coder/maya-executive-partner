@@ -2,6 +2,8 @@ import type { AccessEnv } from './access';
 
 export interface Env extends AccessEnv {
   MAYA_DB: D1Database;
+  /** `/memory/` のローカル観測情報だけを置く。MAYAの記憶とは分離する。 */
+  INSPECTOR_DB?: D1Database;
   /** Secrets. Set with `wrangler secret put`, or `.dev.vars` locally. */
   GEMINI_API_KEY_FREE?: string;
   GEMINI_API_KEY_PAID?: string;

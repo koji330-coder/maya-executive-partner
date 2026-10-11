@@ -575,13 +575,50 @@
         右側のHAKSAIとFIT LOGは、それぞれのデータが<strong>すでに置いてある場所をそのまま読む</strong>経路です。MAYAのデータベースに写して溜め直さないため、点線の夜間同期ジョブから外れました。
         VoiceBox（音声メモ・会議録音）は独立したサービスで、MAYAは、その読み取り専用の窓から、採用した要約・議事録だけを必要なときに読みに行きます（HAKSAIやFIT LOGと同じ向きです。点線は、まだ本番でつながっていないことを示します）。原文と音声は、窓にありません。
         FIT LOG（食事・筋トレ・体重・屋外運動）は連携済みです。日ごとの記録に加え、長期の体組成、実測TDEE、週次実績、種目別の成長も必要なときだけ読めます。
-        Content HubのCONTENT_LOG同期も実装済みです。PCのダッシュボードから手動で、検査済みのhome/business 254件をD1へ写し、全件揃った世代だけを検索します。本番D1への反映はまだです。
+        Content HubのCONTENT_LOG同期も本番で動いています。PCのダッシュボードから手動で、検査済みのhome/business 254件をD1へ写し、全件揃った世代だけを検索します。
         右上の Jev は、相談の前に「どのデータが要るか」を判定させる外部のモデルです。仕組みはできていますが<strong>既定は OFF</strong>で、設定画面で ON にしたときだけ使います（点線）。
       </figcaption>
     </figure>
   </div>
 
   <div class="wrap">
+    <figure>
+      <svg viewBox="0 0 760 190" role="img" aria-label="スマホまたはPCの記憶インスペクターはCloudflare Accessを通ってMAYAサーバーへ接続する。MAYAの本番D1は読むだけで、ローカルの観測値は別の専用D1に保存する。検索にLLMは使わない">
+        <defs>
+          <marker id="ar-memory" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <g class="hl">
+          <rect x="18" y="49" width="152" height="80" rx="12" fill="none" stroke="currentColor" stroke-width="2"/>
+          <text x="94" y="77" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">記憶インスペクター</text>
+          <text x="94" y="98" font-size="11" text-anchor="middle" fill="currentColor">/memory/（PWA）</text>
+          <text x="94" y="115" font-size="10.5" text-anchor="middle" fill="currentColor">スマホ / PC</text>
+        </g>
+        <line x1="170" y1="89" x2="255" y2="89" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar-memory)"/>
+        <text x="212" y="77" font-size="10.5" text-anchor="middle" fill="currentColor">Access</text>
+        <rect x="262" y="49" width="154" height="80" rx="12" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <text x="339" y="78" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">MAYAサーバー</text>
+        <text x="339" y="99" font-size="11" text-anchor="middle" fill="currentColor">同じ検索処理</text>
+        <text x="339" y="116" font-size="10.5" text-anchor="middle" fill="currentColor">LLM・Jevは呼ばない</text>
+        <line x1="416" y1="72" x2="514" y2="72" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar-memory)"/>
+        <text x="465" y="60" font-size="10.5" text-anchor="middle" fill="currentColor">読むだけ</text>
+        <ellipse cx="592" cy="61" rx="70" ry="11" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M 522 61 v 38 a 70 11 0 0 0 140 0 v -38" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="592" y="87" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">MAYA本番D1</text>
+        <text x="592" y="104" font-size="10.5" text-anchor="middle" fill="currentColor">記憶の正本側</text>
+        <path d="M 416 108 H 484 V 150 H 514" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar-memory)"/>
+        <text x="465" y="139" font-size="10.5" text-anchor="middle" fill="currentColor">観測値</text>
+        <rect x="522" y="128" width="140" height="45" rx="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="592" y="148" font-size="11.5" font-weight="700" text-anchor="middle" fill="currentColor">Inspector専用D1</text>
+        <text x="592" y="164" font-size="10" text-anchor="middle" fill="currentColor">世代・件数・ハッシュのみ</text>
+      </svg>
+      <figcaption>
+        「MAYAの頭の中」を見るための画面です。MAYAと同じ記憶を同じ検索処理で探しますが、GeminiやJevは呼ばないので、回答生成の待ち時間と費用はありません。
+        PC側の最新索引との比較に必要な小さな観測値だけを専用D1へ置き、MAYA本体のD1は読み取り専用にしています。画面に同期・編集ボタンはありません。
+      </figcaption>
+    </figure>
+
     <figure>
       <svg viewBox="0 0 760 150" role="img" aria-label="認証情報台帳はMAYAとは別のWeb画面で、確認結果は専用データベースへ保存する。APIキーやトークンの値は受け取らない">
         <g class="hl">
@@ -825,8 +862,13 @@
           </tr>
           <tr>
             <td>Content Hubの活動ログを読む</td>
-            <td><span class="pill hold">本番反映待ち</span></td>
-            <td>57プロジェクト・254件をローカルD1で確認済み。home/businessを手動同期し、company/privateは送受信の両側で拒否。全件揃うまで現行世代を切り替えない。本番migration・Worker公開・実機確認がこれから</td>
+            <td><span class="pill on">動く</span></td>
+            <td>57プロジェクト・254件を本番D1へ同期済み。home/businessを手動同期し、company/privateは送受信の両側で拒否。全件揃うまで現行世代を切り替えない。実際の相談で記憶検索まで確認済み</td>
+          </tr>
+          <tr>
+            <td>MAYAの記憶をスマホで点検する</td>
+            <td><span class="pill on">動く</span></td>
+            <td><code>/memory/</code>のPWA。MAYAと同じ記憶をLLMなしで検索し、ローカル索引と本番D1の世代・件数・プロジェクト別差分を表示する。本体D1は読むだけで、観測値は専用D1へ分離</td>
           </tr>
           <tr>
             <td>添付を次のターン以降も覚える</td>

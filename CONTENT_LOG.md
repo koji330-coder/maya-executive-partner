@@ -1859,3 +1859,47 @@ MAYAのツール画面に追加した「過去の活動・判断」カード。
 ### コンテンツ候補
 
 「AI秘書の長期記憶を、機能だけでなく“どう聞けば使えるか”までアプリ内で説明する」（公開範囲は要確認）。
+
+---
+date: 2026-10-11
+tags: [MAYA, 記憶インスペクター, PWA, D1, CONTENT_LOG, 読み取り専用]
+sensitivity: business
+publishable: unclear
+sources: [server/src/memory/inspector.ts, server/src/memory/inspectorSite.ts, server/inspector-migrations/0001_inspector_state.sql, server/src/routes.ts]
+---
+
+### やったこと
+
+Cloudflare Accessで守られたMAYA Workerの`/memory/`に、スマホへインストールできる記憶インスペクターを追加した。MAYAが参照するCONTENT_LOG・Journal・話題・判断をLLMなしで検索し、Content Hubのローカル索引と本番D1をスナップショット全体・プロジェクト単位で照合できる。
+
+### なぜやった
+
+MAYAの回答が期待と違うときに、LLMの問題なのか、必要な記録がD1へ届いていないのかをスマホから切り分けたかったため。「MAYAの頭の中をのぞく」診断画面として、会話を発生させず記憶そのものを確認できる入口が必要だった。
+
+### 解決方法
+
+検索はMAYA本体と同じ`searchMemory`関数・同じMAYA D1を使い、GeminiとJevは呼ばない。ローカル側は`maya_sync.py observe`で索引の世代・件数・プロジェクト別ハッシュだけを送る。この観測値は専用D1`maya-memory-inspector`へ保存し、MAYA本体のD1には書き込まない。PWAには同期・編集ボタンを置かず、APIも本体D1に対してSELECTだけを実行する。
+
+### 成果
+
+ローカル結合試験で254件・57プロジェクトが完全一致した。スマホ幅390×844で、鮮度カード、LLMなし検索、プロジェクト差分が崩れず表示されることを確認した。`CardScan`検索は同じ記憶から7件を返した。専用D1をAPACに作成し、初回migrationを適用した。全自動テストは397件成功（最終確認は要更新）。
+
+### 使用技術
+
+Cloudflare Workers、Cloudflare D1、Cloudflare Access、PWA、Service Worker、TypeScript、Python。
+
+### 苦労・失敗
+
+ローカル状態をクラウドへ置かなければスマホから比較できない一方、そのためにMAYAの記憶D1へ診断用データを書かせると安全境界が曖昧になる。観測値専用D1を分け、記憶本体への書き込み経路を作らない構成にした。
+
+### 学び
+
+AIの記憶を運用するには検索機能だけでなく、「何が入っているか」「いつの世代か」「元データと一致するか」をLLMを介さず確認できる観測面が必要になる。
+
+### 素材
+
+`/memory/`のスマホ画面、同期済み表示、CardScan検索結果、プロジェクト差分一覧。
+
+### コンテンツ候補
+
+「AI秘書の頭の中をのぞく――LLMを使わない長期記憶インスペクターと、本体D1を壊さない分離設計」（公開範囲は要確認）。

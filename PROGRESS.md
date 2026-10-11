@@ -16,6 +16,12 @@ CardScan origin, and left an ordinary greeting on the no-tool route. On
 was published to the iOS `preview` channel (update group
 `eead7e6b-f61a-4adb-85f1-a1738b21f4b7`).
 
+The Memory Inspector PWA was added at `/memory/` on 2026-10-11. It searches the
+same D1 records with the same `searchMemory` implementation as MAYA, without an
+LLM or Jev call, and compares the current D1 snapshot with a compact local
+Content Hub observation. Observation metadata lives in a separate D1 so the
+inspector cannot write to MAYA's memory. The screen has no sync or edit action.
+
 ## Completed
 
 ### Phase 0 — Repo bootstrap
