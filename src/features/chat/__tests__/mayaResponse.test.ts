@@ -108,3 +108,22 @@ describe('validateMayaResponse', () => {
     });
   });
 });
+
+describe('followUpQuestion when the reply already asks', () => {
+  const withFollowUp = (message: string) =>
+    validateMayaResponse({ ...valid, message, followUpQuestion: 'どうやって持ってきたんですか？' });
+
+  it('drops the follow-up that repeats a question the reply already ends on', () => {
+    for (const message of ['すごい！どうやって吸い出したの？', 'OCRか何か噛ませたんですか？w', '「本当に？」']) {
+      const result = withFollowUp(message);
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value.followUpQuestion ?? null).toBeNull();
+    }
+  });
+
+  it('keeps the follow-up when the reply does not end on a question', () => {
+    const result = withFollowUp('それはいいですね。どこが気に入った？ まずは試してみましょう。');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.followUpQuestion).toBe('どうやって持ってきたんですか？');
+  });
+});

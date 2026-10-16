@@ -203,6 +203,12 @@ function readDetected(
  * no reply to render. Everything else has a defensible default, so a model that
  * gets one enum wrong still produces a usable turn instead of an error screen.
  */
+/** True when the last sentence of the reply is a question (？ or ?, ignoring closing quotes and ｗ/w). */
+export function endsWithQuestion(message: string): boolean {
+  const tail = message.trim().replace(/[\s「」『』）)w ｗ…。.~〜!！]+$/u, '');
+  return /[？?]$/u.test(tail);
+}
+
 export function validateMayaResponse(payload: unknown): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -268,7 +274,10 @@ export function validateMayaResponse(payload: unknown): ValidationResult {
       ...(nextAction.dueDate !== undefined ? { dueDate: nextAction.dueDate } : {}),
     };
   }
-  if (typeof payload.followUpQuestion === 'string' && payload.followUpQuestion.trim()) {
+  if (typeof payload.followUpQuestion === 'string' && payload.followUpQuestion.trim() && endsWithQuestion(message)) {
+    // The reply already ends on a question; a second one underneath only repeats it.
+    value.followUpQuestion = null;
+  } else if (typeof payload.followUpQuestion === 'string' && payload.followUpQuestion.trim()) {
     value.followUpQuestion = clamp(
       payload.followUpQuestion.trim(),
       LIMITS.followUp,
