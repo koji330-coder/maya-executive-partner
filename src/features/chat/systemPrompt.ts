@@ -125,6 +125,28 @@ export const VOICE_GUIDE = `VoiceBox（Gakky の音声メモ・会議録音ア�
 - 「やること」に完了の記録はありません。終わったかどうかを、決めつけません
 - 会議の話でも、Gakky が過去の会話を指していない相談（一般的な進め方など）では、探しません`;
 
+/**
+ * うたログ（Gakky のカラオケ履歴アプリ）を読む道具の使い方。サーバーで、接続が設定されているときだけ出す。
+ *
+ * 点数と採点明細（数字）と本人のメモしか持たず、歌声は聴いていない。そこを言わないと、
+ * モデルは「歌い方を聴いた」かのように助言する。助言は、数字からの「お遊び」と明言させる。
+ */
+export const KARAOKE_GUIDE = `うたログ（Gakky のカラオケ履歴アプリ）の記録を読む5つの道具を使えます。すべて読み取り専用です。
+
+- karaoke_recent：最近歌った曲を新しい順に（日時・曲・歌手・点数・採点モード・キー・本人のメモ）。memo_only でメモ付きだけ
+- karaoke_search：曲名・歌手の語やタグで探す（歌った回数・最高点・最後に歌った日・曲のメモ）
+- karaoke_song：1曲の全歌唱の履歴と、採点明細（音程・安定感・抑揚・ロングトーン・技術・AIボーナス・ビブラートやこぶしの回数・機械の総評・全国平均）。song_id は他の道具の結果から渡します
+- karaoke_forgotten：2回以上歌って、しばらく歌っていない曲
+- karaoke_overview：回数・曲数・採点モード別の平均点と最高点・よく歌う曲と歌手
+- 持っているのは、点数と採点明細（数字）、機械の総評、Gakky 本人が書いたメモだけです。歌声は聴いていません。「聴いた」「あなたの歌い方は」と断定せず、「点数を見る限り」「この数字からは」と言います
+- 次に歌う曲の提案：まず karaoke_overview や karaoke_search で、歌った曲の傾向（歌手・点数が高かった曲・キー・タグ）を見ます。そこから「これを歌っているなら、こういう曲に挑戦してみたら？」と、理由を添えて2〜3曲に絞って出します。曲の難しさや音域は記録に無いので、一般的な知識で言うときは「一般的には」と断ります。実在が確かでない曲を作りません。最後に選ぶのは Gakky です
+- 点数アップの助言は、採点明細の数字（弱い項目、ビブラートやこぶしの回数、全国平均との差）に基づく「お遊び」として、楽しく言います。歌を聴いていないので、断定しません。同じ曲の歌唱どうしを比べ、変わった点を見ます
+- 採点モードが違う点数（例：精密採点と分析採点）は、比べません。同じモードの中で見ます
+- Gakky のメモや選曲は、本人が笑ってほしいと望んでいます。一緒に笑ってかまいませんが、バカにせず、本人が書いたことを根拠にします。メモに無いことを作りません
+- Gakky は、ひとりカラオケ（ヒトカラ）が好きな人です。気を使わず好きな曲を何度も歌える楽しさを分かったうえで話します
+- 道具が「最後に記録された歌唱」を返したら、それより新しい歌唱が未着の可能性があると、必要なときだけ短く伝えます
+- カラオケと関係ない相談では、探しません`;
+
 export const AMAZON_GUIDE = `Amazon の在庫・発注・売上・広告・市場の動きを読む道具 haksai_inventory と haksai_sales と haksai_ads と haksai_ad_changes と haksai_forecast と haksai_market を使えます。読むだけで、発注や変更はできません。
 
 - 在庫・発注・補充・欠品の相談は haksai_inventory、月の売上・粗利・広告費の合計・売れ筋の相談は haksai_sales、日や期間（1日だけ、10/1〜10/6、直近1週間など）を指定する広告の相談（広告費・ACOS・広告経由の売上・どの商品やキャンペーンに広告費がかかっているか）は haksai_ads、競合の値下げ・価格やランキングの動き・値下げに追随するかの相談は haksai_market を使います
@@ -353,6 +375,7 @@ export function buildSystemPrompt(
   canReadAmazon = false,
   canReadFitlog = false,
   canReadVoice = false,
+  canReadKaraoke = false,
 ): string {
   const sections = [PERSONA];
   const context = formatCompany(company);
@@ -379,6 +402,9 @@ export function buildSystemPrompt(
   }
   if (canReadVoice) {
     sections.push(VOICE_GUIDE);
+  }
+  if (canReadKaraoke) {
+    sections.push(KARAOKE_GUIDE);
   }
   sections.push(PROTOCOL, CONTRACT);
   return sections.join('\n\n---\n\n');

@@ -282,7 +282,35 @@ export const VOICEBOX_TOOL: ConnectedTool = {
   source: 'VoiceBox。相談されたときに、読み取り専用の窓から要約・議事録だけを読みます',
 };
 
-export const RECORD_TOOLS: ConnectedTool[] = [FITLOG_TOOL, VOICEBOX_TOOL];
+export const KARAOKE_TOOL: ConnectedTool = {
+  id: 'karaoke',
+  serverTools: ['karaoke_recent', 'karaoke_search', 'karaoke_song', 'karaoke_forgotten', 'karaoke_overview'],
+  label: 'うたログ',
+  icon: 'musical-notes-outline',
+  summary: 'カラオケの履歴・点数・採点明細・メモから、選曲の相談や思い出話',
+  can: [
+    '最近歌った曲の、日時・点数・キー・Gakkyのメモ',
+    '歌手・曲名・タグで、歌ったことのある曲を探す',
+    '1曲ごとの全歌唱と、採点明細（音程・安定感・抑揚など）',
+    'しばらく歌っていない曲・よく歌う曲と歌手',
+  ],
+  ask: [
+    '最近カラオケで何歌った？',
+    'メモに書いた恥ずかしい選曲を、一緒に笑って',
+    '次に歌う曲を、過去の履歴から提案して',
+    '真夜中マーメイドの点数を上げるコツは？',
+    '久しぶりに歌いたい曲は？',
+  ],
+  notes: [
+    '読むのは、点数・採点明細（数字）・機械の総評・Gakkyのメモだけです。歌声は聴いていません',
+    '点数アップの助言は、数字からのお遊びです。断定はしません',
+    '採点モードが違う点数は比べません',
+    '読むだけです。うたログの記録は変更しません',
+  ],
+  source: 'うたログ。相談されたときに、読み取り専用の窓から要約だけを読みます',
+};
+
+export const RECORD_TOOLS: ConnectedTool[] = [FITLOG_TOOL, VOICEBOX_TOOL, KARAOKE_TOOL];
 
 export const TOOL_GROUPS: ConnectedToolGroup[] = [
   {
@@ -299,7 +327,7 @@ export const TOOL_GROUPS: ConnectedToolGroup[] = [
   },
   {
     id: 'records',
-    label: '健康・会話の記録',
+    label: '健康・会話・趣味の記録',
     description: 'アプリごとに1枚。中の道具はMAYAが質問に合わせて選びます。',
     tools: RECORD_TOOLS,
   },

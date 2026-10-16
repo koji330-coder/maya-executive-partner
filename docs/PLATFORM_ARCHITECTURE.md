@@ -506,6 +506,21 @@ flowchart LR
 - **Cloudflare Access で守る**: スマホからの通信と同様、Cloudflare Access で外部を遮断します
 - **サービストークンでどのエージェントからも読めるようにする**: PC上の環境変数等に Access のサービストークンを設定することで、Antigravity、Claude Code、Codexなど、PC上のどのAIエージェントからでも安全に MAYAサーバーのエンドポイントを叩けるようにします
 
+### うたログ（カラオケ履歴）
+
+**MAYA が知るのは「どんな曲をいつ歌い、何点で、何をメモしたか」です**（2026-10-16 決定・実装）。うたログ
+（Gakkyのカラオケ履歴アプリ。独立した Worker と D1）は、MAYA には何も送らず、MAYA が、FIT LOG や VoiceBox と
+同じく、**必要なときに読みに行きます**。読むのは、うたログ側が組み立てた要約だけで、D1 は直接開けません。
+
+- **読み取り専用の窓 `GET /v1/maya/*` だけ**を読みます（`server/src/karaoke.ts`）。書き込みの経路はありません
+- 見えるもの: 履歴（日時・曲・歌手）、点数と採点モード、キー・オク下、**本人の感想メモの全文**、採点明細（音程・安定感・抑揚・ロングトーン・技術・AIボーナス・ビブラートやこぶしの回数・機械の総評・全国平均）。見えないもの: 写真、写真に写った表示名、歌声
+- 認証は、他と同じ Cloudflare Access のサービストークン。うたログの窓専用のアプリ（パス `v1/maya/*`）で、MAYA 用のトークン1つだけを通します
+- 設定は、`KARAOKE_URL`（wrangler の vars）と、`KARAOKE_CLIENT_ID` / `KARAOKE_CLIENT_SECRET`（`wrangler secret put`）。**三つが揃うまで、道具も案内文も相談に出しません**（`karaokeConfigured`）
+- 道具は5つ。`karaoke_recent`、`karaoke_search`、`karaoke_song`、`karaoke_forgotten`、`karaoke_overview`
+- 目的は、「次に歌う曲の提案」「忘れていた曲の思い出し」「採点明細からの助言（歌を聴いていない、お遊び）」「メモや選曲を一緒に笑う」。歌声を聴いていないので、助言は断定させません。採点モードが違う点数は比べさせません
+- 無料枠のモデルに送ってよいと、本人が判断済みです（2026-10-16）
+- 窓の仕様と設定の手順は、うたログのリポジトリの `docs/MAYA_WINDOW.md`
+
 ## Credential RegistryはMAYAから分離する（2026-09-30）
 
 開発プロジェクトが使う外部サービス、Account、認証情報名、保存場所を確認するため、

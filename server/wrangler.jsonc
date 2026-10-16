@@ -59,6 +59,10 @@
     // 住所は秘密ではない。入るためのサービストークン（読み取り専用の voicebox-maya）だけが秘密で、
     // `wrangler secret put VOICEBOX_VAULT_CLIENT_ID` / `..._SECRET` に置く。三つが揃うまで、会話の道具は相談に出てこない。
     "VOICEBOX_VAULT_URL": "https://voicebox-vault.koji330.workers.dev",
+    // うたログ（カラオケ履歴アプリ）の読み取り窓。独立したサービスで、MAYA が読みに行く。住所は秘密ではない。
+    // 入るためのサービストークン（読み取り専用）だけが秘密で、`wrangler secret put KARAOKE_CLIENT_ID` / `KARAOKE_CLIENT_SECRET` に置く。
+    // 三つが揃うまで、カラオケの道具は相談に出てこない。
+    "KARAOKE_URL": "https://my-karaoke-history.koji330.workers.dev",
     // FIT LOG D1（筋トレ・体組成・食事管理）連携のURL。秘密ではないため vars に置く。
     // トークンは wrangler secret put FITLOG_API_KEY に置く。
     "FITLOG_API_URL": "https://fitlog.gakky.jp",

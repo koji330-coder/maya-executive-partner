@@ -6,11 +6,11 @@ describe('the tool manual', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('shows memory first, groups Amazon by job, and keeps FIT LOG and VoiceBox as source cards', () => {
+  it('shows memory first, groups Amazon by job, and keeps FIT LOG, VoiceBox and Utalog as source cards', () => {
     expect(TOOL_GROUPS.map((group) => group.id)).toEqual(['memory', 'amazon', 'records']);
     expect(TOOL_GROUPS[0]?.tools.map((tool) => tool.id)).toEqual(['memory']);
     expect(TOOL_GROUPS[1]?.tools.map((tool) => tool.id)).toEqual(['sales', 'inventory', 'market', 'ads', 'forecast', 'adchanges']);
-    expect(TOOL_GROUPS[2]?.tools.map((tool) => tool.id)).toEqual(['fitlog', 'voicebox']);
+    expect(TOOL_GROUPS[2]?.tools.map((tool) => tool.id)).toEqual(['fitlog', 'voicebox', 'karaoke']);
   });
 
   it('explains the connected CONTENT_LOG memory without promising writes', () => {

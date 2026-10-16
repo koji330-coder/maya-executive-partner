@@ -69,6 +69,14 @@ import {
   voiceConfigured,
   vaultSource,
 } from './voicebox';
+import {
+  karaokeConfigured,
+  karaokeSource,
+  KARAOKE_TOOL_NAMES,
+  KARAOKE_TOOLS,
+  refersToKaraoke,
+  runKaraokeTool,
+} from './karaoke';
 import { resolveKeys } from './memory/apiKeys';
 import { loadCostPolicy, loadJevMode } from './memory/settings';
 import { resolveTypesafeKey } from './memory/typesafeKey';
@@ -193,6 +201,8 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   const fitlogReady = fitlogConfigured(env);
   // VoiceBox への接続が設定されていれば、その道具を相談に出す（会話は、必要なときに読みに行く）。
   const voiceReady = voiceConfigured(env);
+  // うたログ（カラオケ履歴）も同じく、接続が設定されていれば道具を出す。
+  const karaokeReady = karaokeConfigured(env);
   const askingAboutAmazon = amazonReady && refersToAmazon(request.message);
   // 「じゃあ先週は？」のような短い続きだけは、直近の会話も判定に含める。
   const recentFitnessContext = request.history.slice(-4).some((exchange) => refersToFitness(exchange.text) || refersToNightOut(exchange.text));
@@ -212,7 +222,11 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
   if (voiceReady) {
     allAvailableTools.push(...VOICE_TOOLS);
   }
+  if (karaokeReady) {
+    allAvailableTools.push(...KARAOKE_TOOLS);
+  }
   const askingAboutVoice = voiceReady && refersToVoice(request.message);
+  const askingAboutKaraoke = karaokeReady && refersToKaraoke(request.message);
 
   let selectedTools = allAvailableTools;
   if (askingAboutFitness && !askingAboutRememberedConversation && !askingAboutAmazon) {
@@ -242,10 +256,13 @@ export async function answer(env: Env, request: ChatRequest): Promise<ChatReply>
     ) {
       return runVoiceTool(vaultSource(env), call, presidentDate());
     }
+    if (KARAOKE_TOOL_NAMES.includes(call.name)) {
+      return runKaraokeTool(karaokeSource(env), call, presidentDate());
+    }
     return runMemoryTool(env.MAYA_DB, call);
   };
-  const legacyForce = refersToPast(request.message) || askingAboutAmazon || askingAboutFitness || askingAboutVoice;
-  let systemPrompt = buildSystemPrompt(request.company, decisions, now, activity, true, amazonReady, fitlogReady, voiceReady);
+  const legacyForce = refersToPast(request.message) || askingAboutAmazon || askingAboutFitness || askingAboutVoice || askingAboutKaraoke;
+  let systemPrompt = buildSystemPrompt(request.company, decisions, now, activity, true, amazonReady, fitlogReady, voiceReady, karaokeReady);
 
   // Jev routing (jevRouter.ts). Off: none of this runs and the turn is exactly
   // as before. On: Jev is asked first, and any failure lands back on the line
